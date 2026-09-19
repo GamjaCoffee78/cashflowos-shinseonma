@@ -16,7 +16,7 @@ import { readImage, type VisionResult } from '@/lib/vision'
 import { BOT_TOOLS, runBotTool } from '@/lib/bot-tools'
 import { BOT_ACTION_TOOLS, ACTION_TOOL_NAMES, runBotAction } from '@/lib/bot-actions'
 import { SCHEDULED } from '@/agents/registry'
-import { jarvisIdentity, jarvisName } from '@/jarvis/config'
+import { abangbotIdentity, abangbotName } from '@/abangbot/config'
 import { logRun } from '@/lib/runs'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -80,7 +80,7 @@ const MAX_FILE_BYTES = 8 * 1024 * 1024 // ~8 MB — reject bigger BEFORE downloa
 // The /start + /help capability card. Mirrors the read tools (bot-tools.ts) and the
 // action tools (bot-actions.ts) so the owner knows what to ask. Telegram HTML.
 const HELP_CARD =
-  `🤖 <b>${jarvisName()}</b> — I run your business from your records. Ask me anything:\n\n` +
+  `🤖 <b>${abangbotName()}</b> — I run your business from your records. Ask me anything:\n\n` +
   `💰 <b>Money</b> — "cash in this week?" · "who owes me?" · "overdue invoices?"\n` +
   `🏞️ <b>Pipeline</b> — "open leads?" · "pipeline value?" · "pending vs won?"\n` +
   `✅ <b>Tasks</b> — "what's due this week?"\n` +
@@ -413,7 +413,7 @@ async function runAgentNow(
 }
 
 // ============================================================
-// answerWithTools — the Jarvis "brain + hands" loop (§7e).
+// answerWithTools — the AbangBot "brain + hands" loop (§7e).
 //
 // Claude chooses one of the read tools (get_cash_summary / list_overdue /
 // search_records), the server runs it here, the result returns wrapped as
@@ -427,10 +427,10 @@ async function answerWithTools(chatId: number, text: string, apiKey: string): Pr
   const recent = await loadTurns(chatId)
 
   const system =
-    // 👉 WHO IT WORKS FOR — from jarvis/config.ts (edit that file, not this one).
+    // 👉 WHO IT WORKS FOR — from abangbot/config.ts (edit that file, not this one).
     // This is CONTEXT ONLY. The rules below are absolute and come after it on
-    // purpose, so nothing in the business profile can widen what Jarvis may do.
-    jarvisIdentity() +
+    // purpose, so nothing in the business profile can widen what AbangBot may do.
+    abangbotIdentity() +
     `You have READ tools (cash, funnel/pipeline, leads, invoices/owed, tasks, content, follow-ups, ` +
     `triage) and ACTION tools that DO things. Chain tools when useful (e.g. who_to_followup → ` +
     `draft_followup; or find an invoice → mark_invoice_paid). Keep replies short. Telegram formatting: ` +
@@ -511,7 +511,7 @@ async function answerWithTools(chatId: number, text: string, apiKey: string): Pr
       messages.push({ role: 'user', content: toolResults })
     }
   } catch (e) {
-    console.error('[CFO] Jarvis tool loop error:', e)
+    console.error('[CFO] AbangBot tool loop error:', e)
   }
   return answer
 }

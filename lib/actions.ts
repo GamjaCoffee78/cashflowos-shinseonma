@@ -148,7 +148,7 @@ export function summarizeResult(result: any): string {
   if (result.kind === 'doc') {
     return `✅ Filed to your Vault${result.record_id ? ` (record #${result.record_id})` : ''}`
   }
-  // V2 — the Jarvis action tools (writeRecord).
+  // V2 — the AbangBot action tools (writeRecord).
   if (result.kind === 'record_created') {
     const noun = result.category === 'task' ? 'task' : result.category === 'lead' ? 'lead' : result.category === 'cash_in' ? 'income' : 'record'
     return `✅ Added ${noun}: ${result.title}${result.record_id ? ` (#${result.record_id})` : ''}`

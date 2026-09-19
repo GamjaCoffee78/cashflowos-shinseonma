@@ -4,7 +4,7 @@
 > It watches your business river, files your paperwork, and asks before it touches money.
 > Today you hire it. Tomorrow you train it. Then it works for you forever.
 
-Your whole business on one phone screen — a **mobile AI HQ** (dashboard + add-to-home-screen app), a **Telegram Jarvis** you can text, and **AI Employees that ask before they act**.
+Your whole business on one phone screen — a **mobile AI HQ** (dashboard + add-to-home-screen app), a **Telegram AbangBot** you can text, and **AI Employees that ask before they act**.
 
 Everyone at the **Cashflow OS 2-Day Challenge** ships this identical starter on Day 1 — live dashboard, phone app, Telegram bot, and a working receipt agent — then makes it their own on Day 2 by turning **4 knobs** on a locked, safe skeleton.
 
@@ -64,16 +64,16 @@ O (database) → E (deploy + phone app) → N (bot) → Y (daily brief), one ste
 **N — Navigate** (give it a mouth + its first robot)
 8. Telegram: `@BotFather` → `/newbot` for a token · `@userinfobot` for your numeric ID.
 9. In **Vercel** add `ANTHROPIC_API_KEY` + the Telegram keys + a made-up `CRON_SECRET` → **Redeploy** (env changes need a redeploy).
-10. `npm run webhook:set -- https://YOUR-APP.vercel.app` → press **Start** in your bot → send `/help` to see everything it can do, then ask it *"how much cash in this week?"*. The **Expense agent is already ON**: send a small receipt (auto-files ✅) and one over RM200 (it asks 🙋). Full capability list below in **🤖 Meet Jarvis**.
+10. `npm run webhook:set -- https://YOUR-APP.vercel.app` → press **Start** in your bot → send `/help` to see everything it can do, then ask it *"how much cash in this week?"*. The **Expense agent is already ON**: send a small receipt (auto-files ✅) and one over RM200 (it asks 🙋). Full capability list below in **🤖 Meet AbangBot**.
 
 **Y — Yield** (give it an alarm clock)
 11. Your daily brief is scheduled (`vercel.json` — every morning it texts you the funnel + the money + what needs your YES). One cron slot used; the second is reserved on purpose (Vercel Hobby allows two).
 
 ---
 
-## 🤖 Meet Jarvis — the agentic Telegram bot
+## 🤖 Meet AbangBot — the agentic Telegram bot
 
-Jarvis isn't just a money Q&A bot anymore. It now answers a wide range of ops questions **and** can take safe actions through the same approval engine that files your receipts.
+AbangBot isn't just a money Q&A bot anymore. It now answers a wide range of ops questions **and** can take safe actions through the same approval engine that files your receipts.
 
 Send `/help` any time for its capability card:
 

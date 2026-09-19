@@ -25,7 +25,7 @@ You are roleplaying a **founder who has never coded and never deployed anything*
 | **GitHub** | your copy of the code + deploy | Use **"Use this template"**, not a clone of the original (you can't push to the original). |
 | **Supabase** | your database + private photo **Vault** bucket | Free tier = **max 2 projects**/org. The schema also makes a **`vault` storage bucket** — if it doesn't appear, make one named `vault` (Public **OFF**), 2 clicks. |
 | **Vercel** | the live site | Sign in **with GitHub**. Free **Hobby** = **max 2 crons**; this repo uses **exactly 1** (2nd reserved on purpose). |
-| **Anthropic Console** | the key for the photo reader + Jarvis bot | **Must have credit** (~USD $5 / RM23) or every AI surface shows a calm "add your key," and the bot won't answer. |
+| **Anthropic Console** | the key for the photo reader + AbangBot bot | **Must have credit** (~USD $5 / RM23) or every AI surface shows a calm "add your key," and the bot won't answer. |
 | **Telegram** (phone) | where the bot + receipt filing live | You'll message **@BotFather** (make a bot) and **@userinfobot** (your numeric id). |
 
 **Day-0 green-light self-check:** `node -v` ≥ **20** AND `claude --version` both print a version, and your Anthropic key has credit. (Homebrew installs Node 26 — fine.)
@@ -114,7 +114,7 @@ The whole room files a receipt through the same Human-In-The-Loop rails. Send a 
 - ✅ **Pass:** hitting it **without** the Bearer secret returns **401** (it can spend credit, so it fails closed).
 - ⚠️ **Watch:** `OWNER_CHAT_ID` must be a **single** id, no commas. No brief = check that + press Start again.
 
-> ### ✅ Day-1 gate (all true): live URL · **locked** phone app (passcode + full-screen install) · **no 7s hang, no horizontal scroll, calm no-key states** · live Jarvis · the **Expense agent auto-files small / asks big** · the **Vault** agent built + approve/reject/double-tap tested · 1 daily brief. If any regression canary trips, that's a **🔴 finding**.
+> ### ✅ Day-1 gate (all true): live URL · **locked** phone app (passcode + full-screen install) · **no 7s hang, no horizontal scroll, calm no-key states** · live AbangBot · the **Expense agent auto-files small / asks big** · the **Vault** agent built + approve/reject/double-tap tested · 1 daily brief. If any regression canary trips, that's a **🔴 finding**.
 
 ---
 

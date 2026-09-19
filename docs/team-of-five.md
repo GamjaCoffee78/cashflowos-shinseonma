@@ -82,8 +82,8 @@ already have.
 One bot, five IDs in `TELEGRAM_ALLOWED_USER_IDS`. Each person DMs that bot and the
 reply goes back to *their* chat, invisible to the other four. Nothing to build.
 
-Want your own *voice* rather than your own bot? Make `jarvisIdentity()` in
-`jarvis/config.ts` take the sender's ID and look them up in a small map. One bot,
+Want your own *voice* rather than your own bot? Make `abangbotIdentity()` in
+`abangbot/config.ts` take the sender's ID and look them up in a small map. One bot,
 one deployment, one cron — five people spoken to differently.
 
 **Five real bots** means five deployments, which means all five people hold the

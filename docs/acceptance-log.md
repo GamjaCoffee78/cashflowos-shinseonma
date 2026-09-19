@@ -71,12 +71,12 @@ Requires Telegram + Supabase + Anthropic. **Code-paths verified by reading:**
 Code verified: the dial `autopilot = isExpense && confidence==='high' && amount <= threshold()` → `runAutopilot('expense', …)` inserts pre-decided → same claim-check → executes once → notifies with `/undo-<id>`. `undoAction()` is a **soft reversal** (posts a negative mirror `records` row + stamps `result.undone`; owner-only; ≤24h; never deletes). Low-confidence (or missing amount/date) forces `confidence:'low'` in `lib/vision.ts` → the 🟡 ask-path with the *"⚠️ Robot unsure"* flag regardless of amount.
 
 ### 6c · Bot tool-loop: "cash in this week?" via `get_cash_summary`; "talk to a human" ⇒ escalation — 🔑 **NEEDS LIVE KEYS (dry-run)**
-Code verified: `answerWithTools()` runs an Anthropic `tools` loop (≤4 rounds) over `BOT_TOOLS` = `get_cash_summary(period)` / `list_overdue()` / `search_records(query,category?)` / `escalate`. Tool results wrapped as untrusted `<<<DATA…DATA>>>`. `escalate` (frustrated / out-of-scope / failed-twice) ⇒ hand-off reply + `logRun('jarvis','escalated',…)`. No full-table dump.
+Code verified: `answerWithTools()` runs an Anthropic `tools` loop (≤4 rounds) over `BOT_TOOLS` = `get_cash_summary(period)` / `list_overdue()` / `search_records(query,category?)` / `escalate`. Tool results wrapped as untrusted `<<<DATA…DATA>>>`. `escalate` (frustrated / out-of-scope / failed-twice) ⇒ hand-off reply + `logRun('abangbot','escalated',…)`. No full-table dump.
 
 ### 7 · `/api/cron-daily` without Bearer ⇒ 401; with secret ⇒ digest+brief+proposals; `vercel.json` = 1 cron — ⚠️ **PARTIAL**
 - **401 without secret ⇒ verified live** (HTTP 401 with no `CRON_SECRET` set — fail-closed `authed = !!secret && header === 'Bearer '+secret`).
 - **`vercel.json` = exactly 1 cron ⇒ verified** (`/api/cron-daily @ 0 1 * * *`, with the "1 of 2 Hobby slots; 2nd reserved" comment).
-- **With-secret digest+brief+sweep ⇒ needs live keys.** Code verified: the brief mirrors the Dashboard's two rows (`getFunnel()` + money row + 🙋 count/list), optional Jarvis-Oyen narrative only when a key is set, then the `SCHEDULED` registry sweep creates proposals only.
+- **With-secret digest+brief+sweep ⇒ needs live keys.** Code verified: the brief mirrors the Dashboard's two rows (`getFunnel()` + money row + 🙋 count/list), optional AbangBot narrative only when a key is set, then the `SCHEDULED` registry sweep creates proposals only.
 
 ### 8 · No `ANTHROPIC_API_KEY` ⇒ calm 200 everywhere AI is touched; bot ≤ ~5s with a key — ⚠️ **PARTIAL**
 - **Calm states verified live:** `GET /api/telegram` → `{"ok":true,…,"anthropicKeySet":false}` HTTP 200 (no spinner/500). `lib/vision.ts` degrades to `unsure()` with no key (no spend, no throw). The cron omits the narrative when the key is absent. The bot text path replies *"add your ANTHROPIC_API_KEY in the N step"* and returns 200.
