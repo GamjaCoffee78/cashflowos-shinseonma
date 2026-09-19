@@ -20,13 +20,21 @@ export const maxDuration = 15
 // Who receives the ping: the team ids, or OWNER_CHAT_ID as the solo fallback.
 // Same rule the daily brief uses, so a green ping means the brief can land too.
 function recipients(): string[] {
+  // A chat list pinned in code (abang/config.ts → briefChatIds) wins outright.
+  // That is how the owner moves the brief off their private chat and onto a
+  // team group without touching Vercel. Empty = fall through to the env vars.
+  const pinned = ABANG.briefChatIds
+    .map((s) => String(s).trim())
+    .filter((s) => /^-?\d+$/.test(s))
   const team = (process.env.TELEGRAM_TEAM_CHAT_IDS || '')
     .split(',')
     .map((s) => s.trim())
     .filter((s) => /^-?\d+$/.test(s))
-  const list = team.length
-    ? team
-    : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
+  const list = pinned.length
+    ? pinned
+    : team.length
+      ? team
+      : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
   // Plus anyone listed in code (abang/config.ts) — the deputy's way in.
   const extra = ABANG.briefRecipients.map((s) => String(s).trim()).filter((s) => /^-?\d+$/.test(s))
   return Array.from(new Set([...list, ...extra]))

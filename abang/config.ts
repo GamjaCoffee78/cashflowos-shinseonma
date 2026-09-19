@@ -53,6 +53,21 @@ export const ABANG = {
    * must have pressed Start on the bot first, or Telegram won't deliver.
    */
   briefRecipients: [] as string[],
+
+  /**
+   * WHERE the morning brief goes. When this is non-empty it REPLACES
+   * OWNER_CHAT_ID / TELEGRAM_TEAM_CHAT_IDS entirely — the brief stops going to
+   * the owner's private chat and goes here instead. (briefRecipients above is
+   * different: it always ADDS people on top of whatever is set.)
+   *
+   * Use it to send the brief to a team group. Get a group's id by typing
+   * `/id` in that group — the bot replies with it. Group ids are NEGATIVE, so
+   * keep the minus sign. The bot must be a member of the group (and an admin
+   * if the group restricts who may post).
+   *
+   * Empty = behave as before: the owner's DM, or TELEGRAM_TEAM_CHAT_IDS.
+   */
+  briefChatIds: ['-1004424648501'] as string[],   // the OMY group
 }
 
 /**
