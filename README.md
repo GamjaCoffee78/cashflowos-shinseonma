@@ -114,6 +114,13 @@ npm run import -- docs/sample-import.csv     # try the built-in sample first
 npm run import -- my-numbers.csv             # then your own file
 ```
 
+**Shopee seller?** Export your orders (Seller Centre → My Orders → Export → `Order.all.…xlsx`) and:
+```bash
+npm run import:shopee -- --dry-run ~/Downloads/Order.all.20260301_20260331.xlsx   # preview
+npm run import:shopee -- ~/Downloads/Order.all.20260301_20260331.xlsx             # import
+```
+Each order becomes one `cash_in` record (cancelled orders skipped; net-after-fees kept in `meta`). Re-running the same file is safe — orders already imported are skipped. To wipe the demo rows first: `npm run reset:data -- --yes`.
+
 Model your file on **[`docs/sample-import.csv`](./docs/sample-import.csv)** — columns `title, category, amount, status, due_date, notes` (plus optional `customer, platform, format, views, potential, next`). The script forgives everyday words (`income` → `cash_in`, `expense` → `cash_out`), reads `RM 1,200` and `15/08/2026`, and **tells you in plain English why it skipped any bad row** — e.g. *"row 7 skipped: amount 'abc' isn't a number"*. Nothing is ever deleted.
 
 ## 👥 Sharing it with your team

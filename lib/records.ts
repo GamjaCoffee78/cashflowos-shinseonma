@@ -30,13 +30,23 @@ export async function getRecords(): Promise<Rec[]> {
   // or unreachable URL otherwise hangs ~7s per request before failing. The
   // ConnStatus banner tells the user to add their keys. (Found in the live run.)
   if (!supabaseConfigured) return []
-  const { data, error } = await supabase
-    .from('records')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (error) console.warn('[CFO] could not read records:', error.message)
+  // Supabase caps one request at 1,000 rows. A real shop (e.g. a Shopee import)
+  // has more than that, so page through in 1,000-row slices until a short page.
+  const PAGE = 1000
+  const all: any[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('records')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE - 1)
+    if (error) { console.warn('[CFO] could not read records:', error.message); break }
+    all.push(...(data ?? []))
+    if (!data || data.length < PAGE) break
+  }
   // Default meta to {} so a row added before the meta column existed never crashes a tab.
-  return (data ?? []).map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
+  return all.map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
 }
 
 // Read one field out of a record's meta bag, with a dash fallback for display.
