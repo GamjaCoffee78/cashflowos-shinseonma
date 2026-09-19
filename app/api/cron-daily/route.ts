@@ -38,6 +38,20 @@ function recipients(): string[] {
   return Array.from(new Set([...list, ...extra]))
 }
 
+// One-off announcements, keyed by the Malaysia-time date they should go out on.
+// The 08:00 MYT brief already reaches the whole team, so a dated note here rides
+// along with it instead of spending the second Vercel cron slot. Past dates are
+// simply never matched again — safe to leave in place, tidy up when convenient.
+const ANNOUNCEMENTS: Record<string, string> = {
+  '2026-09-20':
+    '📣 <b>Claude Malaysia Meeting — 9:00am today.</b>\n' +
+    'Rise and shine, OMY team! Bring:\n' +
+    '1. 🧥 Jacket\n' +
+    '2. 💧 Water bottle\n' +
+    '3. 💻 Laptop + charger\n' +
+    '4. 🍪 Snacks',
+}
+
 const sum = (rows: Rec[]) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)
 const PAID = new Set(['paid', 'done', 'closed', 'reversed'])
 
@@ -68,7 +82,7 @@ export async function GET(req: Request) {
     proposed = (data ?? []) as any[]
   }
 
-  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows))
+  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows), ANNOUNCEMENTS[today] ?? null)
 
   // ② Optional Abang narrative — a warm chief-of-staff paragraph. Only when a
   //    key is set; its absence NEVER blocks the mandated brief above.
@@ -142,6 +156,7 @@ function buildBrief(
   money: { cashIn: number; cashOut: number; owed: number },
   proposed: { agent_key: string; payload: any }[],
   shopee: string | null,
+  announcement: string | null,
 ): string {
   const p = (i: number) => (f.pct[i] != null ? `${f.pct[i]}%` : '—')
   const funnelLine =
@@ -177,6 +192,7 @@ function buildBrief(
 
   return (
     `☀️ <b>Okmaya — morning brief</b>\n\n` +
+    (announcement ? `${announcement}\n\n` : '') +
     `<b>The river</b>\n${funnelLine}\n\n` +
     `<b>The money</b>\n${moneyLine}\n\n` +
     (shopee ? `<b>Shopee</b>\n${shopee}\n\n` : '') +
