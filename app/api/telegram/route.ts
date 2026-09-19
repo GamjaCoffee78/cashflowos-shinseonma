@@ -316,6 +316,25 @@ async function handleMessage(msg: any): Promise<Response> {
     return Response.json({ ok: true })
   }
 
+  // /id — "which chat is this?". Telegram never shows you a chat's numeric id,
+  // but TELEGRAM_TEAM_CHAT_IDS and OWNER_CHAT_ID both need one, and the usual
+  // workaround (adding a third-party id bot to your group) often fails because
+  // those bots block being added. Ask your own bot instead.
+  // Sits AFTER the allowlist check, so only allowed users can ask.
+  if (/^\/id(@|$|\s)/i.test(text)) {
+    const kind = isGroupChat(msg) ? 'group' : 'private chat'
+    await sendMessage(
+      chatId,
+      `🆔 This ${kind}'s id is <code>${chatId}</code>\n\n` +
+        (isGroupChat(msg)
+          ? `To send the 08:15 brief here instead of a private message, set ` +
+            `<code>TELEGRAM_TEAM_CHAT_IDS=${chatId}</code> in Vercel, then redeploy. ` +
+            `Group ids are negative — copy the minus sign too.`
+          : `Your own id is <code>${msg.from?.id}</code> — that's what <code>OWNER_CHAT_ID</code> wants.`),
+    )
+    return Response.json({ ok: true })
+  }
+
   // /undo-<id>  (also accepts "/undo <id>") — owner-only soft reversal.
   const undoMatch = text.match(/^\/undo[-_\s]+(\d+)/i)
   if (undoMatch) {
