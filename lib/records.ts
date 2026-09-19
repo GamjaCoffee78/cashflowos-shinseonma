@@ -48,8 +48,30 @@ export const m = (r: Rec, k: string) => {
 // Format a number as Malaysian Ringgit for display.
 export const rm = (n: number) => 'RM ' + Number(n || 0).toLocaleString('en-MY')
 
-// Today as YYYY-MM-DD (for due-date comparisons + seeds).
-export const todayISO = () => new Date().toISOString().slice(0, 10)
+// The business's own timezone. UTC rolls over at 08:00 in Malaysia, so using
+// UTC made "due today" / "overdue" wrong for the first 8 hours of every local
+// day (and skewed the 9am brief). Override with BUSINESS_TIMEZONE if you're
+// not in Malaysia.
+export const BUSINESS_TZ = (process.env.BUSINESS_TIMEZONE || 'Asia/Kuala_Lumpur').trim()
+
+// Today as YYYY-MM-DD in the business's timezone (for due-date comparisons + seeds).
+export const todayISO = () => {
+  try {
+    // en-CA formats as YYYY-MM-DD.
+    return new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ }).format(new Date())
+  } catch {
+    return new Date().toISOString().slice(0, 10) // bad TZ string — fall back to UTC
+  }
+}
+
+// Today's weekday name in the business's timezone, e.g. "Saturday".
+export const todayWeekday = () => {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: BUSINESS_TZ, weekday: 'long' }).format(new Date())
+  } catch {
+    return new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(new Date())
+  }
+}
 
 // How many proposals are waiting for a YES right now (status 'proposed', unexpired).
 // Powers the 🙋 sidebar badge. Returns 0 before Supabase is wired (no hang).
