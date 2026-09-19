@@ -28,3 +28,7 @@ next-env.d.ts
 *.pdf
 # /data holds your real okmaya figures for `npm run import`. Never tracked.
 /data/
+
+# generated SQL loads with real figures — never commit
+*.sql
+!supabase/schema.sql
