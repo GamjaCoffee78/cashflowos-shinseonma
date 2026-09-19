@@ -3,7 +3,7 @@ import type { Rec } from './records'
 import { rm, todayISO, getFunnel } from './records'
 
 // 🔒 Don't edit — this keeps your robot safe.
-// The AbangBot bot's HANDS. Instead of dumping your whole table into the prompt,
+// The Abang bot's HANDS. Instead of dumping your whole table into the prompt,
 // Claude picks ONE of these small tools, the server runs it against your records,
 // and the result comes back grounded. This IS the foundational agent loop:
 //   Claude decides → the server runs the tool → Claude reads the result → answers.
@@ -11,7 +11,7 @@ import { rm, todayISO, getFunnel } from './records'
 // query, never guessed.
 //
 // Every tool here is READ-ONLY. None of them writes a row, sends a message, or
-// moves money — AbangBot answers questions; it never acts. (Acting is the HITL
+// moves money — Abang answers questions; it never acts. (Acting is the HITL
 // engine's job, behind an approval.)
 
 // The tool schema handed to Claude. `escalate` is the human escape hatch: Claude

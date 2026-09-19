@@ -1,11 +1,11 @@
-# The AbangBot Playbook 🤖💬
+# The Abang Playbook 🤖💬
 
-> *"Don't just tell them AbangBot can do things — ask it, on stage, and watch it do them."*
-> This is the facilitator's demo script: every question AbangBot answers, every action it can
+> *"Don't just tell them Abang can do things — ask it, on stage, and watch it do them."*
+> This is the facilitator's demo script: every question Abang answers, every action it can
 > take, and what should happen on screen when you try it. Run the live demo off this page,
 > or hand it to an attendee as "here's everything your robot can do."
 
-**How to use this page:** each row below is a real tool wired into AbangBot. Type the "Try
+**How to use this page:** each row below is a real tool wired into Abang. Type the "Try
 asking" column into your bot (word-for-word or close — it understands natural phrasing).
 The "Expect back" column tells you the *shape* of a correct reply — exact wording is
 Claude's, exact numbers are your data, but the structure should match.
@@ -32,7 +32,7 @@ Same dial as the rest of CashFlowOS — see [`docs/hitl-framework.md`](./hitl-fr
 
 ## READ — ask it anything, answered instantly
 
-No approval needed for any of these. They only read your `records` table and reply — grounded in a real query every time, so AbangBot never guesses a money number.
+No approval needed for any of these. They only read your `records` table and reply — grounded in a real query every time, so Abang never guesses a money number.
 
 ### 💰 Money
 
@@ -77,7 +77,7 @@ No approval needed for any of these. They only read your `records` table and rep
 **Also in the toolbox** (not on the `/help` card, but always live):
 - `search_records(query, category?)` — free-text search across titles/notes/meta. Try: *"find Acme."*
 - `list_overdue()` — the broader legacy catch-all: anything past its due date, in any category (not just invoices).
-- `escalate(reason)` — the human escape hatch. AbangBot calls this itself — instead of guessing — when a question is out of scope, or you seem stuck or frustrated. Reply: *"🙋 I'm flagging this to the owner…"*
+- `escalate(reason)` — the human escape hatch. Abang calls this itself — instead of guessing — when a question is out of scope, or you seem stuck or frustrated. Reply: *"🙋 I'm flagging this to the owner…"*
 
 **Chaining + memory — worth showing off live:**
 - *"who do I need to chase, and how much do they owe me?"* → chains `who_to_followup()` then `list_owed()` (or `search_records()`) to answer both halves in one reply.

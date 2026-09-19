@@ -5,7 +5,7 @@ import { rm } from './records'
 import { runAutopilot, proposeAndNotify } from './actions'
 
 // 🔒 Don't edit — this keeps your robot safe.
-// The AbangBot bot's WRITE hands (V2). Where lib/bot-tools.ts only READS, these
+// The Abang bot's WRITE hands (V2). Where lib/bot-tools.ts only READS, these
 // tools ACT — but every one of them goes through the SAME approval engine the
 // photo pipeline uses (lib/actions.ts), so the autonomy dial applies exactly:
 //   🟢 small + reversible (add a task/lead, a small expense) → autopilot: it runs
@@ -152,7 +152,7 @@ export async function runBotAction(name: string, input: any, ctx: BotActionCtx):
       const payload = {
         kind: 'receipt', amount, merchant,
         category: input?.category || undefined,
-        note: 'Logged via AbangBot (typed, no photo)',
+        note: 'Logged via Abang (typed, no photo)',
         idempotencyKey: randomUUID(),
       }
       if (amount <= thresholdRM) {

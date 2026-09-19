@@ -35,7 +35,7 @@ WhatsApp thread lives forever and gets screenshotted.
 Don't ask for things you can look up.
 
 - Run `vercel ls` or read `.vercel/project.json` to find their **live app URL**.
-- Read `abangbot/config.ts` for their **business name**.
+- Read `abang/config.ts` for their **business name**.
 
 Show them what you found and ask if it's right, rather than asking cold.
 

@@ -1,9 +1,9 @@
-# 🤖 my-abangbot — teach the bot YOUR business
+# 🤖 my-abang — teach the bot YOUR business
 
-> Out of the box, AbangBot is a stranger. It knows your numbers but not your business.
+> Out of the box, Abang is a stranger. It knows your numbers but not your business.
 > Fill this page in (or let it interview you) and it becomes **your** assistant.
 >
-> Every blank here maps to one line in `abangbot/config.ts`. Nothing else moves.
+> Every blank here maps to one line in `abang/config.ts`. Nothing else moves.
 
 ---
 
@@ -12,8 +12,8 @@
 Paste this into **Claude Code**, exactly as written:
 
 ```
-Run the AbangBot interview from abangbot/my-abangbot.md — ask me the questions one at a
-time, then fill in abangbot/config.ts from my answers. Show me the diff before applying.
+Run the Abang interview from abang/my-abang.md — ask me the questions one at a
+time, then fill in abang/config.ts from my answers. Show me the diff before applying.
 ```
 
 It asks you 5 short questions and writes the file for you. Takes about two minutes.
@@ -25,7 +25,7 @@ It asks you 5 short questions and writes the file for you. Takes about two minut
 ### 👉 WHO — the business it works for
 
 **What's your business called?** _______________________________
-> AbangBot introduces itself with this.
+> Abang introduces itself with this.
 
 **What should it call you?** _______________________________
 > e.g. `boss` · your first name
@@ -49,7 +49,7 @@ It asks you 5 short questions and writes the file for you. Takes about two minut
 1. _______________________________
 2. _______________________________
 3. _______________________________
-> These are what AbangBot leads with when you ask *"what needs my attention today?"*
+> These are what Abang leads with when you ask *"what needs my attention today?"*
 > e.g. *unpaid invoices past 7 days* · *leads that went quiet 3+ days* · *tomorrow's bookings*
 
 ### 👉 NEVER — your own red lines
@@ -69,8 +69,8 @@ These are welded into the code, not this file — they hold no matter what you w
 - **Never move money.**
 - **Never delete anything.**
 
-Everything you write above is **context, not permission**. It teaches AbangBot about your
-business; it can't widen what AbangBot is allowed to do.
+Everything you write above is **context, not permission**. It teaches Abang about your
+business; it can't widen what Abang is allowed to do.
 
 ---
 

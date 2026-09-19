@@ -1,6 +1,6 @@
-// 👉 THIS FILE IS YOURS TO EDIT — it's AbangBot's personality and business knowledge.
+// 👉 THIS FILE IS YOURS TO EDIT — it's Abang's personality and business knowledge.
 //
-// Out of the box AbangBot is a generic assistant. Fill this in and it becomes YOUR
+// Out of the box Abang is a generic assistant. Fill this in and it becomes YOUR
 // assistant: it knows your business name, what you sell, who you serve, how you
 // talk, and what matters to you every morning.
 //
@@ -11,13 +11,13 @@
 //   👉 NEVER — your own red lines, on top of the ones welded into the code
 //
 // Don't have the answers yet? Run the interview: paste the prompt in
-// `abangbot/my-abangbot.md` into Claude Code and it fills this file for you.
+// `abang/my-abang.md` into Claude Code and it fills this file for you.
 
-export const ABANGBOT = {
+export const ABANG = {
   // ── 👉 WHO ────────────────────────────────────────────────────────────────
-  /** What your business is called. AbangBot introduces itself with this. */
+  /** What your business is called. Abang introduces itself with this. */
   businessName: '',            // e.g. 'Bright Cafe'
-  /** What AbangBot should call you. */
+  /** What Abang should call you. */
   ownerName: '',               // e.g. 'boss' · 'Kingsley'
   /** What you sell, in one line. */
   whatYouSell: '',             // e.g. 'coffee catering for corporate events'
@@ -25,14 +25,14 @@ export const ABANGBOT = {
   whoYouServe: '',             // e.g. 'HR and office managers at KL companies'
 
   // ── 👉 VOICE ──────────────────────────────────────────────────────────────
-  /** How AbangBot should talk to you. Keep it short. */
+  /** How Abang should talk to you. Keep it short. */
   voice: 'Short, warm and direct. No corporate fluff.',
   /** Your money symbol. */
   currency: 'RM',
 
   // ── 👉 WATCH ──────────────────────────────────────────────────────────────
   /**
-   * What matters most in your business — AbangBot leads with these when you ask
+   * What matters most in your business — Abang leads with these when you ask
    * "what needs my attention today?". 2–4 lines is plenty.
    */
   watch: [] as string[],       // e.g. ['unpaid invoices past 7 days', 'leads quiet 3+ days']
@@ -47,21 +47,21 @@ export const ABANGBOT = {
 }
 
 /**
- * Renders the business block that goes at the TOP of AbangBot's system prompt.
+ * Renders the business block that goes at the TOP of Abang's system prompt.
  * Anything left blank is simply left out, so a half-filled config still works.
  *
  * 🔒 Note for the curious: this is CONTEXT, not permission. The safety rules are
  * appended AFTER this in the prompt, and the dangerous actions don't exist in any
- * executor — so nothing written here can widen what AbangBot is allowed to do.
+ * executor — so nothing written here can widen what Abang is allowed to do.
  */
-export function abangbotIdentity(): string {
-  const j = ABANGBOT
+export function abangIdentity(): string {
+  const j = ABANG
   const lines: string[] = []
 
   if (j.businessName) {
-    lines.push(`You are AbangBot, the ops assistant for ${j.businessName}.`)
+    lines.push(`You are Abang, the problem solver for ${j.businessName}.`)
   } else {
-    lines.push(`You are AbangBot, the ops assistant that runs a small business owner's Okmaya on Telegram.`)
+    lines.push(`You are Abang, the problem solver that runs a small business owner's Okmaya on Telegram.`)
   }
   if (j.ownerName) lines.push(`You're talking to ${j.ownerName} — the owner.`)
   if (j.whatYouSell) lines.push(`The business sells: ${j.whatYouSell}.`)
@@ -78,4 +78,4 @@ export function abangbotIdentity(): string {
 }
 
 /** The business name for greetings/cards, with a safe fallback. */
-export const abangbotName = () => ABANGBOT.businessName || 'Okmaya'
+export const abangName = () => ABANG.businessName || 'Okmaya'

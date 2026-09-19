@@ -35,7 +35,7 @@ export const AGENTS: AgentMeta[] = [
   },
   {
     key: 'jarvis', // storage key — kept stable so existing agent_runs history still matches
-    label: 'AbangBot',
+    label: 'Abang',
     emoji: '🤖',
     autonomyNote: 'Read-only Q&A over your numbers on Telegram. Answers only — never acts on money.',
   },
@@ -180,7 +180,7 @@ async function fileReceipt(agentKey: string, payload: any): Promise<any> {
 }
 
 // ---- writeRecord: the bot ACTION-tool write (V2) ---------------------------
-// The AbangBot action tools (add task / add lead / log cash-in / mark invoice paid /
+// The Abang action tools (add task / add lead / log cash-in / mark invoice paid /
 // update lead stage) all funnel through here — AFTER a 🟡 approval or a 🟢 autopilot
 // claim (the CAS in lib/actions.ts guarantees once-only). Two shapes:
 //   • op:'insert' → writes a new `records` row and returns record_id (so /undo can
@@ -229,7 +229,7 @@ async function writeRecord(agentKey: string, payload: any): Promise<any> {
       amount,
       category,
       due_date: payload?.due_date || null,
-      notes: payload?.note || 'Added via AbangBot 🤖',
+      notes: payload?.note || 'Added via Abang 🤖',
       meta: { ...(payload?.meta || {}), source: 'jarvis' },
     })
     .select()
@@ -260,7 +260,7 @@ export const EXECUTORS: Record<string, Executor> = {
   // threshold specialisation). Both file into the ONE records table.
   vault: (p) => fileReceipt('vault', p),
   expense: (p) => fileReceipt('expense', p),
-  // The AbangBot bot ACTION tools (V2) — all write through writeRecord, all pass the
+  // The Abang bot ACTION tools (V2) — all write through writeRecord, all pass the
   // same CAS/approval funnel. 🟢 add-task/add-lead autopilot; 🟡 the rest ask first.
   'add-task': (p) => writeRecord('add-task', p),
   'add-lead': (p) => writeRecord('add-lead', p),

@@ -1,7 +1,7 @@
 import { supabase, supabaseConfigured } from './supabase'
 
 // 🔒 Don't edit — this keeps your robot safe.
-// Short-term memory for the bot — keeps the last few turns so AbangBot can resolve
+// Short-term memory for the bot — keeps the last few turns so Abang can resolve
 // "and her?" / "what about last week?". Backed by the bot_memory table.
 type Turn = { q: string; a: string }
 

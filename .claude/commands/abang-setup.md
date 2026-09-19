@@ -1,14 +1,14 @@
 ---
-description: "Teach AbangBot your business — 5 questions, then it stops being a generic bot and starts talking like YOUR assistant."
+description: "Teach Abang your business — 5 questions, then it stops being a generic bot and starts talking like YOUR assistant."
 ---
 
-# /abangbot-setup — Make AbangBot yours
+# /abang-setup — Make Abang yours
 
-Out of the box AbangBot knows your *numbers* but nothing about your *business*. This
+Out of the box Abang knows your *numbers* but nothing about your *business*. This
 interview fixes that in about two minutes.
 
 You are running inside Claude Code, in the user's cloned CashFlowOS repo. You ask 5
-questions, then **you write `abangbot/config.ts` yourself** — they never edit a file.
+questions, then **you write `abang/config.ts` yourself** — they never edit a file.
 
 ---
 
@@ -24,7 +24,7 @@ questions, then **you write `abangbot/config.ts` yourself** — they never edit 
 
 ## OPENING
 
-**Right — let's introduce AbangBot to your business.** 🤖
+**Right — let's introduce Abang to your business.** 🤖
 
 Right now it's a stranger. It can read your numbers, but it doesn't know what you sell,
 who you serve, or how you like to be spoken to.
@@ -36,7 +36,7 @@ who you serve, or how you like to be spoken to.
 ## THE 5 QUESTIONS (one at a time — HARD GATE after each)
 
 ### Q1 — Who are you?
-> **What's your business called — and what should AbangBot call you?**
+> **What's your business called — and what should Abang call you?**
 >
 > *e.g. "Bright Cafe, just call me Aisyah"*
 
@@ -69,7 +69,7 @@ HARD GATE.
 
 HARD GATE.
 
-This is the most valuable answer — it's what AbangBot leads with when they ask
+This is the most valuable answer — it's what Abang leads with when they ask
 *"what needs my attention today?"*. If they give something vague ("everything"),
 push once: *"Pick the two that cost you money when you miss them."*
 
@@ -88,7 +88,7 @@ HARD GATE.
 
 ## WRITE IT
 
-Fill in `abangbot/config.ts` from their answers — `businessName`, `ownerName`,
+Fill in `abang/config.ts` from their answers — `businessName`, `ownerName`,
 `whatYouSell`, `whoYouServe`, `voice`, `currency` (default `RM`), `watch[]`, `never[]`.
 
 Keep their own words. Don't corporate-ify their voice line — if they said
@@ -96,12 +96,12 @@ Keep their own words. Don't corporate-ify their voice line — if they said
 
 Leave anything they skipped as `''` or `[]` — the config degrades gracefully.
 
-Also update `abangbot/my-abangbot.md` with their answers so they have the filled brief on paper.
+Also update `abang/my-abang.md` with their answers so they have the filled brief on paper.
 
 Then:
 ```bash
 npm run build          # must be green
-git add -A && git commit -m "Teach AbangBot about <business>" && git push
+git add -A && git commit -m "Teach Abang about <business>" && git push
 ```
 Vercel auto-deploys. Wait for it to finish — **the change only lands after the deploy**.
 
@@ -131,18 +131,18 @@ didn't save. Check both, fix it, and have them try again — don't leave them on
 Everything else it can do — logging expenses, adding tasks, chasing invoices — now happens
 in your language, about your business.
 
-Changed your mind later? Just run `/abangbot-setup` again.
+Changed your mind later? Just run `/abang-setup` again.
 
 ---
 
 ## RULES
 
-- **Only edit `abangbot/config.ts` and `abangbot/my-abangbot.md`.** Never touch
+- **Only edit `abang/config.ts` and `abang/my-abang.md`.** Never touch
   `app/api/telegram/route.ts` — the config is already wired in there.
 - **Their words, not yours.** Don't polish their voice line into marketing copy.
 - **Never put secrets in the config** — it's committed to git. No API keys, no bank details,
   no customer lists.
-- **Context, not permission.** If they ask for a rule that would widen what AbangBot can do
+- **Context, not permission.** If they ask for a rule that would widen what Abang can do
   ("let it send WhatsApps to customers"), explain warmly that those limits live in the code,
   not the config — and they're what makes it safe to leave running.
 - **Don't finish on "deployed."** Finish on the bot answering *"who are you?"* correctly.
