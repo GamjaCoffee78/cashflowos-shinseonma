@@ -9,13 +9,13 @@ file exists so that stops happening.
 
 | Shared | Detail |
 | --- | --- |
-| **Supabase** | ONE project: `cfuybrmybakzelftumwu`. Both deployments read and write the same `records` table. There is no second database — `bjequzxigjuntameerzl` is empty. |
+| **Supabase** | **NOT shared — verified 2026-09-19.** This deployment reads a DIFFERENT Supabase project from `cashflowos-seonhwa`. Proof: her project `cfuybrmybakzelftumwu` holds 138 Instagram `content` rows and her app renders all 138, while this app's Content tab shows 0. Her only other project (`bjequzxigjuntameerzl`) has no tables, so this app's database lives in an account she cannot see. **Never assume a data change here is visible there, or the reverse.** |
 | **This repo** | `GamjaCoffee78/cashflowos-shinseonma`. Both sessions push to `main`. |
 | **Vercel crons** | Hobby allows **2 slots, once-per-day granularity**. Spending a slot is a shared decision. |
 
 There are also **two deployments**: `cashflowos-shinseonma` (Okmaya, the current
-one, team build) and `cashflowos-seonhwa` (the older personal one). They share the
-one database, so a data change shows up in both.
+one, team build) and `cashflowos-seonhwa` (the personal one). They have SEPARATE
+databases — a data change in one is invisible in the other.
 
 ## Who owns what (as of 2026-09-19)
 
@@ -52,9 +52,9 @@ say so in your reply so the owner can decide — don't just do it.
   deletes every row (`id=gte.0`) in `records`, `agent_actions`, `agent_runs` and
   `bot_memory`. Running it destroys the other owner's work, so ask first.
 - **Back up before any destructive change** and say where the backup is.
-- The table currently holds **138 real Instagram `content` rows** (account
-  `okmaya.official`, tagged `meta.source = "instagram_import"`). Cash, leads,
-  customers and tasks are intentionally **empty** until the money import lands.
+- The 138 real Instagram `content` rows (account `okmaya.official`, tagged
+  `meta.source = "instagram_import"`) live in the OTHER deployment's database, not
+  this one. This app's `records` table is owned by the deputy's Supabase account.
 
 ## Before you push
 
