@@ -16,7 +16,7 @@ import { readImage, type VisionResult } from '@/lib/vision'
 import { BOT_TOOLS, runBotTool } from '@/lib/bot-tools'
 import { BOT_ACTION_TOOLS, ACTION_TOOL_NAMES, runBotAction } from '@/lib/bot-actions'
 import { SCHEDULED } from '@/agents/registry'
-import { abangIdentity, abangName } from '@/abang/config'
+import { ABANG, abangIdentity, abangName } from '@/abang/config'
 import { logRun } from '@/lib/runs'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -32,10 +32,15 @@ export const maxDuration = 60 // the approve path files rows; give it headroom
 
 // Who may talk to this bot. FAIL CLOSED: an empty allowlist = "not set up yet" =
 // nobody is authorized, forcing you to add your own Telegram id first.
-const ALLOWED = (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean)
+// Ids come from the env var AND from abang/config.ts, so an owner with repo
+// access can add themselves without an env change. Still fail closed: both
+// empty = nobody authorised.
+const ALLOWED = Array.from(
+  new Set([
+    ...(process.env.TELEGRAM_ALLOWED_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean),
+    ...ABANG.allowedUserIds.map(s => String(s).trim()).filter(Boolean),
+  ]),
+)
 
 
 // The bot's own @username, fetched once per cold start (needed to tell whether a

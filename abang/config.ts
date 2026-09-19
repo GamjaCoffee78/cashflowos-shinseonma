@@ -68,6 +68,21 @@ export const ABANG = {
    * Empty = behave as before: the owner's DM, or TELEGRAM_TEAM_CHAT_IDS.
    */
   briefChatIds: ['-1004424648501'] as string[],   // the OMY group
+
+  /**
+   * Extra Telegram user ids allowed to command the bot, ON TOP of
+   * TELEGRAM_ALLOWED_USER_IDS in Vercel. Lets an owner who can edit this repo
+   * add themselves without an env change and a redeploy.
+   *
+   * Still FAIL CLOSED: if this list and the env var are both empty, nobody is
+   * authorised. Find an id by sending /id to the bot in a PRIVATE chat — in a
+   * group the bot stays silent for unknown senders rather than publish an id.
+   *
+   * NOTE: this repo is public, so ids listed here are readable by anyone. A
+   * Telegram user id on its own does not let a stranger message you, but keep
+   * them in TELEGRAM_ALLOWED_USER_IDS instead if you would rather not publish.
+   */
+  allowedUserIds: ['8956330282'] as string[],   // the owner
 }
 
 /**
