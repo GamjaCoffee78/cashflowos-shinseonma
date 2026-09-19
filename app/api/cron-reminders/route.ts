@@ -18,16 +18,30 @@ import { sendMessage } from '@/lib/telegram'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
-// Who gets the reminder: the team ids if set, else OWNER_CHAT_ID. None = no-op.
-// (Mirrors the daily cron's recipients() — the locked brief file stays untouched.)
+// Who gets the reminder, first match wins:
+//   1. REMINDER_CHAT_IDS  — this reminder only. Set it to your team GROUP id when
+//      the 8am heads-up belongs to the group but the 9am brief stays private.
+//   2. TELEGRAM_TEAM_CHAT_IDS — the same audience as the daily brief.
+//   3. OWNER_CHAT_ID — the solo fallback.
+// None set = nobody = the reminder quietly no-ops (it never crashes the cron).
+//
+// A GROUP id is NEGATIVE (e.g. -1001234567890) — that minus sign is part of the
+// id, which is why the filter below allows a leading "-". Mirrors the daily cron's
+// recipients(), so the locked brief file stays untouched.
 function recipients(): string[] {
-  const team = (process.env.TELEGRAM_TEAM_CHAT_IDS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => /^-?\d+$/.test(s))
-  const list = team.length
-    ? team
-    : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
+  const ids = (v: string | undefined) =>
+    (v || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => /^-?\d+$/.test(s))
+
+  const list =
+    ids(process.env.REMINDER_CHAT_IDS).length
+      ? ids(process.env.REMINDER_CHAT_IDS)
+      : ids(process.env.TELEGRAM_TEAM_CHAT_IDS).length
+        ? ids(process.env.TELEGRAM_TEAM_CHAT_IDS)
+        : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
+
   return Array.from(new Set(list))
 }
 

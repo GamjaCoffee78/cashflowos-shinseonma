@@ -75,6 +75,8 @@ O (database) → E (deploy + phone app) → N (bot) → Y (daily brief), one ste
 
     To put something on tomorrow's 8am heads-up, just text Abang: *"add task: 9am class with Kingsley, due 2026-09-20"*. Add `time`, `with` or `location` to a task's `meta` and the reminder shows them.
 
+    **Want the 8am nudge in your team group but the money brief in your DM?** Set `REMINDER_CHAT_IDS` to the group's id (a group id is negative, e.g. `-1001234567890`). Unset, it falls back to `TELEGRAM_TEAM_CHAT_IDS`, then `OWNER_CHAT_ID`.
+
 ---
 
 ## 🤖 Meet Abang — the agentic Telegram bot
