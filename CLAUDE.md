@@ -28,6 +28,18 @@ say so in your reply so the owner can decide — don't just do it.
 
 ## Decisions already made — don't silently reverse these
 
+0. **The dashboard shows the OWNER figures, Kitchen Service included**
+   (`okmaya_owner_v5_fix`, not `okmaya_staff_v5_fix`). Cash in RM3,006,300.83,
+   cash out RM1,870,728.82, net RM1,135,572.01 — which is the owner sheet's own
+   NET PROFIT row. Kitchen Service (RM1,008,231.60) is marked "owner only —
+   confidential" in the sheet, and the owner decided on 2026-09-19 that staff
+   may see it in the app and in the 08:15 group brief. Don't strip it back out.
+   Rows carry `meta.source = 'okmaya_owner_v5_fix'`; the earlier staff import is
+   removed by `npm run purge:source -- okmaya_staff_v5_fix --yes`.
+   Note the sheet's expenditure EXCLUDES the RM561,325.81 of partner
+   distributions ("does not affect P&L"), so the app matches the sheet, not the
+   bank.
+
 1. **The morning brief runs at 08:15 Malaysia time** (`15 0 * * *` UTC in
    `vercel.json`). Chosen deliberately: it staggers this brief behind the 08:00
    content-ideas ping on the *other* deployment so the two don't land together.
