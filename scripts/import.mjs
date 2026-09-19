@@ -5,7 +5,7 @@
 // Reads SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from your .env (via --env-file-if-exists).
 //
 // WHAT IT DOES (Day-1, Block 4 — "feed it my real business"):
-//   1. Reads a CSV file  → `npm run import -- docs/sample-import.csv`
+//   1. Reads a CSV file  → `npm run import -- data/okmaya-import.csv`
 //      …or inline JSON    → `npm run import -- '[{"title":"...","category":"cash_in","amount":500}]'`
 //      …or a .json file   → `npm run import -- my-rows.json`
 //      (no argument at all → it imports data/okmaya-import.csv, your real sheet data)
