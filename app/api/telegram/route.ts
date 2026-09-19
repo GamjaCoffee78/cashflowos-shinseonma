@@ -229,6 +229,9 @@ async function handleCallback(cb: any): Promise<Response> {
 // A private chat is unchanged: every message is for the bot, and a refusal there is
 // helpful, not embarrassing.
 // ------------------------------------------------------------
+const replyToAllInGroups = () =>
+  String(process.env.GROUP_REPLY_TO_ALL || '').trim().toLowerCase() === 'true'
+
 const isGroupChat = (msg: any) =>
   msg?.chat?.type === 'group' || msg?.chat?.type === 'supergroup'
 
@@ -264,9 +267,15 @@ async function handleMessage(msg: any): Promise<Response> {
   const chatId = msg.chat?.id
   const inGroup = isGroupChat(msg)
 
-  // In a group: ignore anything not addressed to us, BEFORE the allowlist, so we
-  // never react to the team's ordinary chatter.
-  if (inGroup) {
+  // In a group, how chatty should we be?
+  //   GROUP_REPLY_TO_ALL=true  → answer EVERY message (needs the bot to be a group
+  //                              admin, or Telegram won't even deliver them). Use this
+  //                              when people keep mis-typing the @name — they then
+  //                              never have to tag the bot at all. Costs one AI call
+  //                              per message, so it is opt-in.
+  //   anything else (default)  → only answer when addressed: @mention, a reply to one
+  //                              of our messages, or a /command.
+  if (inGroup && !replyToAllInGroups()) {
     const botUsername = (await getBotUsername()).toLowerCase()
     if (!botUsername || !isAddressedToBot(msg, botUsername)) {
       return Response.json({ ok: true, ignored: 'not addressed to bot' })
