@@ -4,6 +4,7 @@ import { sendMessage } from '@/lib/telegram'
 import { getRecords, getFunnel, rm, todayISO, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
+import { ABANG } from '@/abang/config'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -32,7 +33,9 @@ function recipients(): string[] {
   const list = team.length
     ? team
     : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
-  return Array.from(new Set(list))
+  // Plus anyone listed in code (abang/config.ts) — the deputy's way in.
+  const extra = ABANG.briefRecipients.map((s) => String(s).trim()).filter((s) => /^-?\d+$/.test(s))
+  return Array.from(new Set([...list, ...extra]))
 }
 
 const sum = (rows: Rec[]) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)
@@ -65,7 +68,7 @@ export async function GET(req: Request) {
     proposed = (data ?? []) as any[]
   }
 
-  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed)
+  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows))
 
   // ② Optional Abang narrative — a warm chief-of-staff paragraph. Only when a
   //    key is set; its absence NEVER blocks the mandated brief above.
@@ -138,6 +141,7 @@ function buildBrief(
   f: ReturnType<typeof getFunnel>,
   money: { cashIn: number; cashOut: number; owed: number },
   proposed: { agent_key: string; payload: any }[],
+  shopee: string | null,
 ): string {
   const p = (i: number) => (f.pct[i] != null ? `${f.pct[i]}%` : '—')
   const funnelLine =
@@ -175,8 +179,35 @@ function buildBrief(
     `☀️ <b>Okmaya — morning brief</b>\n\n` +
     `<b>The river</b>\n${funnelLine}\n\n` +
     `<b>The money</b>\n${moneyLine}\n\n` +
+    (shopee ? `<b>Shopee</b>\n${shopee}\n\n` : '') +
     `<b>Needs you</b>\n${ask}`
   )
+}
+
+// Shopee orders imported by scripts/import-shopee.mjs carry meta.source = 'shopee'.
+// One line per month (newest first): orders · buyer-paid · net after Shopee fees.
+function shopeeSummary(rows: Rec[]): string | null {
+  const orders = rows.filter((r) => r.category === 'cash_in' && r.meta?.source === 'shopee')
+  if (!orders.length) return null
+  const byMonth = new Map<string, { n: number; paid: number; net: number }>()
+  for (const r of orders) {
+    const month = (r.due_date || r.created_at || '').slice(0, 7) || 'unknown'
+    const m = byMonth.get(month) || { n: 0, paid: 0, net: 0 }
+    m.n++
+    m.paid += Number(r.amount || 0)
+    m.net += Number(r.meta?.net ?? r.amount ?? 0)
+    byMonth.set(month, m)
+  }
+  const label = (ym: string) => {
+    const [y, mo] = ym.split('-').map(Number)
+    return y && mo ? new Date(Date.UTC(y, mo - 1, 1)).toLocaleString('en-MY', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ym
+  }
+  const lines = [...byMonth.entries()]
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .slice(0, 6)
+    .map(([ym, m]) => `• ${label(ym)}: <b>${m.n}</b> orders · ${rm(m.paid)} paid · ${rm(m.net)} net`)
+  const all = [...byMonth.values()].reduce((s, m) => ({ n: s.n + m.n, paid: s.paid + m.paid, net: s.net + m.net }), { n: 0, paid: 0, net: 0 })
+  return `${lines.join('\n')}\n${all.n} orders in total · ${rm(all.paid)} paid · ${rm(all.net)} net`
 }
 
 // The optional warm narrative — bounded token cost, records treated as UNTRUSTED.

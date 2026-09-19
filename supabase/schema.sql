@@ -123,17 +123,16 @@ values ('vault', 'vault', false)
 on conflict (id) do nothing;
 
 -- ============================================================
--- NO SEED ROWS.
--- This database starts EMPTY on purpose — every number you see in the app is
--- your own. The demo rows that used to live here (Acme, Cendana, Lai Holdings,
--- the RM269 "Office Depot" proposal) are gone.
+-- NO SEED ROWS. This shop runs on real data — the database starts EMPTY and
+-- every number in the app is your own. (The template's demo rows — Acme,
+-- Cendana, Lai Holdings, the RM269 "Office Depot" proposal — were removed.)
 --
--- To put YOUR real business in, run the importer:
---     npm run import
--- That loads data/okmaya-import.csv — your okmaya money sheet, one entry per
--- line item per month.
+-- Getting your data in:
+--   npm run import                        your okmaya money sheet (data/okmaya-import.csv)
+--   npm run import:shopee -- <Order….xlsx>  a Shopee order export
+--   …or through the app and Abang.
 --
--- Already ran an older version of this file and have demo rows sitting in your
--- tables? Clear just those, leaving your real rows untouched:
---     npm run purge:demo
+-- Ran an older version of this file and have demo rows sitting in your tables?
+-- Clear just those, leaving your real rows untouched:
+--   npm run purge:demo
 -- ============================================================

@@ -121,8 +121,8 @@ npm run import -- my-other-file.csv          # or any other file
 ```
 
 > ⚠️ **This repo is PUBLIC.** Your real figures live in `data/` and in Supabase — both
-> untracked/private. `.gitignore` blocks `*.csv` and `/data/` so your revenue, salaries
-> and supplier names never get pushed to GitHub. Keep it that way.
+> untracked/private. `.gitignore` blocks `*.csv`, `*.xlsx`, `*.sql` and `/data/` so your revenue,
+> salaries and supplier names never get pushed to GitHub. Keep it that way.
 
 **Re-importing** after your sheet changes — clear the old copy first, or your numbers double:
 ```bash
@@ -130,6 +130,13 @@ npm run purge:source -- okmaya_staff_v5_fix --yes
 npm run import
 ```
 (The importer refuses a second run on its own, so you can't double your revenue by accident.)
+
+**Shopee seller?** Export your orders (Seller Centre → My Orders → Export → `Order.all.….xlsx`) and:
+```bash
+npm run import:shopee -- --dry-run ~/Downloads/Order.all.20260301_20260331.xlsx   # preview
+npm run import:shopee -- ~/Downloads/Order.all.20260301_20260331.xlsx             # import
+```
+Each order becomes one `cash_in` record (cancelled orders skipped; net-after-fees kept in `meta`). Re-running the same file is safe — orders already imported are skipped.
 
 Columns are `title, category, amount, status, due_date, notes` (plus optional `customer, platform, format, views, potential, next`). The script forgives everyday words (`income` → `cash_in`, `expense` → `cash_out`), reads `RM 1,200` and `15/08/2026`, and **tells you in plain English why it skipped any bad row** — e.g. *"row 7 skipped: amount 'abc' isn't a number"*. Nothing is ever deleted.
 
