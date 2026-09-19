@@ -6,7 +6,7 @@ import type { MetadataRoute } from 'next'
 // makes the installed app open full-screen, like a native app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Okmaya dashboard',
+    name: 'Okmaya',
     short_name: 'Okmaya',
     description: 'Your Money Robot — one AI HQ for the whole business.',
     start_url: '/',

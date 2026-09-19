@@ -6,10 +6,11 @@ import ConnStatus from './_components/ConnStatus'
 import { getPendingCount } from '@/lib/records'
 
 export const metadata: Metadata = {
-  title: 'Okmaya dashboard',
+  title: 'Okmaya',
   description: 'Your Money Robot — one AI HQ for the whole business.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Okmaya', statusBarStyle: 'default' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
 }
 
 // theme-color drives the phone status-bar tint when installed to the home screen.
@@ -27,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="app">
           {/* Desktop sidebar — hidden on phones (BottomNav takes over ≤768px). */}
           <aside className="side">
-            <div className="brand"><span className="logo" aria-hidden="true">🤖</span> Okmaya dashboard</div>
+            <div className="brand"><img className="logo" src="/icons/icon-192.png" alt="" width={24} height={24} style={{ borderRadius: 6, verticalAlign: '-6px' }} /> Okmaya</div>
             <Nav pendingCount={pending} />
             <p className="hint">One <code>records</code> table behind every tab. Your robots live in <code>agents/</code>.</p>
           </aside>
