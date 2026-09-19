@@ -37,6 +37,23 @@ const ALLOWED = (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
   .map(s => s.trim())
   .filter(Boolean)
 
+
+// The bot's own @username, fetched once per cold start (needed to tell whether a
+// group message is addressed to us). Cached because getMe never changes mid-run.
+let _botUsername: string | null = null
+async function getBotUsername(): Promise<string> {
+  if (_botUsername !== null) return _botUsername
+  try {
+    const token = (process.env.TELEGRAM_BOT_TOKEN || '').trim()
+    if (!token) return (_botUsername = '')
+    const r = await fetch(`https://api.telegram.org/bot${token}/getMe`).then(r => r.json())
+    _botUsername = r?.ok ? String(r.result.username || '') : ''
+  } catch {
+    _botUsername = ''
+  }
+  return _botUsername
+}
+
 const isAllowed = (id: unknown) => ALLOWED.length > 0 && ALLOWED.includes(String(id))
 
 // The owner (for /undo). If OWNER_CHAT_ID is set, only they may undo; otherwise any
@@ -193,19 +210,79 @@ async function handleCallback(cb: any): Promise<Response> {
   return Response.json({ ok: true })
 }
 
+
+// ------------------------------------------------------------
+// GROUP MANNERS. 🔒 Don't edit — this keeps the team chat usable.
+//
+// In a GROUP the bot is a guest, so two rules apply that never apply in a 1-on-1:
+//
+//  1) SPEAK ONLY WHEN SPOKEN TO. We answer only if the message @mentions the bot,
+//     replies to one of the bot's own messages, or is a /command (bare or
+//     /command@thisbot). Anything else is the team's own conversation — we stay out.
+//     We check this ourselves rather than relying on Telegram's privacy mode, so the
+//     behaviour is the same whether privacy mode is on or off.
+//
+//  2) REFUSE QUIETLY. An un-allowlisted person gets NO reply in a group. The 1-on-1
+//     refusal echoes their Telegram id so they can be added — printing that in front
+//     of the whole team exposes their id and is noise, so groups get silence.
+//
+// A private chat is unchanged: every message is for the bot, and a refusal there is
+// helpful, not embarrassing.
+// ------------------------------------------------------------
+const isGroupChat = (msg: any) =>
+  msg?.chat?.type === 'group' || msg?.chat?.type === 'supergroup'
+
+function isAddressedToBot(msg: any, botUsername: string): boolean {
+  // A reply to one of the bot's own messages.
+  if (msg?.reply_to_message?.from?.is_bot &&
+      String(msg.reply_to_message.from.username || '').toLowerCase() === botUsername) return true
+
+  const text: string = msg?.text || msg?.caption || ''
+  const entities: any[] = msg?.entities || msg?.caption_entities || []
+
+  for (const e of entities) {
+    // "@thisbot" — compared case-insensitively, because Telegram usernames are
+    // case-insensitive and lookalike capitalisation (AIabang vs Alabang) is a trap.
+    if (e.type === 'mention') {
+      const at = text.substr(e.offset, e.length).replace(/^@/, '').toLowerCase()
+      if (at === botUsername) return true
+    }
+    // A command at the very start: "/help" or "/help@thisbot".
+    if (e.type === 'bot_command' && e.offset === 0) {
+      const cmd = text.substr(e.offset, e.length)
+      const at = cmd.includes('@') ? cmd.split('@')[1].toLowerCase() : ''
+      if (!at || at === botUsername) return true
+    }
+  }
+  return false
+}
+
 // ============================================================
 // MESSAGE — text Q&A, /start, /undo-<id>, and a calm photo placeholder.
 // ============================================================
 async function handleMessage(msg: any): Promise<Response> {
   const chatId = msg.chat?.id
+  const inGroup = isGroupChat(msg)
 
-  // Allowlist on the sender — fail closed, echo the id.
+  // In a group: ignore anything not addressed to us, BEFORE the allowlist, so we
+  // never react to the team's ordinary chatter.
+  if (inGroup) {
+    const botUsername = (await getBotUsername()).toLowerCase()
+    if (!botUsername || !isAddressedToBot(msg, botUsername)) {
+      return Response.json({ ok: true, ignored: 'not addressed to bot' })
+    }
+  }
+
+  // Allowlist on the sender — fail closed. In a 1-on-1 we echo the id so they can
+  // be added; in a group we say nothing rather than publishing their id.
   if (!isAllowed(msg.from?.id)) {
-    await sendMessage(
-      chatId,
-      `Not authorized. Your Telegram id is ${msg.from?.id} — add it to TELEGRAM_ALLOWED_USER_IDS, then redeploy.`,
-    )
-    return Response.json({ ok: true })
+    if (!inGroup) {
+      await sendMessage(
+        chatId,
+        `Not authorized. Your Telegram id is ${msg.from?.id} — add it to TELEGRAM_ALLOWED_USER_IDS, then redeploy.`,
+      )
+    }
+    return Response.json({ ok: true, ignored: 'not allowed' })
   }
 
   // Photo / document → the Vault agent. ACK-FIRST (MANDATED): the ONLY work we do
