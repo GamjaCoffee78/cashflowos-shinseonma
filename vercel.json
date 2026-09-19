@@ -1,5 +1,6 @@
 {
+  "//": "08:15 Malaysia time (MYT = UTC+8) → 00:15 UTC. Deliberate: it staggers this brief behind the 08:00 content-ideas ping on the other app so the two don't land together. NOTE: Vercel Hobby fires crons within a 1-hour window, so this is 'shortly after 8:15', not to the minute. Hobby allows 2 slots; this repo ships ONE.",
   "crons": [
-    { "path": "/api/cron-daily", "schedule": "0 0 * * *" }
+    { "path": "/api/cron-daily", "schedule": "15 0 * * *" }
   ]
 }
