@@ -17,3 +17,14 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 .vercel
+
+# business data — NEVER commit real customer files to a public repo.
+# Your numbers belong in Supabase, not in git. Already-tracked files are
+# unaffected, which is why the template's sample CSV below still works.
+*.csv
+*.xlsx
+*.xls
+*.numbers
+*.pdf
+# but DO keep the template's sample import
+!docs/sample-import.csv
