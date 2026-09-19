@@ -32,12 +32,14 @@ say so in your reply so the owner can decide — don't just do it.
    `vercel.json`). This was chosen deliberately. The branch
    `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am) — that part
    must not be merged as-is.
-2. **The bot persona is `🥔 Gamja`**, matching the real Telegram bot
-   **@GamjaAI_bot** ("Gamjabot"). It was previously renamed to "Jarvis Oyen" and
-   then "Abang" by different sessions. If you want to change it, ask the owner
-   first — the name is in `app/api/cron-daily/route.ts`, `abang/config.ts`,
-   `agents/registry.ts` and `lib/bot-actions.ts`. (The `abang/` folder name is
-   historical; the visible name is Gamja.)
+2. **The bot persona is `🐱 Abang`**, matching the Telegram bot this app actually
+   sends from: **AI Abang (@Alabang_bot)**, the husband's bot. It was briefly
+   renamed to "Gamja" on 2026-09-19 and reverted the same day — Gamja
+   (**@GamjaAI_bot**) is the *other* owner's bot and belongs to the separate
+   `cashflowos-seonhwa` deployment, so signing this app's messages "Gamja" was
+   wrong. Change the persona only with the owners' agreement; it appears in
+   `app/api/cron-daily/route.ts`, `abang/config.ts`, `agents/registry.ts` and
+   `lib/bot-actions.ts`.
 3. **The demo/seed rows are already gone.** The database was wiped and reloaded on
    2026-09-19. `supabase/schema.sql` must not re-seed demo rows.
 

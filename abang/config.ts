@@ -68,9 +68,9 @@ export function abangIdentity(): string {
   const lines: string[] = []
 
   if (j.businessName) {
-    lines.push(`You are Gamja, the problem solver for ${j.businessName}.`)
+    lines.push(`You are Abang, the problem solver for ${j.businessName}.`)
   } else {
-    lines.push(`You are Gamja, the problem solver that runs a small business owner's Okmaya on Telegram.`)
+    lines.push(`You are Abang, the problem solver that runs a small business owner's Okmaya on Telegram.`)
   }
   if (j.ownerName) lines.push(`You're talking to ${j.ownerName} — the owner.`)
   if (j.whatYouSell) lines.push(`The business sells: ${j.whatYouSell}.`)
