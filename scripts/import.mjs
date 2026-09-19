@@ -8,7 +8,7 @@
 //   1. Reads a CSV file  → `npm run import -- docs/sample-import.csv`
 //      …or inline JSON    → `npm run import -- '[{"title":"...","category":"cash_in","amount":500}]'`
 //      …or a .json file   → `npm run import -- my-rows.json`
-//      (no argument at all → it imports the sample CSV so you can see it work)
+//      (no argument at all → it imports data/okmaya-import.csv, your real sheet data)
 //   2. Checks every row in plain English: title present? amount a real number?
 //      date valid? category one we understand? Leads: which funnel stage?
 //   3. Puts the GOOD rows into your `records` table.
@@ -124,9 +124,9 @@ let sourceLabel = ''
 
 try {
   if (!arg) {
-    // No argument → import the shipped sample so a beginner can watch it work.
-    sourceLabel = 'docs/sample-import.csv (the built-in sample — pass your own file to import real data)'
-    rawRows = csvToObjects(readFileSync(new URL('../docs/sample-import.csv', import.meta.url), 'utf8'))
+    // No argument → import YOUR real business data (built from the okmaya Google Sheet).
+    sourceLabel = 'data/okmaya-import.csv (your okmaya sheet — pass a file path to import something else)'
+    rawRows = csvToObjects(readFileSync(new URL('../data/okmaya-import.csv', import.meta.url), 'utf8'))
   } else if (arg.trim().startsWith('[') || arg.trim().startsWith('{')) {
     // Inline JSON on the command line.
     sourceLabel = 'the JSON you passed on the command line'
@@ -282,6 +282,37 @@ if (skipped.length) {
 if (!clean.length) {
   console.log('Nothing valid to import. Fix the notes above and run it again.\n')
   process.exit(0)
+}
+
+// ------------------------------------------------------------
+// 5b) DOUBLE-IMPORT GUARD. Importing the same file twice would silently DOUBLE
+//     your revenue and your costs — the app would just show wrong numbers, with
+//     nothing obviously broken. So if rows from this same source are already in
+//     the table, stop and say so. `--force` overrides (e.g. after a purge).
+// ------------------------------------------------------------
+const sourceTag = clean.find(c => c.meta?.source)?.meta.source
+if (sourceTag && !process.argv.includes('--force')) {
+  try {
+    const probe = await fetch(
+      `${url}/rest/v1/records?select=id&limit=1&meta->>source=eq.${encodeURIComponent(sourceTag)}`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) },
+    )
+    const existing = probe.ok ? await probe.json().catch(() => []) : []
+    if (Array.isArray(existing) && existing.length) {
+      console.log(
+        `⛔ Rows from "${sourceTag}" are ALREADY in your records table.\n` +
+        '   Importing again would DOUBLE every number on your dashboard.\n\n' +
+        '   If you want to re-import cleanly, remove the old ones first:\n' +
+        `     npm run purge:source -- ${sourceTag} --yes\n` +
+        '     npm run import\n\n' +
+        '   Really want to add them a second time anyway? npm run import -- --force\n'
+      )
+      process.exit(0)
+    }
+  } catch {
+    // Probe failed (offline, table missing). Don't block the import on it —
+    // the insert below will report the real problem in plain English.
+  }
 }
 
 // ------------------------------------------------------------

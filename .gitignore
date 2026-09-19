@@ -19,12 +19,12 @@ next-env.d.ts
 .vercel
 
 # business data — NEVER commit real customer files to a public repo.
-# Your numbers belong in Supabase, not in git. Already-tracked files are
-# unaffected, which is why the template's sample CSV below still works.
+# Your numbers belong in Supabase, not in git.
+# THIS REPO IS PUBLIC: anything committed here is readable by anyone on earth.
 *.csv
 *.xlsx
 *.xls
 *.numbers
 *.pdf
-# but DO keep the template's sample import
-!docs/sample-import.csv
+# /data holds your real okmaya figures for `npm run import`. Never tracked.
+/data/
