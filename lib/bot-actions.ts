@@ -152,7 +152,7 @@ export async function runBotAction(name: string, input: any, ctx: BotActionCtx):
       const payload = {
         kind: 'receipt', amount, merchant,
         category: input?.category || undefined,
-        note: 'Logged via Abang (typed, no photo)',
+        note: 'Logged via Gamja (typed, no photo)',
         idempotencyKey: randomUUID(),
       }
       if (amount <= thresholdRM) {
