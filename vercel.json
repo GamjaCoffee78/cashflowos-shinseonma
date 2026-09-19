@@ -1,5 +1,4 @@
 {
-  "//": "8:00am Malaysia time (MYT = UTC+8) → 00:00 UTC. Vercel Hobby allows 2 crons at once-per-day granularity; this repo ships ONE (the merged daily brief + scheduled-agent sweep).",
   "crons": [
     { "path": "/api/cron-daily", "schedule": "0 0 * * *" }
   ]

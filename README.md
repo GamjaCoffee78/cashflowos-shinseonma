@@ -67,7 +67,12 @@ O (database) → E (deploy + phone app) → N (bot) → Y (daily brief), one ste
 10. `npm run webhook:set -- https://YOUR-APP.vercel.app` → press **Start** in your bot → send `/help` to see everything it can do, then ask it *"how much cash in this week?"*. The **Expense agent is already ON**: send a small receipt (auto-files ✅) and one over RM200 (it asks 🙋). Full capability list below in **🤖 Meet Abang**.
 
 **Y — Yield** (give it an alarm clock)
-11. Your daily brief is scheduled (`vercel.json` — every morning it texts you the funnel + the money + what needs your YES). One cron slot used; the second is reserved on purpose (Vercel Hobby allows two).
+11. Your daily brief is scheduled for **8:00am Malaysia time** (`vercel.json` → `0 0 * * *`, which is 00:00 UTC). Every morning Abang texts you the funnel + the money + what needs your YES. One cron slot used; the second is reserved on purpose (Vercel Hobby allows two).
+
+    Don't want to wait until tomorrow to check it works? Fire it now:
+    ```bash
+    npm run brief:test -- https://your-app.vercel.app
+    ```
 
 ---
 
@@ -110,18 +115,30 @@ and tell me in plain words anything you skipped.
 
 **Or run it yourself:**
 ```bash
-npm run import -- docs/sample-import.csv     # try the built-in sample first
-npm run import -- my-numbers.csv             # then your own file
+npm run purge:demo -- --yes                  # clear the old demo rows (once)
+npm run import                               # load data/okmaya-import.csv — your real numbers
+npm run import -- my-other-file.csv          # or any other file
 ```
 
-**Shopee seller?** Export your orders (Seller Centre → My Orders → Export → `Order.all.…xlsx`) and:
+> ⚠️ **This repo is PUBLIC.** Your real figures live in `data/` and in Supabase — both
+> untracked/private. `.gitignore` blocks `*.csv`, `*.xlsx`, `*.sql` and `/data/` so your revenue,
+> salaries and supplier names never get pushed to GitHub. Keep it that way.
+
+**Re-importing** after your sheet changes — clear the old copy first, or your numbers double:
+```bash
+npm run purge:source -- okmaya_staff_v5_fix --yes
+npm run import
+```
+(The importer refuses a second run on its own, so you can't double your revenue by accident.)
+
+**Shopee seller?** Export your orders (Seller Centre → My Orders → Export → `Order.all.….xlsx`) and:
 ```bash
 npm run import:shopee -- --dry-run ~/Downloads/Order.all.20260301_20260331.xlsx   # preview
 npm run import:shopee -- ~/Downloads/Order.all.20260301_20260331.xlsx             # import
 ```
 Each order becomes one `cash_in` record (cancelled orders skipped; net-after-fees kept in `meta`). Re-running the same file is safe — orders already imported are skipped.
 
-Model your file on **[`docs/sample-import.csv`](./docs/sample-import.csv)** — columns `title, category, amount, status, due_date, notes` (plus optional `customer, platform, format, views, potential, next`). The script forgives everyday words (`income` → `cash_in`, `expense` → `cash_out`), reads `RM 1,200` and `15/08/2026`, and **tells you in plain English why it skipped any bad row** — e.g. *"row 7 skipped: amount 'abc' isn't a number"*. Nothing is ever deleted.
+Columns are `title, category, amount, status, due_date, notes` (plus optional `customer, platform, format, views, potential, next`). The script forgives everyday words (`income` → `cash_in`, `expense` → `cash_out`), reads `RM 1,200` and `15/08/2026`, and **tells you in plain English why it skipped any bad row** — e.g. *"row 7 skipped: amount 'abc' isn't a number"*. Nothing is ever deleted.
 
 ## 👥 Sharing it with your team
 
