@@ -4,6 +4,7 @@ import { sendMessage } from '@/lib/telegram'
 import { getRecords, getFunnel, rm, todayISO, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
+import { ABANG } from '@/abang/config'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -32,7 +33,9 @@ function recipients(): string[] {
   const list = team.length
     ? team
     : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
-  return Array.from(new Set(list))
+  // Plus anyone listed in code (abang/config.ts) — the deputy's way in.
+  const extra = ABANG.briefRecipients.map((s) => String(s).trim()).filter((s) => /^-?\d+$/.test(s))
+  return Array.from(new Set([...list, ...extra]))
 }
 
 const sum = (rows: Rec[]) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)

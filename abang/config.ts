@@ -44,6 +44,15 @@ export const ABANG = {
    * the code and can't be switched off from here.
    */
   never: [] as string[],       // e.g. ['never discuss pricing with anyone but me']
+
+  // ── 👉 MORNING BRIEF ─────────────────────────────────────────────────────
+  /**
+   * Extra Telegram ids that get the daily brief, on top of OWNER_CHAT_ID /
+   * TELEGRAM_TEAM_CHAT_IDS in Vercel. Lets a teammate with GitHub access (the
+   * deputy) add themselves without touching the owner's secrets. Each person
+   * must have pressed Start on the bot first, or Telegram won't deliver.
+   */
+  briefRecipients: ['8978520563'] as string[],
 }
 
 /**
