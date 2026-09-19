@@ -28,10 +28,12 @@ say so in your reply so the owner can decide — don't just do it.
 
 ## Decisions already made — don't silently reverse these
 
-1. **The morning brief runs at 08:00 Malaysia time** (`0 0 * * *` UTC in
-   `vercel.json`). This was chosen deliberately. The branch
-   `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am) — that part
-   must not be merged as-is.
+1. **The morning brief runs at 08:15 Malaysia time** (`15 0 * * *` UTC in
+   `vercel.json`). Chosen deliberately: it staggers this brief behind the 08:00
+   content-ideas ping on the *other* deployment so the two don't land together.
+   The branch `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am)
+   — that part must not be merged as-is. Hobby's 1-hour cron window means the
+   actual send time drifts; don't "fix" that by changing the schedule.
 2. **The bot persona is `🐱 Abang`**, matching the Telegram bot this app actually
    sends from: **AI Abang (@Alabang_bot)**, the husband's bot. It was briefly
    renamed to "Gamja" on 2026-09-19 and reverted the same day — Gamja
