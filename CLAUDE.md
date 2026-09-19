@@ -34,6 +34,10 @@ say so in your reply so the owner can decide — don't just do it.
    The branch `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am)
    — that part must not be merged as-is. Hobby's 1-hour cron window means the
    actual send time drifts; don't "fix" that by changing the schedule.
+   Keep the reasoning HERE, never as a `"//"` key in `vercel.json` — Vercel
+   rejects unknown top-level properties and every deploy fails with
+   *"Invalid request: should NOT have additional property `//`"*. That broke
+   deploys on 2026-09-19 twice.
 2. **The bot persona is `🐱 Abang`**, matching the Telegram bot this app actually
    sends from: **AI Abang (@Alabang_bot)**, the husband's bot. It was briefly
    renamed to "Gamja" on 2026-09-19 and reverted the same day — Gamja
