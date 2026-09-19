@@ -67,7 +67,9 @@ O (database) → E (deploy + phone app) → N (bot) → Y (daily brief), one ste
 10. `npm run webhook:set -- https://YOUR-APP.vercel.app` → press **Start** in your bot → send `/help` to see everything it can do, then ask it *"how much cash in this week?"*. The **Expense agent is already ON**: send a small receipt (auto-files ✅) and one over RM200 (it asks 🙋). Full capability list below in **🤖 Meet Abang**.
 
 **Y — Yield** (give it an alarm clock)
-11. Your daily brief is scheduled for **8:00am Malaysia time** (`vercel.json` → `0 0 * * *`, which is 00:00 UTC). Every morning Abang texts you the funnel + the money + what needs your YES. One cron slot used; the second is reserved on purpose (Vercel Hobby allows two).
+11. Your daily brief is scheduled for **08:15 Malaysia time** (`vercel.json` → `15 0 * * *`, which is 00:15 UTC). Every morning Abang texts you the funnel + the money + what needs your YES. The 8:15 is deliberate: it staggers this brief behind the 08:00 content-ideas ping on the other deployment so the two don't land together. Vercel Hobby fires crons within a 1-hour window, so treat it as "shortly after 8:15", not to the minute. One cron slot used; the second is reserved on purpose (Hobby allows two).
+
+    ⚠️ **Never put a `"//"` comment key in `vercel.json`.** Vercel validates the file strictly and rejects unknown top-level properties — every deployment then fails with *"Invalid request: should NOT have additional property `//`"*. JSON has no comments; notes about the schedule belong here or in `CLAUDE.md`.
 
     Don't want to wait until tomorrow to check it works? Fire it now:
     ```bash
