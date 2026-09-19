@@ -10,7 +10,7 @@ import {
   downloadFileBytes,
 } from '@/lib/telegram'
 import { loadTurns, appendTurn, bumpDailyCounter } from '@/lib/bot-memory'
-import { getRecords, rm, todayISO } from '@/lib/records'
+import { getRecords, rm, todayISO, todayWeekday } from '@/lib/records'
 import { claim, executeClaimed, summarizeResult, undoAction, runAutopilot, proposeAndNotify } from '@/lib/actions'
 import { readImage, type VisionResult } from '@/lib/vision'
 import { BOT_TOOLS, runBotTool } from '@/lib/bot-tools'
@@ -349,6 +349,9 @@ async function answerWithTools(chatId: number, text: string, apiKey: string): Pr
     `triage) and ACTION tools that DO things. Chain tools when useful (e.g. who_to_followup → ` +
     `draft_followup; or find an invoice → mark_invoice_paid). Keep replies short. Telegram formatting: ` +
     `<b>,<i>,<code> only.\n` +
+    `DATES: TODAY is ${todayISO()}, a ${todayWeekday()}. Resolve every relative date — "Friday", ` +
+    `"tomorrow", "next week", "end of month" — against TODAY, and emit due_date as YYYY-MM-DD. ` +
+    `A task the owner is scheduling must NEVER get a date in the past.\n` +
     `GROUNDING: always base money/pipeline answers on a tool result — never guess a number.\n` +
     `ACTING — the autonomy dial: for add_task / add_lead / a small log_expense the tool runs it ` +
     `immediately; tell the owner it's done and include the exact /undo-<id> the tool returned. For ` +
