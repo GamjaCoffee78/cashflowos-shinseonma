@@ -67,7 +67,13 @@ O (database) → E (deploy + phone app) → N (bot) → Y (daily brief), one ste
 10. `npm run webhook:set -- https://YOUR-APP.vercel.app` → press **Start** in your bot → send `/help` to see everything it can do, then ask it *"how much cash in this week?"*. The **Expense agent is already ON**: send a small receipt (auto-files ✅) and one over RM200 (it asks 🙋). Full capability list below in **🤖 Meet Abang**.
 
 **Y — Yield** (give it an alarm clock)
-11. Your daily brief is scheduled (`vercel.json` — every morning it texts you the funnel + the money + what needs your YES). One cron slot used; the second is reserved on purpose (Vercel Hobby allows two).
+11. Two alarms are scheduled in `vercel.json` (Vercel Hobby allows two — both are now used):
+    - **08:00 local — the heads-up** (`/api/cron-reminders`): texts you the tasks **due today**, before the day starts. Silent on days with nothing due.
+    - **09:00 local — the morning brief** (`/api/cron-daily`): the funnel + the money + what needs your YES.
+
+    Both are guarded by the same `CRON_SECRET` and fail closed. Schedules are in **UTC** (`0 0 * * *` = 8am in Malaysia, `0 1 * * *` = 9am); if you're not in UTC+8, shift them and set `BUSINESS_TIMEZONE`.
+
+    To put something on tomorrow's 8am heads-up, just text Abang: *"add task: 9am class with Kingsley, due 2026-09-20"*. Add `time`, `with` or `location` to a task's `meta` and the reminder shows them.
 
 ---
 
