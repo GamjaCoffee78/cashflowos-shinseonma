@@ -52,7 +52,7 @@ export const ABANG = {
    * deputy) add themselves without touching the owner's secrets. Each person
    * must have pressed Start on the bot first, or Telegram won't deliver.
    */
-  briefRecipients: ['8978520563'] as string[],
+  briefRecipients: ['8978520563', '8680951836'] as string[],
 }
 
 /**
