@@ -50,6 +50,10 @@ export default async function Sellers() {
     })
     .sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name))
 
+  // Every group present in the money rows — shown in the empty state so a
+  // mismatch between what's stored and what this tab looks for is visible.
+  const knownGroups = [...new Set(all.filter(isMoney).map(groupOf).filter(Boolean))].sort()
+
   // Waiting money first — that's what needs chasing.
   const sorted = (rs: Rec[]) => [...rs].sort((a, b) => Number(isWaiting(b)) - Number(isWaiting(a)))
 
@@ -97,7 +101,19 @@ export default async function Sellers() {
       {all.length === 0 ? (
         <Empty />
       ) : rows.length === 0 ? (
-        <Empty label="seller rows (nothing has &quot;seller&quot; in its meta.group)" />
+        // Records ARE loading but none matched. Don't just say "empty" — the
+        // useful thing is WHICH groups exist, so the mismatch is visible
+        // instead of guessed at.
+        <div className="empty">
+          No seller rows matched. A row lands here when its <code>meta.group</code> contains
+          the word &quot;seller&quot;.
+          <br />
+          <br />
+          The {knownGroups.length} group{knownGroups.length === 1 ? '' : 's'} actually in your
+          money rows:
+          <br />
+          {knownGroups.length ? knownGroups.map(g => <code key={g}> {g} </code>) : '(none have a meta.group)'}
+        </div>
       ) : (
         groups.map(g => (
           <div key={g.name}>

@@ -25,7 +25,11 @@ export const norm = (s: string) => s.toLowerCase().replace(/[_\-/|]+/g, ' ').tri
 
 // A seller row — MY and SG sellers live on their own tab, not mixed into the
 // marketplace settlement numbers.
-export const isSeller = (r: Rec) => /\bsellers?\b/.test(norm(groupOf(r)))
+//
+// A plain substring test, NOT a word-boundary one: real group names in the wild
+// look like "SG Sellers (MYR)" and "MY_Sellers", and a \b rule would miss a
+// run-together spelling like "MYSellers" and leave the row on Ecomm Sales.
+export const isSeller = (r: Rec) => norm(groupOf(r)).includes('seller')
 
 // A marketplace row: a named channel, and NOT a seller.
 export const isEcomm = (r: Rec) => {
