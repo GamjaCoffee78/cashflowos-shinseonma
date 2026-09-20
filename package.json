@@ -14,6 +14,7 @@
     "sync:tiktok": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-tiktok.mts",
     "sync:meta": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-meta.mts",
     "sync:calendar": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-calendar.mts",
+    "sync:sheet": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-sheet.mts",
     "purge:demo": "node --env-file-if-exists=.env scripts/purge-demo.mjs",
     "purge:source": "node --env-file-if-exists=.env scripts/purge-source.mjs",
     "brief:test": "node --env-file-if-exists=.env scripts/brief-test.mjs"

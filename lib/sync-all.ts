@@ -2,6 +2,7 @@ import { supabase, supabaseConfigured } from './supabase'
 import { syncTikTokAds, tiktokConfigured } from './tiktok-ads'
 import { syncMetaAds, metaConfigured } from './meta-ads'
 import { syncCalendar, calendarConfigured } from './calendar'
+import { syncOwnerSheet, ownerSheetConfigured } from './owner-sheet'
 
 // ONE-CLICK SYNC — what the 🔄 button in the header runs.
 //
@@ -13,7 +14,10 @@ import { syncCalendar, calendarConfigured } from './calendar'
 //   ① PULLED sources — the ones with a live API behind them: TikTok Ads, Meta
 //      Ads and Google Calendar. Add a new puller to STEPS below and the button
 //      picks it up with no UI change.
-//   ② PUSHED sources — Shopee, the owner sheet, production, Instagram. Those
+//   ② The OWNER SHEET — the Google Sheet the Dashboard's money comes from. It
+//      is reconciled, not re-imported: a changed cell updates its row, a new
+//      cell adds one, and nothing is ever added twice. See lib/owner-sheet.ts.
+//   ③ PUSHED sources — Shopee, production, Instagram. Those
 //      arrive through `scripts/import*.mjs` from a file on a laptop; there is
 //      no API to ask, so the button can't re-pull them. What it CAN do is make
 //      every tab re-read the database, which is what surfaces a row a script
@@ -38,6 +42,7 @@ const STEPS: Source[] = [
   { key: 'tiktok_ads', label: 'TikTok Ads', configured: tiktokConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncTikTokAds() },
   { key: 'meta_ads', label: 'Meta Ads', configured: metaConfigured, missing: 'META_ADS_TOKEN', run: () => syncMetaAds() },
   { key: 'calendar', label: 'Calendar', configured: calendarConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncCalendar() },
+  { key: 'owner_sheet', label: 'Owner sheet', configured: ownerSheetConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncOwnerSheet() },
 ]
 
 // Turn any of the three sync results into one plain sentence. They all share the
@@ -45,14 +50,20 @@ const STEPS: Source[] = [
 // updated, cancelled? }.
 function describe(r: any): string {
   if (r?.skipped) return `Skipped — ${r.skipped}.`
+  // The owner sheet's guard: it read the sheet fine but refused to write,
+  // because writing would have doubled the Dashboard. Say exactly why.
+  if (r?.blocked) return `Nothing written — ${r.blocked}`
   const inserted = Number(r?.inserted || 0)
   const updated = Number(r?.updated || 0)
   const cancelled = Number(r?.cancelled || 0)
   const span = r?.from && r?.to ? `${r.from} → ${r.to}: ` : ''
-  if (!inserted && !updated && !cancelled) return `${span}nothing new, already up to date.`
+  const tail = Number(r?.missing || 0)
+    ? ` ${r.missing} stored row(s) are no longer in the sheet — left alone, nothing is ever deleted.`
+    : ''
+  if (!inserted && !updated && !cancelled) return `${span}nothing new, already up to date.${tail}`
   const bits = [`${inserted} added`, `${updated} refreshed`]
   if (cancelled) bits.push(`${cancelled} cancelled`)
-  return `${span}${bits.join(', ')}.`
+  return `${span}${bits.join(', ')}.${tail}`
 }
 
 async function runSource(s: Source): Promise<SyncStep> {

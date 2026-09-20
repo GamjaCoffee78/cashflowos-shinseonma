@@ -163,6 +163,31 @@ export const ABANG = {
     pastDays: 14,
     futureDays: 60,
   },
+
+  // ── 👉 OWNER SHEET ───────────────────────────────────────────────────────
+  /**
+   * The Google Sheet the Dashboard's money comes from: "okmaya_owner_v5_fix",
+   * the Monthly Tracker (line items down, months across). Pressing 🔄 Sync now
+   * re-reads it and RECONCILES — a changed cell updates its row, a new cell adds
+   * one, and a row the sheet no longer mentions is reported, never deleted.
+   *
+   * `source` must stay 'okmaya_owner_v5_fix': it is the meta.source tag the
+   * original import wrote, and it is how the sync finds the rows it already
+   * owns instead of adding a second copy of your revenue (see CLAUDE.md).
+   *
+   * `tab` empty = the first tab, which is the Monthly Tracker. The Annual P&L
+   * tab is a summary OF that tab, so importing it too would double-count.
+   *
+   * composioAccount empty = reuse the Google connection the Calendar uses. That
+   * account needs spreadsheets.readonly; without it the sync says so and writes
+   * nothing.
+   */
+  ownerSheet: {
+    spreadsheetId: '1I-dYtDtTlzL39sswb0JOBEVC8a2CQPMAsl62KLeg1PA',
+    tab: '',
+    source: 'okmaya_owner_v5_fix',
+    composioAccount: '',
+  },
 }
 
 /**
