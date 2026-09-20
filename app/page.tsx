@@ -50,12 +50,10 @@ export default async function Dashboard() {
   return (
     <>
       <h1 className="ph">Dashboard</h1>
-      <p className="cap">The river, the money, and what needs your YES.</p>
+      <p className="cap">The money, what needs your YES, and the river.</p>
 
-      {/* Row 1 — the funnel (whole-business river) */}
-      <FunnelBar funnel={funnel} />
-
-      {/* Row 2 — the money + the 🙋 count */}
+      {/* Row 1 — the money + the 🙋 count. The money leads the page: it is what
+          the owner opens the Dashboard for. */}
       <p className="rowlabel">The Money{period ? ` — since ${period}` : ''}</p>
       <div className="grid">
         <Stat label="Cash In" value={rm(cashIn)} />
@@ -70,6 +68,11 @@ export default async function Dashboard() {
       <ChannelTrend trend={channel} period={period} />
 
       <YearOnYear years={years} target={target} />
+
+      {/* The funnel, last. Kept in full — the 08:15 brief still leads with it
+          and reads the same getFunnel() — but the owner rarely uses it, so it
+          stops pushing the money below the fold. */}
+      <FunnelBar funnel={funnel} />
     </>
   )
 }
