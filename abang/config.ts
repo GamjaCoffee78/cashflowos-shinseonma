@@ -83,6 +83,20 @@ export const ABANG = {
    * them in TELEGRAM_ALLOWED_USER_IDS instead if you would rather not publish.
    */
   allowedUserIds: ['8956330282'] as string[],   // the owner
+
+  /**
+   * REPORT MONEY FROM this date (YYYY-MM-DD). The database keeps the full
+   * history, but the Dashboard, the Cash In / Cash Out tabs and the morning
+   * brief count only from here — so the headline figures are the period you are
+   * actually managing, not four years of everything.
+   *
+   * Only cash_in / cash_out are affected. Leads, content, tasks and the funnel
+   * are never filtered. A row with no due_date is always counted, so a receipt
+   * filed today is never hidden.
+   *
+   * Empty = report everything. MONEY_FROM in Vercel overrides this.
+   */
+  moneyFrom: '2026-01-01',
 }
 
 /**
