@@ -1,8 +1,8 @@
-// 👉 This is your Kitchen Services tab — one of Okmaya's four revenue streams
+// 👉 This is your Kitchen Service tab — one of Okmaya's four revenue streams
 // (online/ecommerce, sellers, offline retail, and kitchen services: the sauces
 // and pastes supplied in kitchen packs).
 //
-// It does NOT introduce a new category. Kitchen Services money is ALREADY in the
+// It does NOT introduce a new category. Kitchen Service money is ALREADY in the
 // `records` table as ordinary `cash_in` rows, stamped by the importer with
 // `meta.group = 'Kitchen Service'` — the same field the Dashboard's "Biggest
 // source" column reads. So this tab is a filtered VIEW of money that already
@@ -17,7 +17,7 @@ import Stat from '@/app/_components/Stat'
 
 export const dynamic = 'force-dynamic'
 
-// Which channel counts as Kitchen Services. Matched case-insensitively on a
+// Which channel counts as Kitchen Service. Matched case-insensitively on a
 // substring so 'Kitchen Service', 'Kitchen Services' and 'Kitchen Packs' all
 // land here — the importer's exact wording can change without breaking the tab.
 const KITCHEN = /kitchen/i
@@ -36,7 +36,7 @@ function monthLabel(key: string): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' }).format(d)
 }
 
-export default async function KitchenServices() {
+export default async function KitchenService() {
   const all = await getRecords()
   const sales = all.filter(r => r.category === 'cash_in' && inMoneyWindow(r))
   const rows = sales.filter(r => KITCHEN.test(channelOf(r)))
@@ -69,14 +69,14 @@ export default async function KitchenServices() {
 
   return (
     <>
-      <h1 className="ph">Kitchen Services 🍳</h1>
+      <h1 className="ph">Kitchen Service 🍳</h1>
       <p className="cap">
         Sauces and pastes supplied in kitchen packs — one of Okmaya&apos;s four revenue
         streams{period ? `, since ${period}` : ''}.
       </p>
 
       <div className="grid">
-        <Stat label="Kitchen Services revenue" value={rm(total)} />
+        <Stat label="Kitchen Service revenue" value={rm(total)} />
         <Stat label="Share of all sales" value={`${Math.round(share * 100)}%`} />
         <Stat label="Best month" value={best ? `${monthLabel(best[0])} · ${rm(best[1])}` : '—'} />
         {waiting > 0 ? <Stat label="Still waiting" value={rm(waiting)} yes /> : null}
@@ -86,7 +86,7 @@ export default async function KitchenServices() {
         <Empty />
       ) : rows.length === 0 ? (
         <div className="empty">
-          No Kitchen Services rows found in this period.
+          No Kitchen Service rows found in this period.
           {channels.length ? (
             <>
               <br />
@@ -102,9 +102,9 @@ export default async function KitchenServices() {
         <>
           {months.length > 1 ? (
             <section className="mm" aria-labelledby="ks-h">
-              <h2 id="ks-h">Kitchen Services by month{period ? ` — since ${period}` : ''}</h2>
+              <h2 id="ks-h">Kitchen Service by month{period ? ` — since ${period}` : ''}</h2>
               <table className="mm-table">
-                <caption className="mm-sr">Kitchen Services revenue by month</caption>
+                <caption className="mm-sr">Kitchen Service revenue by month</caption>
                 <thead>
                   <tr>
                     <th scope="col">Month</th>
