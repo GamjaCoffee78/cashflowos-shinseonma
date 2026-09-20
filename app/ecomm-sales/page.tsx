@@ -2,54 +2,31 @@
 // It MIRRORS the rows; it does not move them. The same records still count on
 // Cash In, Cash Out and the Dashboard totals — nothing is taken away.
 //
-// A row belongs here when its `meta.group` names one of the ECOMM channels
+// A row belongs here when its `meta.group` names one of the ECOMM_CHANNELS
 // below ("Shopee MY", "Shopee SG", "TikTok Shop" — what the importer stamps
 // on). That's the same field the Dashboard's channel section reads, so the two
 // can never disagree. Rows are then grouped by their OWN meta.group value, so a
 // new marketplace shows up as its own section the moment it's imported — add
-// its name to ECOMM below and nothing else needs to change.
+// its name to ECOMM_CHANNELS in lib/ecomm.ts and nothing else needs to change.
+// Seller rows are NOT here: they have their own tab (app/sellers).
 import {
   getRecords, getChannelMonthly, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec,
 } from '@/lib/records'
+import { ECOMM_CHANNELS, isEcomm, isMoney, isWaiting, groupOf } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 import ChannelTrend from '@/app/_components/ChannelTrend'
-
-// The marketplaces this tab covers, matched case-insensitively against the
-// START of meta.group. 'TikTok' catches "TikTok Shop", "TikTok Shop MY", and
-// the settlement rows the importer files under them. Written in display case
-// because these names are also the month-on-month section headings.
-const ECOMM = ['Shopee', 'TikTok']
-
-// Same "not in the bank yet" statuses Cash In uses, so the tabs agree.
-const WAITING = ['waiting', 'unpaid', 'overdue', 'pending']
-
-// This tab reports MONEY. Anything else is somebody else's category.
-const MONEY = new Set(['cash_in', 'cash_out'])
-
-const groupOf = (r: Rec) => String(r.meta?.group ?? '').trim()
-// Underscores and hyphens are word characters, so 'tiktok_shop' would not match
-// a plain word test — flatten them before comparing.
-const norm = (s: string) => s.toLowerCase().replace(/[_\-/|]+/g, ' ').trim()
-const isEcomm = (r: Rec) => {
-  const g = norm(groupOf(r))
-  return ECOMM.some(c => g.startsWith(norm(c)))
-}
 
 export const dynamic = 'force-dynamic'
 
 export default async function EcommSales() {
   const all = await getRecords()
   // Same reporting window as the Dashboard and the money tabs.
-  // Money rows only. The TikTok ADS sync files its own category ('tiktok_ads')
-  // and stamps no meta.group, so it is already excluded — this guard keeps it
-  // that way if that ever changes. Ad spend belongs on its own tab, not here.
-  const rows = all.filter(
-    r => MONEY.has(r.category ?? '') && isEcomm(r) && inMoneyWindow(r),
-  )
+  // Marketplace money only: a named channel, not a seller (own tab), not ad
+  // spend (own category + own tab). The rule lives in lib/ecomm.ts.
+  const rows = all.filter(r => isMoney(r) && isEcomm(r) && inMoneyWindow(r))
   const period = moneyFromLabel()
 
-  const isWaiting = (r: Rec) => WAITING.includes((r.status || '').toLowerCase())
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
@@ -150,7 +127,7 @@ export default async function EcommSales() {
       ) : null}
 
       {/* Month on month, one section per channel — same component the Dashboard uses. */}
-      {ECOMM.map(c => (
+      {ECOMM_CHANNELS.map(c => (
         <ChannelTrend key={c} trend={getChannelMonthly(all, c)} period={period} />
       ))}
 
