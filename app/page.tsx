@@ -1,6 +1,5 @@
-import { getRecords, getSalesSnapshot, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney, getChannelMonthly, getYearlySales, getTargetProgress } from '@/lib/records'
+import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney, getChannelMonthly, getYearlySales, getTargetProgress } from '@/lib/records'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import SalesSnapshot from '@/app/_components/SalesSnapshot'
 import FunnelBar from '@/app/_components/FunnelBar'
 import Stat from '@/app/_components/Stat'
 import MonthlyMoney from '@/app/_components/MonthlyMoney'
@@ -23,7 +22,6 @@ async function proposedCount(): Promise<number> {
 
 export default async function Dashboard() {
   const [rows, waiting] = await Promise.all([getRecords(), proposedCount()])
-  const snap = getSalesSnapshot(rows)
   const funnel = getFunnel(rows)
 
   // ── The Money row ───────────────────────────────────────────────
@@ -52,10 +50,10 @@ export default async function Dashboard() {
   return (
     <>
       <h1 className="ph">Dashboard</h1>
-      <p className="cap">What people saw, what they bought, and what needs your YES.</p>
+      <p className="cap">The river, the money, and what needs your YES.</p>
 
-      {/* Row 1 — Views · units sold this year · best seller */}
-      <SalesSnapshot snap={snap} />
+      {/* Row 1 — the funnel (whole-business river) */}
+      <FunnelBar funnel={funnel} />
 
       {/* Row 2 — the money + the 🙋 count */}
       <p className="rowlabel">The Money{period ? ` — since ${period}` : ''}</p>
@@ -72,11 +70,6 @@ export default async function Dashboard() {
       <ChannelTrend trend={channel} period={period} />
 
       <YearOnYear years={years} target={target} />
-
-      {/* The funnel, kept but moved to the bottom — the owner reads the three
-          numbers above first, and the lead river rarely. Still the same
-          getFunnel(), so it and the 08:15 brief can't disagree. */}
-      <FunnelBar funnel={funnel} />
     </>
   )
 }

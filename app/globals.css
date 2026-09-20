@@ -217,20 +217,6 @@ code {
    too narrow to spend 60px on a wordmark. */
 .topmark { display: flex; justify-content: flex-end; margin: 0 0 6px; }
 .topmark img { height: 44px; width: auto; display: block; }
-
-/* The Dashboard's three-number row (Views · units · best seller). Sits in the
-   same .funnel card the five-stage bar used, so the page keeps its rhythm. */
-.snap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.snapcell { padding: 4px 2px; }
-.snapcell + .snapcell { border-left: 1px solid var(--line); padding-left: 16px; }
-.snapcell .l { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
-.snapcell .v { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); line-height: 1.15; }
-.snapcell .v.sm { font-size: 21px; line-height: 1.25; }
-.snapcell .s { margin: 6px 0 0; font-size: 12px; color: var(--dim); }
-@media (max-width: 768px) {
-  .snap { grid-template-columns: 1fr; gap: 10px; }
-  .snapcell + .snapcell { border-left: none; border-top: 1px solid var(--line); padding-left: 2px; padding-top: 12px; }
-}
 @media (max-width: 768px) { .topmark img { height: 32px; } }
 .linkish { background: none; border: none; padding: 0; font: inherit; font-size: 13px; color: var(--clay); cursor: pointer; text-decoration: underline; }
 .linkish:hover { color: var(--clay-deep); }
