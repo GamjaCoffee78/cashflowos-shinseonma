@@ -1,7 +1,8 @@
-import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel } from '@/lib/records'
+import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney } from '@/lib/records'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import FunnelBar from '@/app/_components/FunnelBar'
 import Stat from '@/app/_components/Stat'
+import MonthlyMoney from '@/app/_components/MonthlyMoney'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +38,9 @@ export default async function Dashboard() {
   // "Who owes me" = money-in that hasn't landed yet (waiting / overdue / unpaid).
   const owed = sum('cash_in', ['waiting', 'overdue', 'unpaid', 'pending'])
 
+  // ── Month by month ──────────────────────────────────────────────
+  const months = getMonthlyMoney(rows)
+
   return (
     <>
       <h1 className="ph">Dashboard</h1>
@@ -54,6 +58,8 @@ export default async function Dashboard() {
         <Stat label="Who Owes Me" value={rm(owed)} />
         <Stat label="🙋 Needs your YES" value={waiting} yes={waiting > 0} href="/approvals" />
       </div>
+
+      <MonthlyMoney months={months} period={period} />
     </>
   )
 }

@@ -53,6 +53,13 @@
   --f-appts:   #8A6BB0;
   --f-closed:  var(--sage);
   --f-nurture: var(--rust);
+
+  /* money series (Dashboard → Sales by month). Chosen with the palette
+     validator, not by eye: the obvious green/red pair collapses to ΔE 5.0 under
+     deuteranopia. This pair scores 18.9 (protan) / 29.1 (tritan) and passes the
+     lightness band, chroma floor, normal-vision floor and 3:1 contrast checks. */
+  --money-in:  #2F6FB5;
+  --money-out: var(--clay);   /* #D97757 */
 }
 
 * { box-sizing: border-box; }
@@ -285,3 +292,50 @@ code {
 
 /* ---- Two-row dashboard: money row lives in .grid; funnel above it ---- */
 .rowlabel { font-size: 13px; color: var(--ink-soft); font-weight: 600; margin: 0 0 10px; }
+
+
+/* ---- Sales by month (app/_components/MonthlyMoney.tsx) ------------------ */
+.mm { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.mm h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 10px; }
+
+.mm-legend { display: flex; gap: 16px; margin: 0 0 14px; font-size: 12px; color: var(--ink-soft); }
+.mm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mm-sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.mm-sw.in  { background: var(--money-in); }
+.mm-sw.out { background: var(--money-out); }
+
+.mm-table { width: 100%; border-collapse: collapse; }
+.mm-table th, .mm-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.mm-table tr:last-child th, .mm-table tr:last-child td { border-bottom: none; }
+.mm-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.mm-month { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; width: 1%; }
+
+.mm-cell { min-width: 110px; }
+.mm-val { display: block; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* The track is the full-width ground the bar sits on, so every bar shares one scale. */
+.mm-track { display: block; height: 6px; margin-top: 5px; background: var(--line); border-radius: var(--r-pill); overflow: hidden; }
+.mm-bar { display: block; height: 100%; border-radius: var(--r-pill); }
+.mm-bar.in  { background: var(--money-in); }
+.mm-bar.out { background: var(--money-out); }
+
+.mm-netcell { white-space: nowrap; }
+.mm-net { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mm-net.pos { color: var(--sage); }
+.mm-net.neg { color: var(--rust); }
+
+/* Caption is for screen readers; the visible <h2> already names the section. */
+.mm-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 700px) {
+  /* One card per month — the same pattern .tbl already uses on phones. */
+  .mm-table, .mm-table tbody, .mm-table tr, .mm-table th, .mm-table td { display: block; }
+  .mm-table thead { position: absolute; left: -9999px; }
+  .mm-table tr { border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 12px; margin-bottom: 10px; }
+  .mm-table tr:last-child { margin-bottom: 0; }
+  .mm-table th, .mm-table td { border-bottom: none; padding: 0; }
+  .mm-month { width: auto; margin-bottom: 8px; }
+  .mm-cell { min-width: 0; margin-bottom: 9px; }
+  .mm-cell:last-child { margin-bottom: 0; }
+  .mm-cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
+  .mm-netcell::before { margin-bottom: 0; }
+}
