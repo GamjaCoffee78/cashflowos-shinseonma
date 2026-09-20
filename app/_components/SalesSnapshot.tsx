@@ -22,8 +22,9 @@ export default function SalesSnapshot({ snap }: { snap: SalesSnapshot }) {
           <p className="l">📦 Units sold in {snap.year}</p>
           <p className="v">{n(snap.units)}</p>
           <p className="s">
-            {snap.channels
-              ? `${snap.channels} marketplace${snap.channels === 1 ? '' : 's'}`
+            {snap.allTime
+              ? `${n(snap.allTime)} since ${snap.since ?? '2024'}` +
+                (snap.channels ? ` · ${snap.channels} marketplace${snap.channels === 1 ? '' : 's'}` : '')
               : 'press 🔄 Sync now to pull them from your sheet'}
           </p>
         </div>
