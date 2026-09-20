@@ -109,6 +109,14 @@ export const ABANG = {
    * Empty = no channel section.
    */
   focusChannel: 'Shopee',
+
+  /**
+   * The sales target for one year, and the year it belongs to. The Dashboard
+   * shows progress towards it and the gap still to close.
+   *
+   * `amount: 0` hides the target section.
+   */
+  salesTarget: { year: 2026, amount: 3_000_000 },
 }
 
 /**

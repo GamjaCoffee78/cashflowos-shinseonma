@@ -221,6 +221,97 @@ export function getChannelMonthly(rows: Rec[], prefix = ABANG.focusChannel): Cha
   return { channel: String(prefix).trim(), parts, months }
 }
 
+// ── Year on year, and progress to the target ─────────────────────────────
+export type YearMoney = {
+  year: string
+  sales: number
+  costs: number
+  net: number
+  monthsWithData: number
+  // A year missing months is not comparable with a full one. Flagged rather
+  // than hidden, so the reader can see WHY 2026 looks smaller than 2025.
+  partial: boolean
+  changePct: number | null   // sales vs the previous year listed
+}
+
+// DELIBERATELY ignores inMoneyWindow. Everything else on the Dashboard reports
+// from ABANG.moneyFrom, but a year-on-year table whose history starts this
+// January has nothing to compare against — the window would leave one row.
+export function getYearlySales(rows: Rec[]): YearMoney[] {
+  const years = new Map<string, { sales: number; costs: number; months: Set<string> }>()
+
+  for (const r of rows) {
+    if (r.category !== 'cash_in' && r.category !== 'cash_out') continue
+    const date = r.due_date || todayISO()
+    if (!/^\d{4}-\d{2}/.test(date)) continue
+    const year = date.slice(0, 4)
+    const y = years.get(year) ?? { sales: 0, costs: 0, months: new Set<string>() }
+    y.months.add(date.slice(0, 7))
+    if (r.category === 'cash_in') y.sales += Number(r.amount || 0)
+    else y.costs += Number(r.amount || 0)
+    years.set(year, y)
+  }
+
+  const keys = [...years.keys()].sort()
+  return keys.map((year, i) => {
+    const y = years.get(year)!
+    const prev = i > 0 ? years.get(keys[i - 1])! : null
+    return {
+      year,
+      sales: y.sales,
+      costs: y.costs,
+      net: y.sales - y.costs,
+      monthsWithData: y.months.size,
+      partial: y.months.size < 12,
+      changePct: prev && prev.sales > 0 ? ((y.sales - prev.sales) / prev.sales) * 100 : null,
+    }
+  })
+}
+
+export type TargetProgress = {
+  year: string
+  target: number
+  achieved: number
+  gap: number            // never negative — once the target is met the gap is 0
+  pct: number            // can exceed 100
+  monthsLeft: number     // whole months left in the target year, including this one
+  perMonthNeeded: number | null   // null once the target is met or the year is over
+}
+
+// Progress towards ABANG.salesTarget. Counts cash_in dated inside the target
+// year, whatever the reporting window says — a target is about the year, not
+// about what the Dashboard happens to be showing.
+export function getTargetProgress(rows: Rec[], target = ABANG.salesTarget): TargetProgress | null {
+  const amount = Number(target?.amount || 0)
+  const year = String(target?.year || '')
+  if (!(amount > 0) || !/^\d{4}$/.test(year)) return null
+
+  let achieved = 0
+  for (const r of rows) {
+    if (r.category !== 'cash_in') continue
+    const date = r.due_date || todayISO()
+    if (date.slice(0, 4) !== year) continue
+    achieved += Number(r.amount || 0)
+  }
+
+  const gap = Math.max(amount - achieved, 0)
+  const today = todayISO()
+  const thisYear = today.slice(0, 4)
+  // Months left INCLUDING the current one, because it is still being earned.
+  const monthsLeft =
+    thisYear < year ? 12 : thisYear > year ? 0 : 12 - Number(today.slice(5, 7)) + 1
+
+  return {
+    year,
+    target: amount,
+    achieved,
+    gap,
+    pct: (achieved / amount) * 100,
+    monthsLeft,
+    perMonthNeeded: gap > 0 && monthsLeft > 0 ? gap / monthsLeft : null,
+  }
+}
+
 // Read one field out of a record's meta bag, with a dash fallback for display.
 export const m = (r: Rec, k: string) => {
   const v = r.meta?.[k]

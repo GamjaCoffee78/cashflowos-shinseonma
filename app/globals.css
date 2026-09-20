@@ -379,3 +379,46 @@ code {
     content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px;
   }
 }
+
+
+/* ---- Year on year + the sales target (app/_components/YearOnYear.tsx) --- */
+.yy { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.yy h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 14px; }
+
+/* The target is a single ratio against a limit, so it gets a meter — not a
+   chart, and definitely not a two-slice pie. */
+.yy-target { background: var(--paper-2); border-radius: var(--r-13); padding: 14px 16px; margin-bottom: 18px; }
+.yy-thead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.yy-tlabel { font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.yy-tamt { font-size: 20px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.yy-meter { display: block; height: 10px; background: var(--line-2); border-radius: var(--r-pill); overflow: hidden; }
+.yy-fill { display: block; height: 100%; background: var(--money-in); border-radius: var(--r-pill); }
+.yy-tstats { display: flex; justify-content: space-between; gap: 12px; margin-top: 9px; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.yy-tstats b { color: var(--ink); }
+.yy-gap b { color: var(--rust); }
+.yy-hit { color: var(--sage); font-weight: 700; }
+.yy-run { margin: 10px 0 0; font-size: 12px; color: var(--ink-soft); }
+.yy-run b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.yy-table { width: 100%; border-collapse: collapse; }
+.yy-table th, .yy-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.yy-table tr:last-child th, .yy-table tr:last-child td { border-bottom: none; }
+.yy-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.yy-year { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; width: 1%; }
+.yy-partial { display: inline-block; margin-left: 7px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--clay-tint); color: var(--clay-deep); font-size: 10px; font-weight: 600; vertical-align: middle; }
+.yy-cell { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yy-soft { color: var(--ink-soft); }
+.yy-note { margin: 12px 0 0; font-size: 11px; color: var(--ink-faint); }
+
+@media (max-width: 700px) {
+  .yy-table, .yy-table tbody, .yy-table tr, .yy-table th, .yy-table td { display: block; }
+  .yy-table thead { position: absolute; left: -9999px; }
+  .yy-table tr { border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 12px; margin-bottom: 10px; }
+  .yy-table tr:last-child { margin-bottom: 0; }
+  .yy-table th, .yy-table td { border-bottom: none; padding: 0; }
+  .yy-year { width: auto; margin-bottom: 8px; }
+  .yy-cell { margin-bottom: 8px; }
+  .yy-cell:last-child { margin-bottom: 0; }
+  .yy-cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
+  .yy-tamt { font-size: 18px; }
+}

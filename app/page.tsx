@@ -1,9 +1,10 @@
-import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney, getChannelMonthly } from '@/lib/records'
+import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney, getChannelMonthly, getYearlySales, getTargetProgress } from '@/lib/records'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import FunnelBar from '@/app/_components/FunnelBar'
 import Stat from '@/app/_components/Stat'
 import MonthlyMoney from '@/app/_components/MonthlyMoney'
 import ChannelTrend from '@/app/_components/ChannelTrend'
+import YearOnYear from '@/app/_components/YearOnYear'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +43,9 @@ export default async function Dashboard() {
   // ── Month by month ──────────────────────────────────────────────
   const months = getMonthlyMoney(rows)
   const channel = getChannelMonthly(rows)
+  // Years and the target deliberately read ALL rows, not the windowed ones.
+  const years = getYearlySales(rows)
+  const target = getTargetProgress(rows)
 
   return (
     <>
@@ -64,6 +68,8 @@ export default async function Dashboard() {
       <MonthlyMoney months={months} period={period} />
 
       <ChannelTrend trend={channel} period={period} />
+
+      <YearOnYear years={years} target={target} />
     </>
   )
 }
