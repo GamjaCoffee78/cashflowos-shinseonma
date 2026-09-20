@@ -24,6 +24,9 @@ const ECOMM = ['Shopee', 'TikTok']
 // Same "not in the bank yet" statuses Cash In uses, so the tabs agree.
 const WAITING = ['waiting', 'unpaid', 'overdue', 'pending']
 
+// This tab reports MONEY. Anything else is somebody else's category.
+const MONEY = new Set(['cash_in', 'cash_out'])
+
 const groupOf = (r: Rec) => String(r.meta?.group ?? '').trim()
 // Underscores and hyphens are word characters, so 'tiktok_shop' would not match
 // a plain word test — flatten them before comparing.
@@ -38,7 +41,12 @@ export const dynamic = 'force-dynamic'
 export default async function EcommSales() {
   const all = await getRecords()
   // Same reporting window as the Dashboard and the money tabs.
-  const rows = all.filter(r => isEcomm(r) && inMoneyWindow(r))
+  // Money rows only. The TikTok ADS sync files its own category ('tiktok_ads')
+  // and stamps no meta.group, so it is already excluded — this guard keeps it
+  // that way if that ever changes. Ad spend belongs on its own tab, not here.
+  const rows = all.filter(
+    r => MONEY.has(r.category ?? '') && isEcomm(r) && inMoneyWindow(r),
+  )
   const period = moneyFromLabel()
 
   const isWaiting = (r: Rec) => WAITING.includes((r.status || '').toLowerCase())
