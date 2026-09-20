@@ -23,13 +23,14 @@ export const groupOf = (r: Rec) => String(r.meta?.group ?? '').trim()
 // a plain word test — flatten them before comparing.
 export const norm = (s: string) => s.toLowerCase().replace(/[_\-/|]+/g, ' ').trim()
 
-// A seller row — MY and SG sellers live on their own tab, not mixed into the
-// marketplace settlement numbers.
+// A seller row. The word lives in the row's TITLE ("MY Sellers", "SG Sellers
+// (MYR)") while meta.group stays the marketplace ("Shopee MY"), so the title is
+// what decides — the group is checked too in case the importer ever moves it.
 //
-// A plain substring test, NOT a word-boundary one: real group names in the wild
-// look like "SG Sellers (MYR)" and "MY_Sellers", and a \b rule would miss a
-// run-together spelling like "MYSellers" and leave the row on Ecomm Sales.
-export const isSeller = (r: Rec) => norm(groupOf(r)).includes('seller')
+// A plain substring test, NOT a word-boundary one: "SG Sellers (MYR)" and a
+// run-together "MYSellers" must both match.
+export const isSeller = (r: Rec) =>
+  norm(String(r.title ?? '')).includes('seller') || norm(groupOf(r)).includes('seller')
 
 // A marketplace row: a named channel, and NOT a seller.
 export const isEcomm = (r: Rec) => {

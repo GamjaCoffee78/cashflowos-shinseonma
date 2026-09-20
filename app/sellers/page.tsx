@@ -15,7 +15,9 @@ export const dynamic = 'force-dynamic'
 // Which market a seller belongs to. Hyphens/underscores are flattened first so
 // 'shopee_sg_seller' is read as SG, not missed.
 const marketOf = (r: Rec): 'MY' | 'SG' | 'Other' => {
-  const g = norm(groupOf(r))
+  // The market can be in either field: meta.group is "Shopee SG" while the
+  // title is "SG Sellers (MYR)". Read both so neither spelling is missed.
+  const g = norm(`${groupOf(r)} ${r.title ?? ''}`)
   if (/\b(sg|singapore)\b/.test(g)) return 'SG'
   if (/\b(my|malaysia|mys)\b/.test(g)) return 'MY'
   return 'Other' // shown in its own section, never silently folded into MY
@@ -41,10 +43,14 @@ export default async function Sellers() {
   const waitingAmt = total(sales.filter(isWaiting))
   const paidAmt = total(sales.filter(r => !isWaiting(r)))
 
-  // One section per distinct meta.group, biggest first.
-  const groups = [...new Set(rows.map(groupOf))]
+  // One section per distinct seller LINE (the row title, e.g. "MY Sellers"),
+  // biggest first — grouping by meta.group would just label them all "Shopee
+  // MY"/"Shopee SG", which is the marketplace they were filed under, not the
+  // seller they are.
+  const sellerName = (r: Rec) => String(r.title ?? '').trim() || groupOf(r)
+  const groups = [...new Set(rows.map(sellerName))]
     .map(name => {
-      const rs = rows.filter(r => groupOf(r) === name)
+      const rs = rows.filter(r => sellerName(r) === name)
       const gSales = rs.filter(r => r.category === 'cash_in')
       return { name: name || 'Untagged', rs, sales: total(gSales), orders: gSales.length }
     })
