@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { syncEverything, type SyncAllResult } from '../_actions/sync'
+import type { SyncAllResult } from '@/lib/sync-all'
 import PrivateEyes from './PrivateEyes'
 
 // 🔄 Sync now — the one button that refreshes the whole app.
@@ -14,6 +14,10 @@ import PrivateEyes from './PrivateEyes'
 // It never sends a Telegram message and never creates a proposal — it only
 // fetches and refreshes, so it's always safe to press twice.
 //
+// It POSTs to /api/sync like the per-tab buttons do. NOT a server action:
+// those were answering with bare 500s on the live deployment, which showed the
+// user a blank error page instead of what went wrong.
+//
 // Hidden on /login: that page renders inside this same layout but nobody there
 // has passed the passcode yet, so the button would have nothing to sync.
 export default function SyncAll() {
@@ -23,12 +27,28 @@ export default function SyncAll() {
   const router = useRouter()
   const path = usePathname()
 
+  const [failed, setFailed] = useState('')
+
   const run = () =>
     start(async () => {
-      const r = await syncEverything()
-      setResult(r)
-      setOpen(true)
-      router.refresh()
+      setFailed('')
+      try {
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: 'all' }),
+        })
+        const body = await res.json().catch(() => null)
+        if (!body?.steps) {
+          setFailed(`The server answered HTTP ${res.status} with no details.`)
+          return
+        }
+        setResult(body as SyncAllResult)
+        setOpen(true)
+        router.refresh()
+      } catch (e) {
+        setFailed(`Couldn't reach the server (${String((e as Error)?.message || e)}).`)
+      }
     })
 
   if (path === '/login') return null
@@ -46,9 +66,11 @@ export default function SyncAll() {
       <span className="cap" role="status" aria-live="polite">
         {pending
           ? 'Pulling your latest numbers — the first TikTok run fetches 90 days, give it a moment.'
-          : result
-            ? `${result.ok ? '✅' : '⚠️'} Synced at ${when}.`
-            : 'Updates every tab in one click.'}
+          : failed
+            ? `⚠️ ${failed}`
+            : result
+              ? `${result.ok ? '✅' : '⚠️'} Synced at ${when}.`
+              : 'Updates every tab in one click.'}
       </span>
       {!pending && result && (
         <button type="button" className="linkish" onClick={() => setOpen(o => !o)}>

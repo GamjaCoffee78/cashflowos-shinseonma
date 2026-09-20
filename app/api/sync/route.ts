@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
+import { syncAll } from '@/lib/sync-all'
 import { syncTikTokAds } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar } from '@/lib/calendar'
 
-// The "Sync now" endpoint behind each tab's button: POST { source } → runs the
+// The "Sync now" endpoint behind every button: POST { source } → runs the
 // same pull the 08:15 cron does for that one source, nothing else (no brief,
 // no Telegram, no agent sweep), and answers with plain JSON so the button can
 // show exactly what happened. Runs on the server with Vercel's keys.
@@ -22,6 +24,18 @@ const SOURCES = {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
+
+  // source:'all' is the header button — every source in one press, one line per
+  // source in the answer. Each step is independent, so a source that is not
+  // configured (or that fails) never stops the rest.
+  if (body?.source === 'all') {
+    const result = await syncAll()
+    // Drop every cached tab, not just the one the button was pressed on, so the
+    // whole app agrees the moment the sync finishes.
+    revalidatePath('/', 'layout')
+    return NextResponse.json(result)
+  }
+
   const source = SOURCES[body?.source as keyof typeof SOURCES]
   if (!source) return NextResponse.json({ ok: false, message: 'Unknown source.' }, { status: 400 })
   try {
