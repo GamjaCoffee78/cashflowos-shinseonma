@@ -10,9 +10,27 @@
 // place, so this tab can never drift into double-counting a row that Ecomm
 // Sales, Sellers or Kitchen Services is already showing.
 import { getRecords, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec } from '@/lib/records'
-import { isOffline, isWaiting, groupOf } from '@/lib/ecomm'
+import { isOffline, isWaiting, groupOf, norm } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
+
+// Which offline channel a row belongs to.
+//
+// The importer files every offline row under ONE generic meta.group ("Offline")
+// and puts the sheet's actual line name in the TITLE — "TFP Retail
+// (VG/BIG/BSC)", "Qra", "Others". So for a generic bucket the title is what
+// names the channel; a row that carries a real, specific group keeps it.
+//
+// Grouping by the title rather than a hard-coded list of the three names means
+// a fourth line added to the sheet's OFFLINE CHANNELS section shows up as its
+// own channel on its own, instead of being folded into "Others".
+const GENERIC_GROUPS = ['offline', 'offline channels', 'other', 'others', '']
+
+const channelOf = (r: Rec) => {
+  const g = groupOf(r)
+  if (g && !GENERIC_GROUPS.includes(norm(g))) return g
+  return String(r.title ?? '').trim() || g || 'Untitled'
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -34,9 +52,9 @@ export default async function OfflineChannels() {
   const paidAmt = total(sales.filter(r => !isWaiting(r)))
 
   // One section per channel, biggest earner first.
-  const groups = [...new Set(rows.map(groupOf))]
+  const groups = [...new Set(rows.map(channelOf))]
     .map(name => {
-      const rs = rows.filter(r => groupOf(r) === name)
+      const rs = rows.filter(r => channelOf(r) === name)
       const gSales = rs.filter(r => r.category === 'cash_in')
       return { name, rs, sales: total(gSales), orders: gSales.length }
     })
