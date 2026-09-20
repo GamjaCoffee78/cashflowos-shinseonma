@@ -8,6 +8,7 @@ import Stat from '@/app/_components/Stat'
 import PlatformTabs from '@/app/_components/PlatformTabs'
 import ContentMonths, { type ContentMonth } from '@/app/_components/ContentMonths'
 import PostCards from '@/app/_components/PostCards'
+import Pager from '@/app/_components/Pager'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,45 @@ function compact(n: number) {
   return String(n)
 }
 
+// Three rows of covers before you have to page. Enough to scan, few enough that
+// the numbers above stay on screen with them.
+const PER_PAGE = 24
+
+// The window every headline number is measured over. Lifetime totals on a
+// two-year account mostly measure how long you've been posting — and here one
+// reel from May 2025 carries a third of the total, so the lifetime figure
+// describes that post rather than the business. A quarter is short enough to
+// still be true and long enough to survive a quiet fortnight.
+const WINDOW_DAYS = 90
+
+const daysAgo = (n: number) => {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
+// Posts dated inside [from, to) — plain string compare, since due_date is
+// already YYYY-MM-DD.
+const between = (rows: Rec[], from: string, to: string) =>
+  rows.filter(r => r.due_date && r.due_date >= from && r.due_date < to)
+
+const sum = (rows: Rec[], f: (r: Rec) => number) => rows.reduce((t, r) => t + f(r), 0)
+
+const medianOf = (ns: number[]) => {
+  if (!ns.length) return 0
+  const s = [...ns].sort((a, b) => a - b)
+  return s[Math.floor(s.length / 2)]
+}
+
+// "+18% vs the quarter before" — the number on its own can't tell you whether
+// things are working. No previous quarter to compare against means no claim.
+function delta(now: number, before: number) {
+  if (!before) return null
+  const pct = Math.round(((now - before) / before) * 100)
+  if (pct === 0) return 'level with the quarter before'
+  return `${pct > 0 ? '+' : ''}${pct}% vs the quarter before`
+}
+
 // Views summed per calendar month, oldest first, with no gaps invented — a month
 // with nothing posted simply isn't a row.
 function byMonth(rows: Rec[]): ContentMonth[] {
@@ -70,7 +110,7 @@ function byMonth(rows: Rec[]): ContentMonth[] {
 export default async function Content({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string; sort?: string }>
+  searchParams: Promise<{ platform?: string; sort?: string; page?: string }>
 }) {
   const sp = await searchParams
   // An unknown ?platform= falls back to All rather than showing an empty page.
@@ -91,23 +131,42 @@ export default async function Content({
       : (b.due_date ?? '').localeCompare(a.due_date ?? '')
   )
 
-  const views = rows.reduce((t, r) => t + viewsOf(r), 0)
-  const likes = rows.reduce((t, r) => t + (Number(r.meta?.likes ?? 0) || 0), 0)
-  const comments = rows.reduce((t, r) => t + (Number(r.meta?.comments ?? 0) || 0), 0)
+  // Everything above the grid describes the last quarter, and the quarter before
+  // it is there purely to say which way each number is moving.
+  const today = daysAgo(-1)
+  const recent = between(rows, daysAgo(WINDOW_DAYS), today)
+  const prior = between(rows, daysAgo(WINDOW_DAYS * 2), daysAgo(WINDOW_DAYS))
+
+  // Reach, not views: reach counts accounts, views counts plays. The same person
+  // watching a reel four times is four views and one account — and it's accounts
+  // that can go on to buy.
+  const reach = sum(recent, r => Number(r.meta?.reach ?? 0) || 0)
+  const reachBefore = sum(prior, r => Number(r.meta?.reach ?? 0) || 0)
 
   // The median, not the average. One reel at 2.3M drags a mean so far off that it
   // describes no post you've actually made; half your posts beat the median.
-  const ranked = rows.map(viewsOf).sort((a, b) => a - b)
-  const median = ranked.length ? ranked[Math.floor(ranked.length / 2)] : 0
-  const engagement = views ? ((likes + comments) / views) * 100 : 0
+  const median = medianOf(recent.map(viewsOf))
+  const medianBefore = medianOf(prior.map(viewsOf))
 
-  const link = (sort?: string) => {
+  const recentViews = sum(recent, viewsOf)
+  const engagement = recentViews
+    ? (sum(recent, r => (Number(r.meta?.likes ?? 0) || 0) + (Number(r.meta?.comments ?? 0) || 0)) /
+        recentViews) * 100
+    : 0
+
+  const link = (sort?: string, page?: number) => {
     const q = new URLSearchParams()
     if (active) q.set('platform', active)
     if (sort) q.set('sort', sort)
+    if (page && page > 1) q.set('page', String(page))
     const s = q.toString()
     return s ? `/content?${s}` : '/content'
   }
+
+  const pages = Math.max(Math.ceil(listed.length / PER_PAGE), 1)
+  // A ?page= past the end lands on the last page rather than on nothing.
+  const page = Math.min(Math.max(Number(sp.page) || 1, 1), pages)
+  const shown = listed.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   return (
     <>
@@ -121,15 +180,34 @@ export default async function Content({
       ) : (
         <>
           <div className="grid">
-            <Stat label="Total views" value={compact(views)} />
-            <Stat label="Median post" value={compact(median)} />
-            <Stat label="Engagement" value={`${engagement.toFixed(1)}%`} />
-            <Stat label="Posts" value={rows.length} />
+            <Stat
+              label="Accounts reached"
+              value={compact(reach)}
+              hint={delta(reach, reachBefore) ?? 'last 90 days'}
+            />
+            <Stat
+              label="Median post"
+              value={compact(median)}
+              hint={delta(median, medianBefore) ?? 'last 90 days'}
+            />
+            <Stat
+              label="Engagement"
+              value={`${engagement.toFixed(1)}%`}
+              hint="likes + comments per view"
+            />
+            <Stat
+              label="Posts published"
+              value={recent.length}
+              hint={`${prior.length} the quarter before`}
+            />
           </div>
 
           <section className="pgw">
             <div className="pgw-head">
-              <h2>{rows.length} posts</h2>
+              <h2>
+                {rows.length} posts
+                {pages > 1 ? <span className="pgw-page"> · page {page} of {pages}</span> : null}
+              </h2>
               <div className="sortbar" role="group" aria-label="Order">
                 <Link
                   href={link()}
@@ -147,7 +225,8 @@ export default async function Content({
                 </Link>
               </div>
             </div>
-            <PostCards rows={listed} />
+            <PostCards rows={shown} byMonth={!topFirst} />
+            <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : undefined, n)} />
           </section>
 
           <ContentMonths months={byMonth(rows)} />
