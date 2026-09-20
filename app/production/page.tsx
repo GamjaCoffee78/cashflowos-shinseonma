@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { getRecords, todayISO, type Rec } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
+import MonthCalendar from '@/app/_components/MonthCalendar'
 
 export const dynamic = 'force-dynamic'
 
@@ -156,6 +157,10 @@ export default async function Production({
         <Stat label="Date passed" value={past} yes={past > 0} />
         <Stat label="Done" value={done} />
       </div>
+
+      {mine.length > 0 ? (
+        <MonthCalendar month={current} byDay={byDay} today={today} isDone={isDone} />
+      ) : null}
 
       {rows.length === 0 ? (
         <Empty label="production items" />
