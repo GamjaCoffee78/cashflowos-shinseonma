@@ -86,10 +86,15 @@ export type MonthMoney = {
   cashIn: number
   cashOut: number
   net: number
+  // Where most of the month's money came IN from, and how much of the month it
+  // was. null when the month has no sales at all — an honest blank, not a zero.
+  topSource: { name: string; amount: number; share: number } | null
 }
 
 export function getMonthlyMoney(rows: Rec[]): MonthMoney[] {
   const buckets = new Map<string, { cashIn: number; cashOut: number }>()
+  // Per month, how much came in from each sales channel.
+  const sources = new Map<string, Map<string, number>>()
 
   for (const r of rows) {
     if (r.category !== 'cash_in' && r.category !== 'cash_out') continue
@@ -97,10 +102,22 @@ export function getMonthlyMoney(rows: Rec[]): MonthMoney[] {
     // No due_date = money that moved today (a receipt the robot just filed).
     const key = (r.due_date || todayISO()).slice(0, 7)
     if (!/^\d{4}-\d{2}$/.test(key)) continue
+    const amount = Number(r.amount || 0)
+
     const b = buckets.get(key) ?? { cashIn: 0, cashOut: 0 }
-    if (r.category === 'cash_in') b.cashIn += Number(r.amount || 0)
-    else b.cashOut += Number(r.amount || 0)
+    if (r.category === 'cash_in') b.cashIn += amount
+    else b.cashOut += amount
     buckets.set(key, b)
+
+    if (r.category === 'cash_in' && amount > 0) {
+      // meta.group is the channel the importer stamps on ("Shopee MY",
+      // "Kitchen Service"). Hand-entered rows have no group, so fall back to
+      // the row's own title rather than lumping them into a fake bucket.
+      const name = String(r.meta?.group || r.title || '').trim() || 'Other'
+      const perSource = sources.get(key) ?? new Map<string, number>()
+      perSource.set(name, (perSource.get(name) ?? 0) + amount)
+      sources.set(key, perSource)
+    }
   }
 
   return [...buckets.entries()]
@@ -111,7 +128,22 @@ export function getMonthlyMoney(rows: Rec[]): MonthMoney[] {
       cashIn: b.cashIn,
       cashOut: b.cashOut,
       net: b.cashIn - b.cashOut,
+      topSource: topSourceOf(sources.get(key), b.cashIn),
     }))
+}
+
+// The single biggest money-in channel for a month, with its share of that
+// month's sales. Ties break on name so the same month never reorders between
+// renders.
+function topSourceOf(
+  perSource: Map<string, number> | undefined,
+  cashIn: number,
+): MonthMoney['topSource'] {
+  if (!perSource?.size || cashIn <= 0) return null
+  const [name, amount] = [...perSource.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  )[0]
+  return { name, amount, share: amount / cashIn }
 }
 
 // 'YYYY-MM' → 'Jan 2026'. Falls back to the raw key if the date is unparseable,
