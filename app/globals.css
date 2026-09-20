@@ -531,37 +531,97 @@ a.pg-card:hover { border-color: var(--line-2); }
   .pg-nums { order: 0; width: 100%; justify-content: center; }
 }
 
-/* ---- Production calendar: a real month frame, Monday-first ----
-   The grid is the shape of the month; the day table below it stays the place
-   to read full titles. Seven equal columns, so weeks line up vertically. */
-.cal { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); overflow: hidden; margin-bottom: 24px; }
+/* ============================================================
+   PRODUCTION TIMELINE
+   Reading order: what needs me now → how busy is the month →
+   what exactly, and when. Each block is visually quieter than
+   the one above it, so the eye lands on "now" first.
+   ============================================================ */
+
+/* Tag tones. One accent per customer/order prefix, reused by the chips, the
+   swatches and the day list so the same tag always looks the same. */
+.tone-clay  { --tone: var(--clay);  --tone-bg: rgba(217,119,87,.12); }
+.tone-sage  { --tone: var(--sage);  --tone-bg: rgba(75,122,90,.12); }
+.tone-honey { --tone: var(--honey); --tone-bg: rgba(182,128,42,.14); }
+.tone-rust  { --tone: var(--rust);  --tone-bg: rgba(169,83,63,.12); }
+.tone-ink   { --tone: var(--ink-soft); --tone-bg: rgba(33,28,22,.07); }
+
+/* ---- 1. What needs me now ---- */
+.pt-now { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--clay); border-radius: var(--r-13); padding: 16px 18px; margin-bottom: 18px; }
+.pt-now-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.pt-now h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0; }
+.pt-now-sub { font-size: 13px; color: var(--ink-soft); }
+.pt-next { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.pt-next li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Fixed-width so the relative times stack into a readable column. */
+.pt-when { flex: 0 0 66px; font-size: 12px; font-weight: 600; color: var(--clay-deep); }
+.pt-date { flex: 0 0 82px; font-size: 12px; color: var(--ink-faint); }
+
+/* ---- 2. Month strip ---- */
+.pt-months { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; -webkit-overflow-scrolling: touch; }
+.pt-month { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 56px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-8); background: var(--card); text-decoration: none; }
+.pt-month:hover { border-color: var(--line-2); }
+.pt-month.active { background: var(--clay); border-color: var(--clay); }
+.pt-m-name { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.pt-m-count { font-size: 15px; font-weight: 700; color: var(--ink); }
+.pt-month.active .pt-m-name, .pt-month.active .pt-m-count { color: #fff; }
+
+.pt-headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
+.pt-headline h2 { font-size: 18px; font-weight: 700; margin: 0; color: var(--ink); }
+
+.pt-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 14px; font-size: 12px; color: var(--ink-soft); }
+.pt-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pt-legend b { font-weight: 600; color: var(--ink-faint); }
+.pt-sw { width: 9px; height: 9px; border-radius: 3px; background: var(--tone); flex-shrink: 0; }
+
+/* ---- 3a. The month frame ---- */
+.cal { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); overflow: hidden; margin-bottom: 22px; }
 /* minmax(0,…) not 1fr: a long item title would otherwise widen its column and
    squeeze the other days out of the frame. */
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.cal-dow { padding: 9px 10px; font-size: 12px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line); background: var(--paper-2); }
-.cal-cell { position: relative; min-height: 96px; padding: 7px 8px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
-/* No double border down the right edge or under the last week. */
+.cal-dow { padding: 8px 10px; font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line); background: var(--paper-2); }
+.cal-cell { position: relative; min-height: 92px; padding: 6px 7px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cal-cell:nth-child(7n) { border-right: none; }
-.cal-grid > .cal-cell:nth-last-child(-n+7) { border-bottom: none; }
-.cal-cell.empty { background: var(--paper); }
+.cal-grid:last-child .cal-cell { border-bottom: none; }
+.cal-cell.out { background: var(--paper); }
+.cal-cell.weekend { background: rgba(33,28,22,.025); }
+.cal-cell.past { opacity: .62; }
 .cal-num { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
-/* Today is marked by a filled clay disc — not colour alone: the number also
-   turns bold, so it survives a greyscale print or a colourblind reader. */
+/* Today: a filled disc AND bold weight — never colour alone. */
+.cal-cell.today { background: var(--clay-tint); opacity: 1; }
 .cal-cell.today .cal-num { background: var(--clay); color: #fff; font-weight: 700; border-radius: 999px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
-.cal-cell.missed { background: var(--clay-tint); }
 .cal-items { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.cal-item { display: block; max-width: 100%; font-size: 11px; line-height: 1.3; color: var(--ink); background: var(--paper-2); border-left: 2px solid var(--clay); border-radius: 4px; padding: 2px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-item.done { color: var(--ink-faint); border-left-color: var(--sage); text-decoration: line-through; }
 .cal-count { display: none; }
+
+/* A chip carries its tag's colour on the left edge, so a glance down a week
+   shows WHO the work is for without reading a word. */
+.pt-chip { display: block; max-width: 100%; font-size: 11px; line-height: 1.35; color: var(--ink); background: var(--tone-bg); border-left: 2px solid var(--tone); border-radius: 4px; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-chip b { font-weight: 700; margin-right: 5px; color: var(--tone); }
+.pt-next .pt-chip { flex: 1 1 auto; min-width: 0; }
+
+/* ---- 3b. Day by day, full titles ---- */
+.pt-days { display: flex; flex-direction: column; gap: 2px; }
+.pt-day { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 12px 14px; }
+.pt-day.past { opacity: .7; }
+.pt-day.today { border-color: var(--clay); background: var(--clay-tint); opacity: 1; }
+.pt-day-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.pt-day-num { font-size: 17px; font-weight: 700; color: var(--ink); }
+.pt-day-dow { font-size: 12px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.pt-day-note { font-size: 11px; color: var(--ink-faint); }
+.pt-day ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.pt-day li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--ink); line-height: 1.45; }
+.pt-tag { flex: 0 0 auto; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--tone); background: var(--tone-bg); border-radius: 4px; padding: 2px 6px; margin-top: 2px; }
 
 @media (max-width: 768px) {
   /* Seven columns of text is unreadable on a phone, so each day collapses to
-     its number plus a count; the table below carries the detail. */
-  .cal-cell { min-height: 52px; padding: 5px 4px; align-items: center; }
+     its number plus a count; the day list below carries every title. */
+  .cal-cell { min-height: 46px; padding: 5px 3px; align-items: center; gap: 3px; }
   .cal-items { display: none; }
-  .cal-count { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; font-size: 11px; font-weight: 600; border-radius: 999px; background: var(--clay); color: #fff; }
-  .cal-dow { padding: 7px 2px; text-align: center; font-size: 10px; }
-  .cal-num { font-size: 11px; }
+  .cal-count { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; font-weight: 700; border-radius: 999px; background: var(--clay); color: #fff; }
+  .cal-dow { padding: 6px 2px; text-align: center; font-size: 10px; }
+  .pt-when { flex-basis: 58px; }
+  .pt-date { display: none; }
+  .pt-now h2 { font-size: 16px; }
 }
 /* ── Cash Out → "Where the money goes" (SpendBreakdown) ──────────────────
    One collapsible block per spending section. <details>/<summary> keeps the
