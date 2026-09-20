@@ -19,7 +19,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/cash-out', label: 'Cash Out' },
   ] },
   { label: 'Sales', tabs: [
-    { href: '/ecomm-sales', label: 'Ecomm Sales' },
+    { href: '/ecomm-sales', label: 'Ecomm' },
     { href: '/sellers', label: 'Sellers' },
     { href: '/kitchen-services', label: 'Kitchen Services' },
     { href: '/offline-channels', label: 'Offline Channels' },

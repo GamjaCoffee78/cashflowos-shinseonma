@@ -70,7 +70,7 @@ export default async function Sellers() {
       <h1 className="ph">Sellers 🧑‍💼</h1>
       <p className="cap">
         MY and SG sellers — sales{period ? ` · since ${period}` : ''}. Split out of
-        Ecomm Sales so marketplace settlements stay clean. These rows still count on Cash In —
+        Ecomm so marketplace settlements stay clean. These rows still count on Cash In —
         this mirrors them, it doesn&apos;t move them. Seller costs are on Cash Out.
       </p>
 

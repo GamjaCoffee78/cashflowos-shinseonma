@@ -1,4 +1,4 @@
-// 👉 Ecomm Sales — every marketplace SALE (money in).
+// 👉 Ecomm — every marketplace SALE (money in). Route stays /ecomm-sales.
 // It MIRRORS the rows; it does not move them. The same records still count on
 // Cash In, Cash Out and the Dashboard totals — nothing is taken away.
 //
@@ -82,7 +82,7 @@ export default async function EcommSales() {
 
   return (
     <>
-      <h1 className="ph">Ecomm Sales 🛒</h1>
+      <h1 className="ph">Ecomm 🛒</h1>
       <p className="cap">
         Shopee MY, Shopee SG and TikTok Shop — sales
         {period ? ` · since ${period}` : ''}. These rows still count on Cash In — this
