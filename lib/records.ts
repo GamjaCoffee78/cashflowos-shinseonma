@@ -394,10 +394,8 @@ export type Funnel = {
 // are counts of items — never money, never added to any ringgit total.
 export type SalesSnapshot = {
   views: number
-  units: number         // this year
+  units: number
   year: number
-  allTime: number       // every unit ever counted
-  since: string | null  // "Sep 2024" — the first month with units
   best: { title: string; units: number } | null
   channels: number      // how many marketplaces contributed
 }
@@ -407,21 +405,10 @@ export function getSalesSnapshot(rows: Rec[], year = new Date().getUTCFullYear()
     .filter(r => r.category === 'content')
     .reduce((sum, r) => sum + Number(r.meta?.views || 0), 0)
 
-  const unitRows = rows.filter(r => r.category === 'units')
-  const inYear = unitRows.filter(r => String(r.due_date ?? '').slice(0, 4) === String(year))
+  const inYear = rows.filter(
+    r => r.category === 'units' && String(r.due_date ?? '').slice(0, 4) === String(year),
+  )
   const units = inYear.reduce((sum, r) => sum + Number(r.amount || 0), 0)
-
-  // Every unit ever counted, and the month counting started — so "37,009 this
-  // year" is read against the whole history rather than on its own.
-  const allTime = unitRows.reduce((sum, r) => sum + Number(r.amount || 0), 0)
-  const firstMonth = unitRows
-    .map(r => String(r.due_date ?? '').slice(0, 7))
-    .filter(m => /^\d{4}-\d{2}$/.test(m))
-    .sort()[0]
-  const since = firstMonth
-    ? new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' })
-        .format(new Date(`${firstMonth}-01T00:00:00Z`))
-    : null
 
   // Best seller is by UNITS, not by ringgit: the question is which item people
   // buy most, and a pricier item would otherwise win on revenue alone. Summed
@@ -436,7 +423,7 @@ export function getSalesSnapshot(rows: Rec[], year = new Date().getUTCFullYear()
   const best = ranked.length && ranked[0][1] > 0 ? { title: ranked[0][0], units: ranked[0][1] } : null
 
   const channels = new Set(inYear.map(r => String(r.meta?.group ?? '')).filter(Boolean)).size
-  return { views, units, year, allTime, since, best, channels }
+  return { views, units, year, best, channels }
 }
 
 export function getFunnel(rows: Rec[]): Funnel {
