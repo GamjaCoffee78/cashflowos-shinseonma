@@ -481,6 +481,7 @@ a.pg-card:hover { border-color: var(--line-2); }
    of them drags a whole row out of line. */
 .pg-title { font-size: 12px; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pg-meta { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.pg-eng { font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .pg-views { font-size: 13px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pg-date { font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 
@@ -498,6 +499,10 @@ a.pg-card:hover { border-color: var(--line-2); }
   .pg { grid-template-columns: repeat(3, 1fr); gap: 9px; }
   .pg-title { font-size: 11px; }
 }
+
+/* Content runs five headline numbers, so its row packs tighter than the
+   default three or four — otherwise the fifth sits alone on a line. */
+.grid.five { grid-template-columns: repeat(auto-fit, minmax(122px, 1fr)); }
 
 /* A short line under a headline number: the window it covers, or how it moved. */
 .stat .hint { margin: 4px 0 0; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }

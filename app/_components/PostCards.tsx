@@ -1,5 +1,6 @@
 import { type Rec, m } from '@/lib/records'
 import { coverFor } from '@/lib/covers'
+import { engagementFor } from '@/lib/insights'
 
 // The posts themselves, as cards you can click straight through to the post.
 //
@@ -53,6 +54,7 @@ function Grid({ rows }: { rows: Rec[] }) {
       {rows.map(r => {
         const thumb = (r.meta?.thumbnail_url as string | undefined) || coverFor(r.meta?.ig_id)
         const url = r.meta?.permalink as string | undefined
+        const eng = engagementFor(r.meta)
         const views = r.meta?.views
         const status = (r.status || '').toLowerCase()
         const inner = (
@@ -77,6 +79,16 @@ function Grid({ rows }: { rows: Rec[] }) {
                 </span>
                 <span className="pg-date">{r.due_date ?? '—'}</span>
               </span>
+              {eng ? (
+                // Saves and shares, not likes: a like is a reflex, a save is
+                // intent and a share is reach you didn't pay for.
+                <span className="pg-eng">
+                  {eng.saved.toLocaleString('en-MY')} saved
+                  <span aria-hidden="true"> · </span>
+                  {eng.shares.toLocaleString('en-MY')} shared
+                </span>
+              ) : null}
+
               {status && status !== 'posted' ? (
                 <span className={`pill ${status}`}>{r.status}</span>
               ) : null}
