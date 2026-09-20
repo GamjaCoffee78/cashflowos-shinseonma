@@ -6,8 +6,11 @@ import { getRecords, todayISO } from '@/lib/records'
 import { calendarEvents, calendarConfigured, timeLabel, type CalEvent } from '@/lib/calendar'
 import { addDays } from '@/lib/ads-daily'
 import Stat from '@/app/_components/Stat'
+import SyncNow from '@/app/_components/SyncNow'
+import { syncCalendarNow } from './actions'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const dayLabel = (iso: string) => {
@@ -52,10 +55,12 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
       <h1 className="ph">Calendar 📅</h1>
       <p className="cap">Your Google Calendar, copied in every morning with the brief. Read-only here — edit in Google.</p>
 
+      {calendarConfigured && <SyncNow action={syncCalendarNow} label="📅 Sync now" hint="Asking Google Calendar…" />}
+
       {events.length === 0 ? (
         <div className="empty">
           {calendarConfigured ? (
-            <>Nothing synced yet — the next 8:15am run copies your events in (or run <code>npm run sync:calendar</code>). If your calendar is empty, this stays empty too.</>
+            <>Nothing synced yet — press <b>Sync now</b> above, or wait for the 8:15am run. If your calendar is empty, this stays empty too.</>
           ) : (
             <>Calendar isn&apos;t wired yet. Add <code>COMPOSIO_API_KEY</code> to Vercel (the Composio project where Google Calendar is linked), redeploy, and the next morning run fills this tab.</>
           )}
