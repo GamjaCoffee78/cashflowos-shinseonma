@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import { sendMessage } from '@/lib/telegram'
-import { getRecords, getFunnel, rm, todayISO, type Rec } from '@/lib/records'
+import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
@@ -58,10 +58,12 @@ export async function GET(req: Request) {
   const today = todayISO()
   const rows = await getRecords()
 
-  // ① THE MONEY ROW (mirrors the Dashboard).
-  const cashIn = sum(rows.filter((r) => r.category === 'cash_in'))
-  const cashOut = sum(rows.filter((r) => r.category === 'cash_out'))
-  const owed = sum(rows.filter((r) => r.category === 'cash_in' && !PAID.has((r.status || '').toLowerCase())))
+  // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
+  //    brief and the app can never quote different totals).
+  const money = rows.filter(inMoneyWindow)
+  const cashIn = sum(money.filter((r) => r.category === 'cash_in'))
+  const cashOut = sum(money.filter((r) => r.category === 'cash_out'))
+  const owed = sum(money.filter((r) => r.category === 'cash_in' && !PAID.has((r.status || '').toLowerCase())))
 
   // ① THE FUNNEL (the whole-business river) — same aggregator the Dashboard uses.
   const f = getFunnel(rows)
@@ -159,6 +161,9 @@ function buildBrief(
     `✅ ${f.closed} Closed → ${p(3)} → ` +
     `🔁 ${f.nurture} Nurture`
 
+  // Say which period these figures cover, so nobody reads a part-year as a lifetime total.
+  const period = moneyFromLabel()
+  const moneyPeriod = period ? ` <i>(since ${period})</i>` : ''
   const net = money.cashIn - money.cashOut
   const moneyLine =
     `In <b>${rm(money.cashIn)}</b> · Out <b>${rm(money.cashOut)}</b> · ` +
@@ -186,7 +191,7 @@ function buildBrief(
   return (
     `☀️ <b>Okmaya — morning brief</b>\n\n` +
     `<b>The river</b>\n${funnelLine}\n\n` +
-    `<b>The money</b>\n${moneyLine}\n\n` +
+    `<b>The money</b>${moneyPeriod}\n${moneyLine}\n\n` +
     (shopee ? `<b>Shopee</b>\n${shopee}\n\n` : '') +
     `<b>Needs you</b>\n${ask}`
   )

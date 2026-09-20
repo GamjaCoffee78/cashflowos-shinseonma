@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase'
+import { ABANG } from '@/abang/config'
 
 // One row of the business spine. The whole app reads this single table.
 // `meta` is a free-form bag of extra fields each tab can use (a lead's next
@@ -47,6 +48,31 @@ export async function getRecords(): Promise<Rec[]> {
   }
   // Default meta to {} so a row added before the meta column existed never crashes a tab.
   return all.map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
+}
+
+// The money-reporting window. One definition, used by the Dashboard, the money
+// tabs AND the morning brief, so the app and the 08:15 Telegram message can
+// never disagree about what "Cash In" means.
+export const MONEY_FROM = (process.env.MONEY_FROM || ABANG.moneyFrom || '').trim()
+
+const MONEY_CATEGORIES = new Set(['cash_in', 'cash_out'])
+
+// Is this row inside the reporting window? Non-money rows always pass, so the
+// funnel, leads and content are untouched. A row with no due_date also passes —
+// a receipt the robot filed today should never vanish because of a date filter.
+export function inMoneyWindow(rec: Rec): boolean {
+  if (!MONEY_FROM) return true
+  if (!MONEY_CATEGORIES.has(rec.category ?? '')) return true
+  if (!rec.due_date) return true
+  return rec.due_date >= MONEY_FROM
+}
+
+// "Jan 2026" — for the caption that tells people what period they're looking at.
+export function moneyFromLabel(): string | null {
+  if (!MONEY_FROM) return null
+  const d = new Date(`${MONEY_FROM}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(d)
 }
 
 // Read one field out of a record's meta bag, with a dash fallback for display.
