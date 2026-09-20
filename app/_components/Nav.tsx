@@ -11,9 +11,14 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
   { label: 'Overview', tabs: [
     { href: '/', label: 'Dashboard' },
   ] },
+  // Money = the two whole-business totals. Sales = where that money came from,
+  // one channel per tab. Keeping them apart stops a channel tab from reading
+  // like a peer of the totals it is a slice of.
   { label: 'Money', tabs: [
     { href: '/cash-in', label: 'Cash In' },
     { href: '/cash-out', label: 'Cash Out' },
+  ] },
+  { label: 'Sales', tabs: [
     { href: '/ecomm-sales', label: 'Ecomm Sales' },
     { href: '/sellers', label: 'Sellers' },
     { href: '/kitchen-services', label: 'Kitchen Services' },
