@@ -8,6 +8,21 @@ import Stat from '@/app/_components/Stat'
 // is synced yet. Server component — no fetching here.
 const pct = (n: number) => `${n.toFixed(2)}%`
 const rm2 = (n: number) => 'RM ' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// Day-over-day change, shown as a small arrow next to each number. `up` says
+// whether a rise is good: yes for reach/clicks/CTR, no opinion for spend (grey).
+function Delta({ now, prev, up = true, pct = true }: { now: number; prev?: number; up?: boolean | null; pct?: boolean }) {
+  if (prev === undefined || (!prev && !now)) return null
+  const diff = now - prev
+  if (Math.abs(diff) < 1e-9) return <span className="dlt flat">–</span>
+  const mag = pct && prev ? `${Math.abs(Math.round((diff / prev) * 100))}%` : Math.abs(diff).toLocaleString('en-MY', { maximumFractionDigits: 2 })
+  const better = up === null ? null : (diff > 0) === up
+  return (
+    <span className={`dlt ${better === null ? 'flat' : better ? 'good' : 'bad'}`} title="vs previous day">
+      {diff > 0 ? '▲' : '▼'} {mag}
+    </span>
+  )
+}
+
 const dayLabel = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -97,16 +112,20 @@ export default function AdsTab({
               </tr>
             </thead>
             <tbody>
-              {[...days].reverse().slice(0, 14).map(d => (
-                <tr key={d.date}>
-                  <td data-label="Day">{dayLabel(d.date)}</td>
-                  <td data-label="Spend">{rm2(d.spend)}</td>
-                  <td data-label="Impressions">{d.impressions.toLocaleString('en-MY')}</td>
-                  <td data-label="Clicks">{d.clicks.toLocaleString('en-MY')}</td>
-                  <td data-label="CTR">{pct(d.ctr)}</td>
-                  <td data-label="Video views">{d.video_views.toLocaleString('en-MY')}</td>
-                </tr>
-              ))}
+              {[...days].reverse().slice(0, 14).map(d => {
+                // Compare with the previous synced day (days is sorted ascending).
+                const prev = days[days.indexOf(d) - 1]
+                return (
+                  <tr key={d.date}>
+                    <td data-label="Day">{dayLabel(d.date)}</td>
+                    <td data-label="Spend">{rm2(d.spend)} <Delta now={d.spend} prev={prev?.spend} up={null} /></td>
+                    <td data-label="Impressions">{d.impressions.toLocaleString('en-MY')} <Delta now={d.impressions} prev={prev?.impressions} /></td>
+                    <td data-label="Clicks">{d.clicks.toLocaleString('en-MY')} <Delta now={d.clicks} prev={prev?.clicks} /></td>
+                    <td data-label="CTR">{pct(d.ctr)} <Delta now={d.ctr} prev={prev?.ctr} /></td>
+                    <td data-label="Video views">{d.video_views.toLocaleString('en-MY')} <Delta now={d.video_views} prev={prev?.video_views} /></td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </>

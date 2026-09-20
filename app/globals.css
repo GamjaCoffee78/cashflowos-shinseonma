@@ -193,6 +193,12 @@ code {
   .cal-more { display: none; }
 }
 
+/* Day-over-day arrows in the ad tables: green = better, red = worse, grey = neutral. */
+.dlt { font-size: 11px; font-weight: 600; white-space: nowrap; margin-left: 4px; }
+.dlt.good { color: #2E5A40; }
+.dlt.bad { color: #8A3E2D; }
+.dlt.flat { color: var(--ink-faint); }
+
 /* TikTok Ads tab — the 30-day spend strip (plain CSS bars, no chart library). */
 .tt-strip { display: flex; align-items: flex-end; gap: 3px; height: 96px; padding: 10px 12px 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13) var(--r-13) 0 0; }
 .tt-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
