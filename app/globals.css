@@ -677,3 +677,12 @@ a.pg-card:hover { border-color: var(--line-2); }
 .sb-amt { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sb-sec .ct-table { margin: 2px 0 14px; }
 .sb-n { color: var(--ink-faint); font-weight: 400; font-size: 12px; }
+
+/* ---- Year filter (Ecomm) ----
+   The period control for a tab that looks back across years. Same shape as the
+   production month strip, so "pick a period" looks the same everywhere. */
+.yearbar { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 20px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.yearchip { flex: 0 0 auto; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-soft); font-size: 13px; font-weight: 600; text-decoration: none; }
+.yearchip:hover { border-color: var(--line-2); color: var(--ink); }
+/* Active is filled AND bolder — not colour alone. */
+.yearchip.active { background: var(--clay); border-color: var(--clay); color: #fff; font-weight: 700; }
