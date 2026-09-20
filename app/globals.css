@@ -498,3 +498,28 @@ a.pg-card:hover { border-color: var(--line-2); }
   .pg { grid-template-columns: repeat(3, 1fr); gap: 9px; }
   .pg-title { font-size: 11px; }
 }
+
+/* A short line under a headline number: the window it covers, or how it moved. */
+.stat .hint { margin: 4px 0 0; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
+
+/* Month blocks inside the post grid. */
+.pg-month + .pg-month { margin-top: 18px; }
+.pg-month h3 { font-size: 12px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 9px; }
+.pgw-page { font-weight: 400; color: var(--ink-faint); }
+
+/* ---- Pager (app/_components/Pager.tsx) -------------------------------- */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pg-nums { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pg-step { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); text-decoration: none; padding: 5px 10px; border-radius: var(--r-pill); white-space: nowrap; }
+.pg-step:hover { color: var(--ink); background: var(--paper-2); }
+/* The step keeps its place when it can't be used, so the row doesn't jump. */
+.pg-step.off { color: var(--ink-faint); pointer-events: none; }
+.pg-num { min-width: 28px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); text-decoration: none; padding: 5px 8px; border-radius: var(--r-pill); font-variant-numeric: tabular-nums; }
+.pg-num:hover { background: var(--paper-2); color: var(--ink); }
+.pg-num.on { background: var(--clay-tint); color: var(--clay-deep); }
+.pg-gap { color: var(--ink-faint); padding: 0 2px; }
+
+@media (max-width: 560px) {
+  .pager { justify-content: center; }
+  .pg-nums { order: 0; width: 100%; justify-content: center; }
+}

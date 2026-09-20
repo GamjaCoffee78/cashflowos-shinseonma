@@ -11,7 +11,43 @@ import { coverFor } from '@/lib/covers'
 // timer; the files were fetched once from the Graph API and now need no token
 // and no refresh. A post with neither gets a labelled placeholder, never a
 // broken picture.
-export default function PostCards({ rows }: { rows: Rec[] }) {
+const MONTHS = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December']
+
+const monthTitle = (d: string | null) => {
+  if (!d) return 'No date'
+  const [y, mo] = d.split('-')
+  return `${MONTHS[Number(mo) - 1]} ${y}`
+}
+
+// Cards in month blocks when they're in date order — a heading every few rows
+// gives the eye somewhere to land, and answers "when was this?" without reading
+// each date. In views order the months are interleaved and a heading would lie,
+// so the grid runs flat instead.
+export default function PostCards({ rows, byMonth }: { rows: Rec[]; byMonth?: boolean }) {
+  if (!byMonth) return <Grid rows={rows} />
+
+  const blocks: { title: string; rows: Rec[] }[] = []
+  for (const r of rows) {
+    const title = monthTitle(r.due_date)
+    const last = blocks[blocks.length - 1]
+    if (last && last.title === title) last.rows.push(r)
+    else blocks.push({ title, rows: [r] })
+  }
+
+  return (
+    <>
+      {blocks.map(b => (
+        <section key={b.title} className="pg-month">
+          <h3>{b.title}</h3>
+          <Grid rows={b.rows} />
+        </section>
+      ))}
+    </>
+  )
+}
+
+function Grid({ rows }: { rows: Rec[] }) {
   return (
     <div className="pg">
       {rows.map(r => {
