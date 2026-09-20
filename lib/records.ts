@@ -18,7 +18,7 @@ export type Rec = {
 
 // The 7 categories that make up a complete generic business. Each tab owns one
 // (or two, for the money tabs) so the numbers never bleed across tabs.
-export const CATEGORIES = ['cash_in', 'cash_out', 'lead', 'customer', 'content', 'task', 'doc'] as const
+export const CATEGORIES = ['cash_in', 'cash_out', 'lead', 'customer', 'content', 'task', 'doc', 'units'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 // The lead funnel stages, in order. A lead's `status` moves down this ladder.
@@ -383,6 +383,47 @@ export type Funnel = {
   closed: number
   nurture: number
   pct: number[]
+}
+
+// What the Dashboard's top row shows: the three numbers the owner asked for —
+// total Views, units sold this year, and the item that sold the most of them.
+//
+// Views come from `content` rows' meta.views, the same field getFunnel() reads,
+// so the two can never disagree. Units come from the owner sheet's UNITS SOLD
+// grids (category 'units', one row per product per marketplace per month), and
+// are counts of items — never money, never added to any ringgit total.
+export type SalesSnapshot = {
+  views: number
+  units: number
+  year: number
+  best: { title: string; units: number } | null
+  channels: number      // how many marketplaces contributed
+}
+
+export function getSalesSnapshot(rows: Rec[], year = new Date().getUTCFullYear()): SalesSnapshot {
+  const views = rows
+    .filter(r => r.category === 'content')
+    .reduce((sum, r) => sum + Number(r.meta?.views || 0), 0)
+
+  const inYear = rows.filter(
+    r => r.category === 'units' && String(r.due_date ?? '').slice(0, 4) === String(year),
+  )
+  const units = inYear.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+
+  // Best seller is by UNITS, not by ringgit: the question is which item people
+  // buy most, and a pricier item would otherwise win on revenue alone. Summed
+  // across every marketplace, so one product isn't split three ways.
+  const perItem = new Map<string, number>()
+  for (const r of inYear) {
+    const title = String(r.title ?? '').trim()
+    if (!title) continue
+    perItem.set(title, (perItem.get(title) ?? 0) + Number(r.amount || 0))
+  }
+  const ranked = [...perItem].sort((a, b) => b[1] - a[1])
+  const best = ranked.length && ranked[0][1] > 0 ? { title: ranked[0][0], units: ranked[0][1] } : null
+
+  const channels = new Set(inYear.map(r => String(r.meta?.group ?? '')).filter(Boolean)).size
+  return { views, units, year, best, channels }
 }
 
 export function getFunnel(rows: Rec[]): Funnel {
