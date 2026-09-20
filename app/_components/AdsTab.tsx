@@ -34,12 +34,14 @@ export default function AdsTab({
   days,
   empty,
   toolbar,
+  children,
 }: {
   title: string
   caption: string
   days: AdDay[]
   empty: React.ReactNode
   toolbar?: React.ReactNode   // e.g. the Sync now button
+  children?: React.ReactNode  // e.g. the per-ad leaderboard, rendered after the daily table
 }) {
   const t7 = adTotals(days, 7)
   const t30 = adTotals(days, 30)
@@ -130,6 +132,8 @@ export default function AdsTab({
           </table>
         </>
       )}
+
+      {children}
     </>
   )
 }

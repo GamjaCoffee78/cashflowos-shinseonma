@@ -1,6 +1,7 @@
 import { ABANG } from '@/abang/config'
 import { type AdDay, num, addDays, daysAgoISO, syncAdDays, adDays, adTotals, compact, type AdTotals } from './ads-daily'
 import type { Rec } from './records'
+import { type AdRow, type AdMetrics, emptyMetrics, upsertAdRows, adRows } from './ads-leaderboard'
 
 // TikTok Ads → the ONE `records` table, one 'tiktok_ads' row per day.
 // This module only knows how to FETCH days from TikTok (through Composio's
@@ -20,6 +21,31 @@ export const tiktokConfigured = !!process.env.COMPOSIO_API_KEY?.trim()
 
 const COMPOSIO_URL = (process.env.COMPOSIO_BASE_URL || 'https://backend.composio.dev').replace(/\/+$/, '')
 const METRICS = ['spend', 'impressions', 'clicks', 'reach', 'video_play_actions', 'conversion', 'cpm', 'cpc', 'ctr']
+
+// One GET against TikTok's Marketing API through Composio's proxy (the OAuth
+// token never leaves Composio). Returns TikTok's `data` payload or throws.
+async function tiktokGet(endpoint: string, q: Record<string, string>): Promise<any> {
+  const key = process.env.COMPOSIO_API_KEY?.trim()
+  if (!key) throw new Error('COMPOSIO_API_KEY is not set')
+  const res = await fetch(`${COMPOSIO_URL}/api/v3/tools/execute/proxy`, {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      connected_account_id: ABANG.tiktokAds.composioAccount,
+      method: 'GET',
+      endpoint: `https://business-api.tiktok.com/open_api/v1.3${endpoint}`,
+      parameters: Object.entries(q).map(([name, value]) => ({ name, value, type: 'query' })),
+    }),
+    signal: AbortSignal.timeout(25_000),
+  })
+  const body: any = await res.json().catch(() => ({}))
+  const tt = body?.data
+  if (!res.ok || body?.error || (tt && tt.code !== 0)) {
+    const msg = body?.error?.message || tt?.message || `HTTP ${res.status}`
+    throw new Error(`Composio/TikTok said no: ${String(msg).slice(0, 200)}`)
+  }
+  return tt?.data ?? {}
+}
 
 // ---- 1) Ask TikTok (via Composio) for one row per day, start..end inclusive. ----
 // TikTok allows at most 30 days per daily report, so longer spans are chunked.
@@ -96,8 +122,99 @@ async function fetchWindow(start: string, end: string): Promise<TikTokDay[]> {
   return out
 }
 
-// ---- 2) Upsert into `records` (shared). ----
-export function syncTikTokAds(opts: { days?: number; dryRun?: boolean } = {}) {
+// ---- 1b) Per-ad totals for a window (AUCTION_AD level). ----
+const AD_METRICS = ['ad_name', 'campaign_name', 'adgroup_name', 'spend', 'impressions', 'clicks', 'video_play_actions', 'conversion']
+async function fetchTikTokAdWindow(start: string, end: string): Promise<Map<string, { name: string; campaign: string; adset: string; m: AdMetrics }>> {
+  const out = new Map<string, { name: string; campaign: string; adset: string; m: AdMetrics }>()
+  for (let page = 1; page <= 10; page++) {
+    const data = await tiktokGet('/report/integrated/get/', {
+      advertiser_id: ABANG.tiktokAds.advertiserId,
+      report_type: 'BASIC',
+      data_level: 'AUCTION_AD',
+      dimensions: JSON.stringify(['ad_id']),
+      metrics: JSON.stringify(AD_METRICS),
+      start_date: start,
+      end_date: end,
+      page: String(page),
+      page_size: '200',
+    })
+    for (const r of data.list ?? []) {
+      const mtr = r.metrics ?? {}
+      out.set(String(r.dimensions?.ad_id), {
+        name: String(mtr.ad_name || ''),
+        campaign: String(mtr.campaign_name || ''),
+        adset: String(mtr.adgroup_name || ''),
+        m: { spend: num(mtr.spend), impressions: num(mtr.impressions), clicks: num(mtr.clicks), video_views: num(mtr.video_play_actions), conversions: num(mtr.conversion) },
+      })
+    }
+    if (page >= Number(data.page_info?.total_page ?? 1)) break
+  }
+  return out
+}
+
+// Every ad with its four windows + delivery status. Thumbnails: TikTok Spark
+// Ads point at TikTok posts, not uploaded videos, so there is no cover to show.
+export async function fetchTikTokAdRows(): Promise<AdRow[]> {
+  const y = daysAgoISO(1)
+  const [d7, p7, d30, p30] = await Promise.all([
+    fetchTikTokAdWindow(daysAgoISO(7), y),
+    fetchTikTokAdWindow(daysAgoISO(14), daysAgoISO(8)),
+    fetchTikTokAdWindow(daysAgoISO(30), y),
+    fetchTikTokAdWindow(daysAgoISO(60), daysAgoISO(31)),
+  ])
+  const status = new Map<string, { status: AdRow['status']; note: string }>()
+  try {
+    const data = await tiktokGet('/ad/get/', {
+      advertiser_id: ABANG.tiktokAds.advertiserId,
+      fields: JSON.stringify(['ad_id', 'operation_status', 'secondary_status']),
+      page_size: '500',
+    })
+    for (const a of data.list ?? []) {
+      const ok = a.operation_status === 'ENABLE' && /DELIVERY_OK/.test(String(a.secondary_status || ''))
+      status.set(String(a.ad_id), { status: ok ? 'active' : a.operation_status === 'DISABLE' ? 'paused' : 'other', note: String(a.secondary_status || '') })
+    }
+  } catch (e) {
+    console.warn('[CFO] tiktok ad status lookup failed:', (e as Error).message)
+  }
+  const ids = new Set([...d7.keys(), ...p7.keys(), ...d30.keys(), ...p30.keys()])
+  const rows: AdRow[] = []
+  for (const id of ids) {
+    const info = d30.get(id) ?? d7.get(id) ?? p30.get(id) ?? p7.get(id)!
+    const st = status.get(id)
+    rows.push({
+      ad_id: id,
+      name: info.name || `Ad ${id}`,
+      campaign: info.campaign,
+      adset: info.adset,
+      status: st?.status ?? 'other',
+      status_note: st?.note,
+      d7: d7.get(id)?.m ?? emptyMetrics(),
+      p7: p7.get(id)?.m ?? emptyMetrics(),
+      d30: d30.get(id)?.m ?? emptyMetrics(),
+      p30: p30.get(id)?.m ?? emptyMetrics(),
+    })
+  }
+  return rows
+}
+
+export const AD_CATEGORY = 'tiktok_ad'
+export const tiktokAdRows = (rows: Rec[]) => adRows(rows, AD_CATEGORY)
+
+// ---- 2) Upsert into `records` (shared): the daily rows, then the per-ad rows. ----
+export async function syncTikTokAds(opts: { days?: number; dryRun?: boolean } = {}) {
+  const r: any = await syncTikTokDaily(opts)
+  if (r.skipped || opts.dryRun) return r
+  try {
+    const ads = await fetchTikTokAdRows()
+    const u = await upsertAdRows(AD_CATEGORY, 'TikTok', ads)
+    return { ...r, ads: ads.length, ads_inserted: u.inserted, ads_updated: u.updated }
+  } catch (e) {
+    console.error('[CFO] tiktok ad-level sync failed:', e)
+    return { ...r, ads_error: String((e as Error)?.message || e).slice(0, 200) }
+  }
+}
+
+function syncTikTokDaily(opts: { days?: number; dryRun?: boolean }) {
   return syncAdDays({
     category: CATEGORY,
     label: 'TikTok Ads',

@@ -2,7 +2,9 @@
 // daily cron stores (one per day, see lib/tiktok-ads.ts). Reads the ONE
 // `records` table like every other tab; no live API call happens here.
 import { getRecords } from '@/lib/records'
-import { tiktokDays, tiktokConfigured } from '@/lib/tiktok-ads'
+import { tiktokDays, tiktokConfigured, tiktokAdRows } from '@/lib/tiktok-ads'
+import AdsLeaderboard from '@/app/_components/AdsLeaderboard'
+import { leaderboardParams } from '@/lib/ads-leaderboard'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
 
@@ -10,8 +12,10 @@ export const dynamic = 'force-dynamic'
 // The 90-day backfill behind the Sync now button can take a while.
 export const maxDuration = 60
 
-export default async function TikTokAds() {
-  const days = tiktokDays(await getRecords())
+export default async function TikTokAds({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const all = await getRecords()
+  const days = tiktokDays(all)
+  const lb = leaderboardParams(await searchParams)
   return (
     <AdsTab
       title="TikTok Ads 🎯"
@@ -28,6 +32,8 @@ export default async function TikTokAds() {
           </>
         )
       }
-    />
+    >
+      <AdsLeaderboard rows={tiktokAdRows(all)} basePath="/tiktok-ads" {...lb} />
+    </AdsTab>
   )
 }

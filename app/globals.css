@@ -199,6 +199,42 @@ code {
 .dlt.bad { color: #8A3E2D; }
 .dlt.flat { color: var(--ink-faint); }
 
+/* Ads leaderboard (TikTok Ads + Meta Ads tabs) */
+.lb { margin-top: 32px; }
+.lb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lb-toggle { display: inline-flex; background: var(--paper-2); border-radius: var(--r-pill); padding: 3px; }
+.lb-toggle a { padding: 5px 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--ink-soft); text-decoration: none; }
+.lb-toggle a.on { background: var(--card); color: var(--clay-deep); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.lb-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.lb-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px; }
+.lb-card.rank1 { border-color: var(--clay); box-shadow: inset 0 0 0 1px var(--clay); }
+.lb-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.lb-medal { font-size: 26px; line-height: 1; }
+.lb-thumb { width: 36px; height: 36px; border-radius: var(--r-8); object-fit: cover; background: var(--paper-2); flex-shrink: 0; }
+.lb-thumb.big { width: 56px; height: 56px; }
+.lb-thumb.ph { display: grid; place-items: center; font-size: 18px; }
+.lb-name { font-weight: 700; font-size: 14px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lb-camp { font-size: 12px; color: var(--ink-faint); margin: 2px 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.lb-nums .l { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.lb-nums .v { font-size: 15px; font-weight: 600; }
+.lb-notes { list-style: none; margin: 0 0 18px; padding: 12px 14px; background: var(--clay-tint); border-radius: var(--r-13); font-size: 14px; line-height: 1.55; }
+.lb-notes li + li { margin-top: 6px; }
+.lb-group { margin-bottom: 14px; }
+.lb-group > summary { cursor: pointer; padding: 10px 12px; background: var(--paper-2); border-radius: var(--r-8); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.lb-group-name { font-weight: 700; }
+.lb-group-sum { color: var(--ink-soft); font-size: 13px; }
+.lb-table { margin-top: 6px; }
+.lb-table th a { color: inherit; text-decoration: none; }
+.lb-table th a:hover { color: var(--clay-deep); }
+.lb-ad { display: flex; align-items: center; gap: 10px; }
+.lb-ad-name { display: block; font-weight: 600; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-status { font-size: 11px; color: var(--ink-faint); }
+.lb-status.active { color: #2E5A40; }
+.lb-idle td { color: var(--ink-faint); }
+.lb-idle .lb-ad-name { color: var(--ink-soft); font-weight: 500; }
+@media (max-width: 768px) { .lb-ad-name { max-width: 200px; white-space: normal; } }
+
 /* TikTok Ads tab — the 30-day spend strip (plain CSS bars, no chart library). */
 .tt-strip { display: flex; align-items: flex-end; gap: 3px; height: 96px; padding: 10px 12px 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13) var(--r-13) 0 0; }
 .tt-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }

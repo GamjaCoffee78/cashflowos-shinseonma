@@ -2,15 +2,19 @@
 // cron stores (one per day, see lib/meta-ads.ts). Reads the ONE `records`
 // table like every other tab; no live API call happens here.
 import { getRecords } from '@/lib/records'
-import { metaDays, metaConfigured } from '@/lib/meta-ads'
+import { metaDays, metaConfigured, metaAdRows } from '@/lib/meta-ads'
+import AdsLeaderboard from '@/app/_components/AdsLeaderboard'
+import { leaderboardParams } from '@/lib/ads-leaderboard'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-export default async function MetaAds() {
-  const days = metaDays(await getRecords())
+export default async function MetaAds({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const all = await getRecords()
+  const days = metaDays(all)
+  const lb = leaderboardParams(await searchParams)
   return (
     <AdsTab
       title="Meta Ads 📘"
@@ -27,6 +31,8 @@ export default async function MetaAds() {
           </>
         )
       }
-    />
+    >
+      <AdsLeaderboard rows={metaAdRows(all)} basePath="/meta-ads" {...lb} />
+    </AdsTab>
   )
 }
