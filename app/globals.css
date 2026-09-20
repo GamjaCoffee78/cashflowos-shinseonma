@@ -136,6 +136,8 @@ code {
 .tt-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
 .tt-bar { width: 100%; background: var(--clay); border-radius: 3px 3px 0 0; }
 .tt-axis { display: flex; justify-content: space-between; padding: 6px 12px; font-size: 11px; color: var(--ink-faint); background: var(--card); border: 1px solid var(--line); border-top: none; border-radius: 0 0 var(--r-13) var(--r-13); }
+.tt-sync { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 20px; }
+.tt-sync .cap { margin: 0; }
 
 .empty { color: var(--dim); font-size: 14px; padding: 26px; border: 1px dashed var(--line-2); border-radius: var(--r-13); text-align: center; line-height: 1.6; }
 /* banners — soft paper alerts. base = 🔴 rust error; .info = blue; .warn = 🟡 honey */
