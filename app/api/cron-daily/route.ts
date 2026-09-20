@@ -5,6 +5,7 @@ import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, typ
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
+import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -56,6 +57,17 @@ export async function GET(req: Request) {
   if (!authed) return new Response('forbidden', { status: 401 })
 
   const today = todayISO()
+
+  // ⓪ Pull yesterday's TikTok Ads numbers into `records` first, so the brief and
+  //    the tab see them. Never blocks the brief: a failure is logged and skipped.
+  let tiktok: any = null
+  try {
+    tiktok = await syncTikTokAds()
+  } catch (e) {
+    console.error('[CFO] tiktok sync failed:', e)
+    tiktok = { error: String((e as Error)?.message || e).slice(0, 200) }
+  }
+
   const rows = await getRecords()
 
   // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
@@ -78,7 +90,7 @@ export async function GET(req: Request) {
     proposed = (data ?? []) as any[]
   }
 
-  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows))
+  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows), tiktokLine(rows))
 
   // ② Optional Abang narrative — a warm chief-of-staff paragraph. Only when a
   //    key is set; its absence NEVER blocks the mandated brief above.
@@ -142,6 +154,7 @@ export async function GET(req: Request) {
     recipients: to.length,
     needs_yes: proposed.length,
     proposals_created: created,
+    tiktok,
   })
 }
 
@@ -152,6 +165,7 @@ function buildBrief(
   money: { cashIn: number; cashOut: number; owed: number },
   proposed: { agent_key: string; payload: any }[],
   shopee: string | null,
+  tiktok: string | null,
 ): string {
   const p = (i: number) => (f.pct[i] != null ? `${f.pct[i]}%` : '—')
   const funnelLine =
@@ -193,8 +207,22 @@ function buildBrief(
     `<b>The river</b>\n${funnelLine}\n\n` +
     `<b>The money</b>${moneyPeriod}\n${moneyLine}\n\n` +
     (shopee ? `<b>Shopee</b>\n${shopee}\n\n` : '') +
+    (tiktok ? `<b>🎯 TikTok Ads</b>\n${tiktok}\n\n` : '') +
     `<b>Needs you</b>\n${ask}`
   )
+}
+
+// "Yesterday: RM42 · 38k impressions · 120 clicks · 7d RM310" — from the
+// tiktok_ads rows the sync above just refreshed. Null when nothing is synced yet.
+function tiktokLine(rows: Rec[]): string | null {
+  const days = tiktokDays(rows)
+  if (!days.length) return null
+  const y = days.find((d) => d.date === daysAgoISO(1))
+  const t7 = tiktokTotals(days, 7)
+  const yLine = y
+    ? `Yesterday <b>${rm(y.spend)}</b> · ${compact(y.impressions)} impressions · ${compact(y.clicks)} clicks · CTR ${y.ctr.toFixed(2)}%`
+    : `Yesterday: not in yet`
+  return `${yLine}\n7 days: <b>${rm(t7.spend)}</b> · ${compact(t7.impressions)} impressions · ${compact(t7.clicks)} clicks`
 }
 
 // Shopee orders imported by scripts/import-shopee.mjs carry meta.source = 'shopee'.

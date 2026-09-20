@@ -24,6 +24,9 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/content', label: 'Content' },
     { href: '/tasks', label: 'Tasks' },
   ] },
+  { label: 'Marketing', tabs: [
+    { href: '/tiktok-ads', label: 'TikTok Ads' },
+  ] },
   { label: 'Robot', tabs: [
     { href: '/approvals', label: 'Approvals' },
     { href: '/employees', label: 'AI Employees' },
