@@ -11,6 +11,7 @@
     "import": "node --env-file-if-exists=.env scripts/import.mjs",
     "import:shopee": "node --env-file-if-exists=.env scripts/import-shopee.mjs",
     "import:production": "node --env-file-if-exists=.env scripts/import-production.mjs",
+    "sync:tiktok": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-tiktok.mts",
     "purge:demo": "node --env-file-if-exists=.env scripts/purge-demo.mjs",
     "purge:source": "node --env-file-if-exists=.env scripts/purge-source.mjs",
     "brief:test": "node --env-file-if-exists=.env scripts/brief-test.mjs"
@@ -30,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "xlsx": "^0.18.5"
   }

@@ -22,6 +22,7 @@ const MORE: MoreTab[] = [
   { href: '/content', label: 'Content', ico: '📣' },
   { href: '/tasks', label: 'Tasks', ico: '✅' },
   { href: '/production', label: 'Production Timeline', ico: '🏭' },
+  { href: '/tiktok-ads', label: 'TikTok Ads', ico: '🎯' },
   { href: '/employees', label: 'AI Employees', ico: '🤖' },
   { href: '/vault', label: 'Vault', ico: '🗄️' },
 ]

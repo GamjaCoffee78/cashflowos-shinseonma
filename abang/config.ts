@@ -117,6 +117,25 @@ export const ABANG = {
    * `amount: 0` hides the target section.
    */
   salesTarget: { year: 2026, amount: 3_000_000 },
+
+  // ── 👉 TIKTOK ADS ─────────────────────────────────────────────────────────
+  /**
+   * The TikTok Ads tab + the "🎯 TikTok" line in the morning brief. Numbers are
+   * pulled through Composio (the ad account is linked there) by the daily cron
+   * and stored as `tiktok_ads` records — one row per day — so the tab, Gamja
+   * and the brief all read the same table. Needs COMPOSIO_API_KEY in Vercel;
+   * without it the tab shows a calm setup note and nothing else changes.
+   *
+   * advertiserId / composioAccount are ids, not secrets. `syncDays` is how far
+   * back each morning re-pulls (TikTok revises the last few days); the first
+   * ever sync backfills `backfillDays`.
+   */
+  tiktokAds: {
+    advertiserId: '7613249567527387137',       // "Okmaya Official0304" (MYR)
+    composioAccount: 'ca_q1f8jnNxnpt4',        // the TikTok Ads connection in the Composio project
+    syncDays: 3,
+    backfillDays: 90,
+  },
 }
 
 /**
