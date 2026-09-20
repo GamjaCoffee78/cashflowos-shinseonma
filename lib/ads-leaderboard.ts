@@ -16,7 +16,8 @@ export type AdRow = {
   name: string
   campaign: string
   adset: string
-  status: 'active' | 'paused' | 'other'
+  status: 'active' | 'paused' | 'completed' | 'other'
+  ends?: string          // scheduled end (ISO), when the platform has one
   status_note?: string
   thumbnail?: string
   d7: AdMetrics
@@ -81,6 +82,7 @@ export function adRows(rows: Rec[], category: string): AdRow[] {
       adset: String(r.meta.adset || ''),
       status: (r.meta.status as AdRow['status']) || 'other',
       status_note: r.meta.status_note ? String(r.meta.status_note) : undefined,
+      ends: r.meta.ends ? String(r.meta.ends) : undefined,
       thumbnail: r.meta.thumbnail ? String(r.meta.thumbnail) : undefined,
       d7: m(r.meta.d7), p7: m(r.meta.p7), d30: m(r.meta.d30), p30: m(r.meta.p30),
     }))
@@ -125,7 +127,7 @@ export function callouts(rows: AdRow[], w: Window): string[] {
       if (out.length >= 4) break
     }
   }
-  const paused = rows.filter(r => r.status !== 'active').length
+  const paused = rows.filter(r => r.status === 'paused' || r.status === 'other').length
   if (paused) out.push(`⏸ ${paused} ad${paused === 1 ? '' : 's'} not delivering (paused or campaign off).`)
   return out.slice(0, 4)
 }

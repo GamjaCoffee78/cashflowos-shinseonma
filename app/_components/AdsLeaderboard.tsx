@@ -155,7 +155,7 @@ export default function AdsLeaderboard({
                           <div>
                             <span className="lb-ad-name">{ad.name}</span>
                             <span className={`lb-status ${idle ? 'other' : ad.status}`} title={ad.status_note || ad.status}>
-                              {idle ? '○ not running this period' : ad.status === 'active' ? '● active' : ad.status === 'paused' ? '○ paused' : '○ not delivering'}
+                              {ad.status === 'completed' ? `✓ completed${ad.ends ? ` ${ad.ends.slice(0, 10)}` : ''}` : idle ? '○ not running this period' : ad.status === 'active' ? '● active' : ad.status === 'paused' ? '○ paused' : '○ not delivering'}
                             </span>
                           </div>
                         </div>

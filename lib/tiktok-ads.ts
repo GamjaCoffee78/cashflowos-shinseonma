@@ -162,16 +162,33 @@ export async function fetchTikTokAdRows(): Promise<AdRow[]> {
     fetchTikTokAdWindow(daysAgoISO(30), y),
     fetchTikTokAdWindow(daysAgoISO(60), daysAgoISO(31)),
   ])
-  const status = new Map<string, { status: AdRow['status']; note: string }>()
+  const status = new Map<string, { status: AdRow['status']; note: string; ends?: string }>()
   try {
-    const data = await tiktokGet('/ad/get/', {
+    // Ad groups carry the schedule; an ad whose group's end date has passed is
+    // 'completed' (TikTok still reports it ENABLE / CAMPAIGN_DISABLE).
+    const groups = await tiktokGet('/adgroup/get/', {
       advertiser_id: ABANG.tiktokAds.advertiserId,
-      fields: JSON.stringify(['ad_id', 'operation_status', 'secondary_status']),
+      fields: JSON.stringify(['adgroup_id', 'schedule_type', 'schedule_end_time']),
       page_size: '500',
     })
+    const endOf = new Map<string, string>()
+    for (const g of groups.list ?? []) if (g.schedule_type === 'SCHEDULE_START_END' && g.schedule_end_time) endOf.set(String(g.adgroup_id), String(g.schedule_end_time))
+    const data = await tiktokGet('/ad/get/', {
+      advertiser_id: ABANG.tiktokAds.advertiserId,
+      fields: JSON.stringify(['ad_id', 'adgroup_id', 'operation_status', 'secondary_status']),
+      page_size: '500',
+    })
+    const now = Date.now()
     for (const a of data.list ?? []) {
+      const ends = endOf.get(String(a.adgroup_id))
+      // TikTok schedules are in the advertiser's timezone (Asia/Kuala_Lumpur, +08:00).
+      const finished = !!ends && new Date(ends.replace(' ', 'T') + '+08:00').getTime() < now
       const ok = a.operation_status === 'ENABLE' && /DELIVERY_OK/.test(String(a.secondary_status || ''))
-      status.set(String(a.ad_id), { status: ok ? 'active' : a.operation_status === 'DISABLE' ? 'paused' : 'other', note: String(a.secondary_status || '') })
+      status.set(String(a.ad_id), {
+        status: finished ? 'completed' : ok ? 'active' : a.operation_status === 'DISABLE' || /CAMPAIGN_DISABLE|ADGROUP_DISABLE/.test(String(a.secondary_status || '')) ? 'paused' : 'other',
+        note: finished ? `ended ${ends!.slice(0, 10)}` : String(a.secondary_status || ''),
+        ends,
+      })
     }
   } catch (e) {
     console.warn('[CFO] tiktok ad status lookup failed:', (e as Error).message)
@@ -188,6 +205,7 @@ export async function fetchTikTokAdRows(): Promise<AdRow[]> {
       adset: info.adset,
       status: st?.status ?? 'other',
       status_note: st?.note,
+      ends: st?.ends,
       d7: d7.get(id)?.m ?? emptyMetrics(),
       p7: p7.get(id)?.m ?? emptyMetrics(),
       d30: d30.get(id)?.m ?? emptyMetrics(),

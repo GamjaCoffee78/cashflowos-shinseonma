@@ -117,15 +117,20 @@ export async function fetchMetaAdRows(): Promise<AdRow[]> {
     fetchMetaAdWindow(daysAgoISO(30), y),
     fetchMetaAdWindow(daysAgoISO(60), daysAgoISO(31)),
   ])
-  const info = new Map<string, { status: AdRow['status']; note: string; thumbnail?: string }>()
+  const info = new Map<string, { status: AdRow['status']; note: string; thumbnail?: string; ends?: string }>()
   try {
-    const ads = await metaGetAll(`${account()}/ads`, { fields: 'id,effective_status,creative{thumbnail_url}', limit: '500' })
+    const ads = await metaGetAll(`${account()}/ads`, { fields: 'id,effective_status,adset{end_time},creative{thumbnail_url}', limit: '500' })
+    const now = Date.now()
     for (const a of ads) {
       const eff = String(a.effective_status || '')
+      const ends = a.adset?.end_time ? String(a.adset.end_time) : undefined
+      // Meta keeps a finished ad 'ACTIVE' — the ad set's schedule is what ended.
+      const finished = !!ends && new Date(ends).getTime() < now
       info.set(String(a.id), {
-        status: eff === 'ACTIVE' ? 'active' : /PAUSED/.test(eff) ? 'paused' : 'other',
-        note: eff,
+        status: finished ? 'completed' : eff === 'ACTIVE' ? 'active' : /PAUSED/.test(eff) ? 'paused' : 'other',
+        note: finished ? `ended ${ends!.slice(0, 10)}` : eff,
         thumbnail: a.creative?.thumbnail_url || undefined,
+        ends,
       })
     }
   } catch (e) {
@@ -143,6 +148,7 @@ export async function fetchMetaAdRows(): Promise<AdRow[]> {
       adset: meta.adset,
       status: st?.status ?? 'other',
       status_note: st?.note,
+      ends: st?.ends,
       thumbnail: st?.thumbnail,
       d7: d7.get(id)?.m ?? emptyMetrics(),
       p7: p7.get(id)?.m ?? emptyMetrics(),
