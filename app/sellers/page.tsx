@@ -12,7 +12,7 @@
 // chips decide the period and every year with rows is reachable.
 import Link from 'next/link'
 import { getRecords, rm, todayISO, type Rec } from '@/lib/records'
-import { isMoney, isSeller, isWaiting, groupOf, norm } from '@/lib/ecomm'
+import { isMoney, isSeller, isWaiting, groupOf, norm, salesYears } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 
@@ -42,11 +42,9 @@ export default async function Sellers({
     r => r.category === 'cash_in' && isSeller(r) && !!r.due_date,
   )
 
-  // Only years that actually have rows, newest first — so next January adds
-  // itself and an empty year is never offered.
-  const years = [...new Set(everyYear.map(r => (r.due_date as string).slice(0, 4)))]
-    .sort()
-    .reverse()
+  // Years come from ALL marketplace money, not just this tab's rows, so Ecomm
+  // and Sellers always offer the same chips — see salesYears in lib/ecomm.ts.
+  const years = salesYears(all)
   // Default to this year; if it has nothing yet, show the most recent that does.
   const thisYear = todayISO().slice(0, 4)
   // years[0] is undefined when there are no rows at all, which would print
@@ -99,7 +97,7 @@ export default async function Sellers({
       </p>
 
       {/* The year chips ARE the period control for this tab. */}
-      {years.length > 1 ? (
+      {years.length > 0 ? (
         <nav className="yearbar" aria-label="Year">
           {years.map(k => (
             <Link

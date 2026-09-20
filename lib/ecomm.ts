@@ -83,3 +83,19 @@ export const isOffline = (r: Rec) => {
 
 export const isMoney = (r: Rec) => MONEY.has(r.category ?? '')
 export const isWaiting = (r: Rec) => WAITING.includes((r.status || '').toLowerCase())
+
+// The years the Ecomm and Sellers tabs offer, newest first.
+//
+// Derived from ALL marketplace money — Ecomm rows AND seller rows together —
+// so the two tabs always show the SAME chips. Deriving each tab's list from
+// its own rows made the control vanish on a tab whose data happened to sit in
+// one year, which reads as broken rather than as "nothing to choose".
+export function salesYears(all: Rec[]): string[] {
+  const years = new Set<string>()
+  for (const r of all) {
+    if (r.category !== 'cash_in' || !r.due_date) continue
+    if (!isEcomm(r) && !isSeller(r)) continue
+    years.add(r.due_date.slice(0, 4))
+  }
+  return [...years].sort().reverse()
+}
