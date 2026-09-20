@@ -9,7 +9,7 @@ file exists so that stops happening.
 
 | Shared | Detail |
 | --- | --- |
-| **Supabase** | **NOT shared — verified 2026-09-19.** This deployment reads a DIFFERENT Supabase project from `cashflowos-seonhwa`. Proof: her project `cfuybrmybakzelftumwu` holds 138 Instagram `content` rows and her app renders all 138, while this app's Content tab shows 0. Her only other project (`bjequzxigjuntameerzl`) has no tables, so this app's database lives in an account she cannot see. **Never assume a data change here is visible there, or the reverse.** |
+| **Supabase** | **NOT shared — verified 2026-09-19.** (Correction 2026-09-20: this project is `qritrqnaojkhzcepgwpr`, inside the org `Seonma AI Org`, which Project Settings shows as having **1 member** — the owner. The note below calling it "the deputy's Supabase account" looks wrong; treat it as unverified.) This deployment reads a DIFFERENT Supabase project from `cashflowos-seonhwa`. Proof: her project `cfuybrmybakzelftumwu` holds 138 Instagram `content` rows and her app renders all 138, while this app's Content tab shows 0. Her only other project (`bjequzxigjuntameerzl`) has no tables, so this app's database lives in an account she cannot see. **Never assume a data change here is visible there, or the reverse.** |
 | **This repo** | `GamjaCoffee78/cashflowos-shinseonma`. Both sessions push to `main`. |
 | **Vercel crons** | Hobby allows **2 slots, once-per-day granularity**. Spending a slot is a shared decision. |
 
@@ -27,6 +27,15 @@ Work inside your own area. Before changing something in the other person's area,
 say so in your reply so the owner can decide — don't just do it.
 
 ## Decisions already made — don't silently reverse these
+
+0a. **Money is reported from 2026-01-01** (`abang/config.ts` → `moneyFrom`;
+   `MONEY_FROM` in Vercel overrides). The database still holds the full
+   Sep-2024 history — the Dashboard, the Cash In / Cash Out tabs and the 08:15
+   brief just window it, through the single `inMoneyWindow()` in
+   `lib/records.ts`. Figures are therefore RM1,306,292.78 in / RM796,652.52 out
+   / RM509,640.26 net, NOT the lifetime 3,006,300.83. Don't "fix" a tab back to
+   all-time — change `moneyFrom` in one place instead. Only cash_in/cash_out are
+   windowed; the funnel, leads, content and tasks are not.
 
 0. **The dashboard shows the OWNER figures, Kitchen Service included**
    (`okmaya_owner_v5_fix`, not `okmaya_staff_v5_fix`). Cash in RM3,006,300.83,
@@ -68,9 +77,11 @@ say so in your reply so the owner can decide — don't just do it.
   deletes every row (`id=gte.0`) in `records`, `agent_actions`, `agent_runs` and
   `bot_memory`. Running it destroys the other owner's work, so ask first.
 - **Back up before any destructive change** and say where the backup is.
-- The 138 real Instagram `content` rows (account `okmaya.official`, tagged
-  `meta.source = "instagram_import"`) live in the OTHER deployment's database, not
-  this one. This app's `records` table is owned by the deputy's Supabase account.
+- **Out of date as of 2026-09-20.** This database now DOES hold content rows: the
+  08:15 brief rendered `6,648,045 Views`, which `getFunnel()` derives only from
+  `content` rows' `meta.views` in THIS database, and Abang's summary named the
+  lunch box reel by title. Re-check before relying on the old claim that the 138
+  `instagram_import` rows exist only in the other deployment.
 
 ## Before you push
 

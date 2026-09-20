@@ -332,8 +332,9 @@ async function handleMessage(msg: any): Promise<Response> {
       chatId,
       `🆔 This ${kind}'s id is <code>${chatId}</code>\n\n` +
         (isGroupChat(msg)
-          ? `To send the 08:15 brief here instead of a private message, set ` +
-            `<code>TELEGRAM_TEAM_CHAT_IDS=${chatId}</code> in Vercel, then redeploy. ` +
+          ? `To send the 08:15 brief here, put this id in ` +
+            `<code>briefChatIds</code> in <code>abang/config.ts</code> — or set ` +
+            `<code>TELEGRAM_TEAM_CHAT_IDS=${chatId}</code> in Vercel. ` +
             `Group ids are negative — copy the minus sign too.`
           : `Your own id is <code>${msg.from?.id}</code> — that's what <code>OWNER_CHAT_ID</code> wants.`),
     )
