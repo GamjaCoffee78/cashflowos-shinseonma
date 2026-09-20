@@ -97,6 +97,18 @@ export const ABANG = {
    * Empty = report everything. MONEY_FROM in Vercel overrides this.
    */
   moneyFrom: '2026-01-01',
+
+  /**
+   * Give ONE sales channel its own month-on-month section on the Dashboard,
+   * with the percentage change from the month before.
+   *
+   * Matched as a prefix against a row's `meta.group`, case-insensitively, so
+   * 'Shopee' covers both "Shopee MY" and "Shopee SG" and breaks them out as
+   * separate columns. 'Shopee MY' would narrow it to one.
+   *
+   * Empty = no channel section.
+   */
+  focusChannel: 'Shopee',
 }
 
 /**
