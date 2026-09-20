@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { syncEverything, type SyncAllResult } from '../_actions/sync'
+import PrivateEyes from './PrivateEyes'
 
 // 🔄 Sync now — the one button that refreshes the whole app.
 //
@@ -41,6 +42,7 @@ export default function SyncAll() {
       <button type="button" className="btn" disabled={pending} onClick={run} aria-busy={pending}>
         {pending ? 'Syncing…' : '🔄 Sync now'}
       </button>
+      <PrivateEyes />
       <span className="cap" role="status" aria-live="polite">
         {pending
           ? 'Pulling your latest numbers — the first TikTok run fetches 90 days, give it a moment.'
