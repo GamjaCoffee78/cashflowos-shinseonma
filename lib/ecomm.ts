@@ -33,10 +33,20 @@ export const isSeller = (r: Rec) =>
   norm(String(r.title ?? '')).includes('seller') || norm(groupOf(r)).includes('seller')
 
 // A marketplace row: a named channel, and NOT a seller.
+//
+// meta.group is the reliable field, but only later imports stamp it — earlier
+// Shopee rows landed in `records` with no group at all and the channel only in
+// the title ("Shopee MY — Settlement"). So a row with no group falls back to
+// its title, and only when the title STARTS with a channel name: narrow on
+// purpose, so "Refund to a Shopee buyer" never wanders onto this tab.
+//
+// This does not risk double-counting against Offline Channels: isOffline
+// requires a meta.group, so these groupless rows were never offline either.
 export const isEcomm = (r: Rec) => {
   if (isSeller(r)) return false
-  const g = norm(groupOf(r))
-  return ECOMM_CHANNELS.some(c => g.startsWith(norm(c)))
+  const g = groupOf(r)
+  const hay = norm(g || String(r.title ?? ''))
+  return ECOMM_CHANNELS.some(c => hay.startsWith(norm(c)))
 }
 
 // Kitchen Service money — its own tab, so it is never also counted as an
