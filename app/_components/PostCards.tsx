@@ -69,6 +69,13 @@ function Grid({ rows }: { rows: Rec[] }) {
                 <span className="pg-ph">no cover</span>
               )}
               <span className="pg-chip">{m(r, 'format')}</span>
+              {r.meta?.collab ? (
+                // Posted from the founder's account rather than the brand's.
+                // Worth marking: that account is nearly three times the size,
+                // so these reach further for reasons the brand page can't
+                // claim credit for.
+                <span className="pg-collab">@{String(r.meta?.account ?? 'collab')}</span>
+              ) : null}
             </span>
 
             <span className="pg-body">
