@@ -1,7 +1,7 @@
 // 👉 This is your Cash In tab — money coming IN. Safe to edit the columns/labels.
 // It reads the ONE `records` table, filtered to category='cash_in'. Copy this file's
 // shape when you add your own money tab.
-import { getRecords, rm, m, todayISO } from '@/lib/records'
+import { getRecords, rm, m, todayISO, inMoneyWindow } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 
@@ -13,7 +13,8 @@ const WAITING = ['waiting', 'unpaid', 'overdue', 'pending']
 
 export default async function CashIn() {
   const all = await getRecords()
-  const rows = all.filter(r => r.category === 'cash_in')
+  // Windowed to ABANG.moneyFrom so this tab agrees with the Dashboard.
+  const rows = all.filter(r => r.category === 'cash_in' && inMoneyWindow(r))
 
   const isWaiting = (r: (typeof rows)[number]) => WAITING.includes((r.status || '').toLowerCase())
   // Overdue = still waiting AND the due date is in the past. We flag it, but never

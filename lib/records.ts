@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase'
+import { ABANG } from '@/abang/config'
 
 // One row of the business spine. The whole app reads this single table.
 // `meta` is a free-form bag of extra fields each tab can use (a lead's next
@@ -49,14 +50,94 @@ export async function getRecords(): Promise<Rec[]> {
   return all.map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
 }
 
+// The money-reporting window. One definition, used by the Dashboard, the money
+// tabs AND the morning brief, so the app and the 08:15 Telegram message can
+// never disagree about what "Cash In" means.
+export const MONEY_FROM = (process.env.MONEY_FROM || ABANG.moneyFrom || '').trim()
+
+const MONEY_CATEGORIES = new Set(['cash_in', 'cash_out'])
+
+// Is this row inside the reporting window? Non-money rows always pass, so the
+// funnel, leads and content are untouched. A row with no due_date also passes —
+// a receipt the robot filed today should never vanish because of a date filter.
+export function inMoneyWindow(rec: Rec): boolean {
+  if (!MONEY_FROM) return true
+  if (!MONEY_CATEGORIES.has(rec.category ?? '')) return true
+  if (!rec.due_date) return true
+  return rec.due_date >= MONEY_FROM
+}
+
+// "Jan 2026" — for the caption that tells people what period they're looking at.
+export function moneyFromLabel(): string | null {
+  if (!MONEY_FROM) return null
+  const d = new Date(`${MONEY_FROM}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(d)
+}
+
+// ── Money, month by month ────────────────────────────────────────────────
+// One row per calendar month that actually has money in it — no empty months
+// invented, no months dropped in the middle. Respects the same reporting
+// window as everything else, so the monthly rows always add up to the
+// Dashboard's headline totals.
+export type MonthMoney = {
+  key: string      // 'YYYY-MM', for sorting and React keys
+  label: string    // 'Jan 2026'
+  cashIn: number
+  cashOut: number
+  net: number
+}
+
+export function getMonthlyMoney(rows: Rec[]): MonthMoney[] {
+  const buckets = new Map<string, { cashIn: number; cashOut: number }>()
+
+  for (const r of rows) {
+    if (r.category !== 'cash_in' && r.category !== 'cash_out') continue
+    if (!inMoneyWindow(r)) continue
+    // No due_date = money that moved today (a receipt the robot just filed).
+    const key = (r.due_date || todayISO()).slice(0, 7)
+    if (!/^\d{4}-\d{2}$/.test(key)) continue
+    const b = buckets.get(key) ?? { cashIn: 0, cashOut: 0 }
+    if (r.category === 'cash_in') b.cashIn += Number(r.amount || 0)
+    else b.cashOut += Number(r.amount || 0)
+    buckets.set(key, b)
+  }
+
+  return [...buckets.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, b]) => ({
+      key,
+      label: monthLabel(key),
+      cashIn: b.cashIn,
+      cashOut: b.cashOut,
+      net: b.cashIn - b.cashOut,
+    }))
+}
+
+// 'YYYY-MM' → 'Jan 2026'. Falls back to the raw key if the date is unparseable,
+// so a bad row shows something honest instead of "Invalid Date".
+function monthLabel(key: string): string {
+  const d = new Date(`${key}-01T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return key
+  // en-US, not en-GB: en-GB abbreviates September as "Sept", the only 4-letter
+  // month, which reads as a typo next to the other eleven and doesn't match the
+  // source sheet's "Sep-26". en-US gives three letters for all twelve.
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' }).format(d)
+}
+
 // Read one field out of a record's meta bag, with a dash fallback for display.
 export const m = (r: Rec, k: string) => {
   const v = r.meta?.[k]
   return v === undefined || v === null || v === '' ? '—' : v
 }
 
-// Format a number as Malaysian Ringgit for display.
-export const rm = (n: number) => 'RM ' + Number(n || 0).toLocaleString('en-MY')
+// Format a number as Malaysian Ringgit for display. ALWAYS two decimals:
+// toLocaleString's default drops trailing zeros, which renders RM88,678.40 as
+// "RM 88,678.4" — a single decimal place, which no money is ever written in and
+// which reads as a truncated number next to its two-decimal neighbours.
+export const rm = (n: number) =>
+  'RM ' +
+  Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // The business's own timezone. UTC rolls over at 08:00 in Malaysia, so using
 // UTC made "due today" / "overdue" wrong for the first 8 hours of every local

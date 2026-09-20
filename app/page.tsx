@@ -1,7 +1,8 @@
-import { getRecords, getFunnel, rm } from '@/lib/records'
+import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney } from '@/lib/records'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import FunnelBar from '@/app/_components/FunnelBar'
 import Stat from '@/app/_components/Stat'
+import MonthlyMoney from '@/app/_components/MonthlyMoney'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +23,12 @@ export default async function Dashboard() {
   const funnel = getFunnel(rows)
 
   // ── The Money row ───────────────────────────────────────────────
+  // Money is reported from ABANG.moneyFrom onward (see lib/records.ts). The
+  // funnel above deliberately still uses ALL rows — only money is windowed.
+  const money = rows.filter(inMoneyWindow)
+  const period = moneyFromLabel()
   const sum = (cat: string, statuses?: string[]) =>
-    rows
+    money
       .filter(r => r.category === cat && (!statuses || statuses.includes((r.status || '').toLowerCase())))
       .reduce((s, r) => s + Number(r.amount || 0), 0)
 
@@ -32,6 +37,9 @@ export default async function Dashboard() {
   const net = cashIn - cashOut
   // "Who owes me" = money-in that hasn't landed yet (waiting / overdue / unpaid).
   const owed = sum('cash_in', ['waiting', 'overdue', 'unpaid', 'pending'])
+
+  // ── Month by month ──────────────────────────────────────────────
+  const months = getMonthlyMoney(rows)
 
   return (
     <>
@@ -42,7 +50,7 @@ export default async function Dashboard() {
       <FunnelBar funnel={funnel} />
 
       {/* Row 2 — the money + the 🙋 count */}
-      <p className="rowlabel">The Money</p>
+      <p className="rowlabel">The Money{period ? ` — since ${period}` : ''}</p>
       <div className="grid">
         <Stat label="Cash In" value={rm(cashIn)} />
         <Stat label="Cash Out" value={rm(cashOut)} />
@@ -50,6 +58,8 @@ export default async function Dashboard() {
         <Stat label="Who Owes Me" value={rm(owed)} />
         <Stat label="🙋 Needs your YES" value={waiting} yes={waiting > 0} href="/approvals" />
       </div>
+
+      <MonthlyMoney months={months} period={period} />
     </>
   )
 }

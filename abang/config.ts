@@ -56,7 +56,51 @@ export const ABANG = {
    * deputy) add themselves without touching the owner's secrets. Each person
    * must have pressed Start on the bot first, or Telegram won't deliver.
    */
-  briefRecipients: ['8978520563', '8680951836'] as string[],
+  briefRecipients: [] as string[],
+
+  /**
+   * WHERE the morning brief goes. When this is non-empty it REPLACES
+   * OWNER_CHAT_ID / TELEGRAM_TEAM_CHAT_IDS entirely — the brief stops going to
+   * the owner's private chat and goes here instead. (briefRecipients above is
+   * different: it always ADDS people on top of whatever is set.)
+   *
+   * Use it to send the brief to a team group. Get a group's id by typing
+   * `/id` in that group — the bot replies with it. Group ids are NEGATIVE, so
+   * keep the minus sign. The bot must be a member of the group (and an admin
+   * if the group restricts who may post).
+   *
+   * Empty = behave as before: the owner's DM, or TELEGRAM_TEAM_CHAT_IDS.
+   */
+  briefChatIds: ['-1004424648501'] as string[],   // the OMY group
+
+  /**
+   * Extra Telegram user ids allowed to command the bot, ON TOP of
+   * TELEGRAM_ALLOWED_USER_IDS in Vercel. Lets an owner who can edit this repo
+   * add themselves without an env change and a redeploy.
+   *
+   * Still FAIL CLOSED: if this list and the env var are both empty, nobody is
+   * authorised. Find an id by sending /id to the bot in a PRIVATE chat — in a
+   * group the bot stays silent for unknown senders rather than publish an id.
+   *
+   * NOTE: this repo is public, so ids listed here are readable by anyone. A
+   * Telegram user id on its own does not let a stranger message you, but keep
+   * them in TELEGRAM_ALLOWED_USER_IDS instead if you would rather not publish.
+   */
+  allowedUserIds: ['8956330282'] as string[],   // the owner
+
+  /**
+   * REPORT MONEY FROM this date (YYYY-MM-DD). The database keeps the full
+   * history, but the Dashboard, the Cash In / Cash Out tabs and the morning
+   * brief count only from here — so the headline figures are the period you are
+   * actually managing, not four years of everything.
+   *
+   * Only cash_in / cash_out are affected. Leads, content, tasks and the funnel
+   * are never filtered. A row with no due_date is always counted, so a receipt
+   * filed today is never hidden.
+   *
+   * Empty = report everything. MONEY_FROM in Vercel overrides this.
+   */
+  moneyFrom: '2026-01-01',
 }
 
 /**

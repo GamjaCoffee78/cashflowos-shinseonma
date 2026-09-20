@@ -10,7 +10,10 @@
     "webhook:info": "node --env-file-if-exists=.env scripts/webhook-info.mjs",
     "broadcast": "node --env-file-if-exists=.env scripts/broadcast.mjs",
     "import": "node --env-file-if-exists=.env scripts/import.mjs",
-    "import:shopee": "node --env-file-if-exists=.env scripts/import-shopee.mjs"
+    "import:shopee": "node --env-file-if-exists=.env scripts/import-shopee.mjs",
+    "purge:demo": "node --env-file-if-exists=.env scripts/purge-demo.mjs",
+    "purge:source": "node --env-file-if-exists=.env scripts/purge-source.mjs",
+    "brief:test": "node --env-file-if-exists=.env scripts/brief-test.mjs"
   },
   "engines": {
     "node": ">=20"

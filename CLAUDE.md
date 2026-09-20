@@ -9,13 +9,13 @@ file exists so that stops happening.
 
 | Shared | Detail |
 | --- | --- |
-| **Supabase** | ONE project: `cfuybrmybakzelftumwu`. Both deployments read and write the same `records` table. There is no second database — `bjequzxigjuntameerzl` is empty. |
+| **Supabase** | **NOT shared — verified 2026-09-19.** (Correction 2026-09-20: this project is `qritrqnaojkhzcepgwpr`, inside the org `Seonma AI Org`, which Project Settings shows as having **1 member** — the owner. The note below calling it "the deputy's Supabase account" looks wrong; treat it as unverified.) This deployment reads a DIFFERENT Supabase project from `cashflowos-seonhwa`. Proof: her project `cfuybrmybakzelftumwu` holds 138 Instagram `content` rows and her app renders all 138, while this app's Content tab shows 0. Her only other project (`bjequzxigjuntameerzl`) has no tables, so this app's database lives in an account she cannot see. **Never assume a data change here is visible there, or the reverse.** |
 | **This repo** | `GamjaCoffee78/cashflowos-shinseonma`. Both sessions push to `main`. |
 | **Vercel crons** | Hobby allows **2 slots, once-per-day granularity**. Spending a slot is a shared decision. |
 
 There are also **two deployments**: `cashflowos-shinseonma` (Okmaya, the current
-one, team build) and `cashflowos-seonhwa` (the older personal one). They share the
-one database, so a data change shows up in both.
+one, team build) and `cashflowos-seonhwa` (the personal one). They have SEPARATE
+databases — a data change in one is invisible in the other.
 
 ## Who owns what (as of 2026-09-19)
 
@@ -28,10 +28,37 @@ say so in your reply so the owner can decide — don't just do it.
 
 ## Decisions already made — don't silently reverse these
 
-1. **The morning brief runs at 08:00 Malaysia time** (`0 0 * * *` UTC in
-   `vercel.json`). This was chosen deliberately. The branch
-   `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am) — that part
-   must not be merged as-is.
+0a. **Money is reported from 2026-01-01** (`abang/config.ts` → `moneyFrom`;
+   `MONEY_FROM` in Vercel overrides). The database still holds the full
+   Sep-2024 history — the Dashboard, the Cash In / Cash Out tabs and the 08:15
+   brief just window it, through the single `inMoneyWindow()` in
+   `lib/records.ts`. Figures are therefore RM1,306,292.78 in / RM796,652.52 out
+   / RM509,640.26 net, NOT the lifetime 3,006,300.83. Don't "fix" a tab back to
+   all-time — change `moneyFrom` in one place instead. Only cash_in/cash_out are
+   windowed; the funnel, leads, content and tasks are not.
+
+0. **The dashboard shows the OWNER figures, Kitchen Service included**
+   (`okmaya_owner_v5_fix`, not `okmaya_staff_v5_fix`). Cash in RM3,006,300.83,
+   cash out RM1,870,728.82, net RM1,135,572.01 — which is the owner sheet's own
+   NET PROFIT row. Kitchen Service (RM1,008,231.60) is marked "owner only —
+   confidential" in the sheet, and the owner decided on 2026-09-19 that staff
+   may see it in the app and in the 08:15 group brief. Don't strip it back out.
+   Rows carry `meta.source = 'okmaya_owner_v5_fix'`; the earlier staff import is
+   removed by `npm run purge:source -- okmaya_staff_v5_fix --yes`.
+   Note the sheet's expenditure EXCLUDES the RM561,325.81 of partner
+   distributions ("does not affect P&L"), so the app matches the sheet, not the
+   bank.
+
+1. **The morning brief runs at 08:15 Malaysia time** (`15 0 * * *` UTC in
+   `vercel.json`). Chosen deliberately: it staggers this brief behind the 08:00
+   content-ideas ping on the *other* deployment so the two don't land together.
+   The branch `claude/relaxed-lovelace-79o5xp` moves it back to `0 1 * * *` (9am)
+   — that part must not be merged as-is. Hobby's 1-hour cron window means the
+   actual send time drifts; don't "fix" that by changing the schedule.
+   Keep the reasoning HERE, never as a `"//"` key in `vercel.json` — Vercel
+   rejects unknown top-level properties and every deploy fails with
+   *"Invalid request: should NOT have additional property `//`"*. That broke
+   deploys on 2026-09-19 twice.
 2. **The bot persona is `🐱 Abang`**, matching the Telegram bot this app actually
    sends from: **AI Abang (@Alabang_bot)**, the husband's bot. It was briefly
    renamed to "Gamja" on 2026-09-19 and reverted the same day — Gamja
@@ -50,9 +77,11 @@ say so in your reply so the owner can decide — don't just do it.
   deletes every row (`id=gte.0`) in `records`, `agent_actions`, `agent_runs` and
   `bot_memory`. Running it destroys the other owner's work, so ask first.
 - **Back up before any destructive change** and say where the backup is.
-- The table currently holds **138 real Instagram `content` rows** (account
-  `okmaya.official`, tagged `meta.source = "instagram_import"`). Cash, leads,
-  customers and tasks are intentionally **empty** until the money import lands.
+- **Out of date as of 2026-09-20.** This database now DOES hold content rows: the
+  08:15 brief rendered `6,648,045 Views`, which `getFunnel()` derives only from
+  `content` rows' `meta.views` in THIS database, and Abang's summary named the
+  lunch box reel by title. Re-check before relying on the old claim that the 138
+  `instagram_import` rows exist only in the other deployment.
 
 ## Before you push
 

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import { sendMessage } from '@/lib/telegram'
-import { getRecords, getFunnel, rm, todayISO, type Rec } from '@/lib/records'
+import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
@@ -26,13 +26,21 @@ export const maxDuration = 60
 // Who receives the brief: your team's numeric Telegram ids (comma-separated), or
 // OWNER_CHAT_ID as the solo fallback. None set = nobody (the brief just no-ops).
 function recipients(): string[] {
+  // A chat list pinned in code (abang/config.ts → briefChatIds) wins outright.
+  // That is how the owner moves the brief off their private chat and onto a
+  // team group without touching Vercel. Empty = fall through to the env vars.
+  const pinned = ABANG.briefChatIds
+    .map((s) => String(s).trim())
+    .filter((s) => /^-?\d+$/.test(s))
   const team = (process.env.TELEGRAM_TEAM_CHAT_IDS || '')
     .split(',')
     .map((s) => s.trim())
     .filter((s) => /^-?\d+$/.test(s))
-  const list = team.length
-    ? team
-    : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
+  const list = pinned.length
+    ? pinned
+    : team.length
+      ? team
+      : ([process.env.OWNER_CHAT_ID?.trim()].filter(Boolean) as string[])
   // Plus anyone listed in code (abang/config.ts) — the deputy's way in.
   const extra = ABANG.briefRecipients.map((s) => String(s).trim()).filter((s) => /^-?\d+$/.test(s))
   return Array.from(new Set([...list, ...extra]))
@@ -64,10 +72,12 @@ export async function GET(req: Request) {
   const today = todayISO()
   const rows = await getRecords()
 
-  // ① THE MONEY ROW (mirrors the Dashboard).
-  const cashIn = sum(rows.filter((r) => r.category === 'cash_in'))
-  const cashOut = sum(rows.filter((r) => r.category === 'cash_out'))
-  const owed = sum(rows.filter((r) => r.category === 'cash_in' && !PAID.has((r.status || '').toLowerCase())))
+  // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
+  //    brief and the app can never quote different totals).
+  const money = rows.filter(inMoneyWindow)
+  const cashIn = sum(money.filter((r) => r.category === 'cash_in'))
+  const cashOut = sum(money.filter((r) => r.category === 'cash_out'))
+  const owed = sum(money.filter((r) => r.category === 'cash_in' && !PAID.has((r.status || '').toLowerCase())))
 
   // ① THE FUNNEL (the whole-business river) — same aggregator the Dashboard uses.
   const f = getFunnel(rows)
@@ -166,6 +176,9 @@ function buildBrief(
     `✅ ${f.closed} Closed → ${p(3)} → ` +
     `🔁 ${f.nurture} Nurture`
 
+  // Say which period these figures cover, so nobody reads a part-year as a lifetime total.
+  const period = moneyFromLabel()
+  const moneyPeriod = period ? ` <i>(since ${period})</i>` : ''
   const net = money.cashIn - money.cashOut
   const moneyLine =
     `In <b>${rm(money.cashIn)}</b> · Out <b>${rm(money.cashOut)}</b> · ` +
@@ -194,7 +207,7 @@ function buildBrief(
     `☀️ <b>Okmaya — morning brief</b>\n\n` +
     (announcement ? `${announcement}\n\n` : '') +
     `<b>The river</b>\n${funnelLine}\n\n` +
-    `<b>The money</b>\n${moneyLine}\n\n` +
+    `<b>The money</b>${moneyPeriod}\n${moneyLine}\n\n` +
     (shopee ? `<b>Shopee</b>\n${shopee}\n\n` : '') +
     `<b>Needs you</b>\n${ask}`
   )

@@ -2,7 +2,7 @@
 // files for you. Safe to edit the columns/labels. It reads the ONE `records`
 // table, filtered to category='cash_out'. Rows with meta.auto_filed = the Vault
 // agent filed them on autopilot (🟢) — we badge those so you can spot them.
-import { getRecords, rm, m, todayISO } from '@/lib/records'
+import { getRecords, rm, m, todayISO, inMoneyWindow } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 
@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function CashOut() {
   const all = await getRecords()
-  const rows = all.filter(r => r.category === 'cash_out')
+  // Windowed to ABANG.moneyFrom so this tab agrees with the Dashboard.
+  const rows = all.filter(r => r.category === 'cash_out' && inMoneyWindow(r))
 
   const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0)
   // Spend so far this calendar month (by due_date, the date the money moved).

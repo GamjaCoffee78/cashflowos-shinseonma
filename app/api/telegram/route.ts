@@ -16,7 +16,7 @@ import { readImage, type VisionResult } from '@/lib/vision'
 import { BOT_TOOLS, runBotTool } from '@/lib/bot-tools'
 import { BOT_ACTION_TOOLS, ACTION_TOOL_NAMES, runBotAction } from '@/lib/bot-actions'
 import { SCHEDULED } from '@/agents/registry'
-import { abangIdentity, abangName } from '@/abang/config'
+import { ABANG, abangIdentity, abangName } from '@/abang/config'
 import { logRun } from '@/lib/runs'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -32,10 +32,15 @@ export const maxDuration = 60 // the approve path files rows; give it headroom
 
 // Who may talk to this bot. FAIL CLOSED: an empty allowlist = "not set up yet" =
 // nobody is authorized, forcing you to add your own Telegram id first.
-const ALLOWED = (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean)
+// Ids come from the env var AND from abang/config.ts, so an owner with repo
+// access can add themselves without an env change. Still fail closed: both
+// empty = nobody authorised.
+const ALLOWED = Array.from(
+  new Set([
+    ...(process.env.TELEGRAM_ALLOWED_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean),
+    ...ABANG.allowedUserIds.map(s => String(s).trim()).filter(Boolean),
+  ]),
+)
 
 
 // The bot's own @username, fetched once per cold start (needed to tell whether a
@@ -313,6 +318,26 @@ async function handleMessage(msg: any): Promise<Response> {
 
   if (text.toLowerCase() === '/start' || text.toLowerCase() === '/help') {
     await sendMessage(chatId, HELP_CARD)
+    return Response.json({ ok: true })
+  }
+
+  // /id — "which chat is this?". Telegram never shows you a chat's numeric id,
+  // but TELEGRAM_TEAM_CHAT_IDS and OWNER_CHAT_ID both need one, and the usual
+  // workaround (adding a third-party id bot to your group) often fails because
+  // those bots block being added. Ask your own bot instead.
+  // Sits AFTER the allowlist check, so only allowed users can ask.
+  if (/^\/id(@|$|\s)/i.test(text)) {
+    const kind = isGroupChat(msg) ? 'group' : 'private chat'
+    await sendMessage(
+      chatId,
+      `🆔 This ${kind}'s id is <code>${chatId}</code>\n\n` +
+        (isGroupChat(msg)
+          ? `To send the 08:15 brief here, put this id in ` +
+            `<code>briefChatIds</code> in <code>abang/config.ts</code> — or set ` +
+            `<code>TELEGRAM_TEAM_CHAT_IDS=${chatId}</code> in Vercel. ` +
+            `Group ids are negative — copy the minus sign too.`
+          : `Your own id is <code>${msg.from?.id}</code> — that's what <code>OWNER_CHAT_ID</code> wants.`),
+    )
     return Response.json({ ok: true })
   }
 
