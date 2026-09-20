@@ -9,6 +9,7 @@ import PlatformTabs from '@/app/_components/PlatformTabs'
 import ContentMonths, { type ContentMonth } from '@/app/_components/ContentMonths'
 import PostCards from '@/app/_components/PostCards'
 import Pager from '@/app/_components/Pager'
+import { engagementFor } from '@/lib/insights'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,8 @@ const isOn = (r: Rec, key: string) =>
   !key || (ALIASES[key] ?? [key]).includes(platformOf(r))
 
 const viewsOf = (r: Rec) => Number(r.meta?.views ?? 0) || 0
+const savesOf = (r: Rec) => engagementFor(r.meta)?.saved ?? 0
+const sharesOf = (r: Rec) => engagementFor(r.meta)?.shares ?? 0
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -116,6 +119,8 @@ export default async function Content({
   // An unknown ?platform= falls back to All rather than showing an empty page.
   const active = PLATFORMS.some(p => p.key === sp.platform) ? (sp.platform as string) : ''
   const topFirst = sp.sort === 'views'
+  const savedFirst = sp.sort === 'saved'
+  const flat = topFirst || savedFirst
 
   const all = await getRecords()
   const content = all.filter(r => r.category === 'content')
@@ -125,11 +130,11 @@ export default async function Content({
   for (const p of PLATFORMS) counts[p.key] = content.filter(r => isOn(r, p.key)).length
 
   // Newest first by default — the calendar's most useful end is the recent one.
-  const listed = rows.slice().sort((a, b) =>
-    topFirst
-      ? viewsOf(b) - viewsOf(a)
-      : (b.due_date ?? '').localeCompare(a.due_date ?? '')
-  )
+  const listed = rows.slice().sort((a, b) => {
+    if (topFirst) return viewsOf(b) - viewsOf(a)
+    if (savedFirst) return savesOf(b) - savesOf(a)
+    return (b.due_date ?? '').localeCompare(a.due_date ?? '')
+  })
 
   // Everything above the grid describes the last quarter, and the quarter before
   // it is there purely to say which way each number is moving.
@@ -147,6 +152,12 @@ export default async function Content({
   // describes no post you've actually made; half your posts beat the median.
   const median = medianOf(recent.map(viewsOf))
   const medianBefore = medianOf(prior.map(viewsOf))
+
+  // Saves and shares are the intent signals: a save is "I'll cook this", a
+  // share is distribution you didn't pay for. Counted together because for this
+  // account they move together and either one beats a like.
+  const kept = sum(recent, r => savesOf(r) + sharesOf(r))
+  const keptBefore = sum(prior, r => savesOf(r) + sharesOf(r))
 
   const recentViews = sum(recent, viewsOf)
   const engagement = recentViews
@@ -179,7 +190,7 @@ export default async function Content({
         <Empty label="content" />
       ) : (
         <>
-          <div className="grid">
+          <div className="grid five">
             <Stat
               label="Accounts reached"
               value={compact(reach)}
@@ -189,6 +200,11 @@ export default async function Content({
               label="Median post"
               value={compact(median)}
               hint={delta(median, medianBefore) ?? 'last 90 days'}
+            />
+            <Stat
+              label="Saved &amp; shared"
+              value={compact(kept)}
+              hint={delta(kept, keptBefore) ?? 'last 90 days'}
             />
             <Stat
               label="Engagement"
@@ -211,8 +227,8 @@ export default async function Content({
               <div className="sortbar" role="group" aria-label="Order">
                 <Link
                   href={link()}
-                  className={`sortlink${topFirst ? '' : ' on'}`}
-                  aria-current={topFirst ? undefined : 'true'}
+                  className={`sortlink${flat ? '' : ' on'}`}
+                  aria-current={flat ? undefined : 'true'}
                 >
                   Newest
                 </Link>
@@ -223,10 +239,17 @@ export default async function Content({
                 >
                   Most viewed
                 </Link>
+                <Link
+                  href={link('saved')}
+                  className={`sortlink${savedFirst ? ' on' : ''}`}
+                  aria-current={savedFirst ? 'true' : undefined}
+                >
+                  Most saved
+                </Link>
               </div>
             </div>
-            <PostCards rows={shown} byMonth={!topFirst} />
-            <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : undefined, n)} />
+            <PostCards rows={shown} byMonth={!flat} />
+            <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : savedFirst ? 'saved' : undefined, n)} />
           </section>
 
           <ContentMonths months={byMonth(rows)} />
