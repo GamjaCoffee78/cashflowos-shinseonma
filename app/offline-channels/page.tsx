@@ -250,7 +250,10 @@ export default async function OfflineChannels({
         </p>
       ) : null}
 
-      {/* The ledger — every row behind the numbers above, one table. */}
+      {/* The ledger — every row behind the numbers above, one table.
+          NOT on All time: each year tab already carries its own ledger, and
+          repeating all of them here would just be a longer list of the same
+          rows. All time is the summary view. */}
       {all.length === 0 ? (
         <Empty />
       ) : offline.length === 0 ? (
@@ -264,7 +267,7 @@ export default async function OfflineChannels({
           <br />
           {knownGroups.length ? knownGroups.map(g => <code key={g}> {g} </code>) : '(none have a meta.group)'}
         </div>
-      ) : rows.length === 0 ? (
+      ) : active === 'all' ? null : rows.length === 0 ? (
         <div className="empty">
           No offline revenue in {active}. The year tabs above show which years have sales in
           them.

@@ -6,6 +6,11 @@ import Link from 'next/link'
 //
 // "All time" is always first: it is the only view that answers "how big is this
 // overall", and it is where the year-on-year comparison lives.
+//
+// It gets its OWN ?year=all url rather than the bare path. The bare path means
+// "no year asked for", which the page resolves to its default year — so linking
+// All time to it made the tab look dead: you clicked it and landed back on the
+// default year.
 export default function YearTabs({
   years,
   active,
@@ -25,7 +30,7 @@ export default function YearTabs({
       {tabs.map(t => (
         <Link
           key={t.key}
-          href={t.key === 'all' ? base : `${base}?year=${t.key}`}
+          href={`${base}?year=${t.key}`}
           className={`tab${t.key === active ? ' on' : ''}`}
           aria-current={t.key === active ? 'page' : undefined}
         >

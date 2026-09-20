@@ -246,18 +246,18 @@ export default async function KitchenServices({
         </section>
       ) : null}
 
+      {/* The rows behind the numbers. NOT on All time: each year tab already
+          carries its own, and repeating them all here would just be a longer
+          list of the same rows. All time is the summary view. */}
       {all.length === 0 ? (
         <Empty />
       ) : kitchen.length === 0 ? (
         <Empty label="Kitchen Service rows (nothing has a Kitchen meta.group)" />
-      ) : rows.length === 0 ? (
+      ) : active === 'all' ? null : rows.length === 0 ? (
         <div className="empty">
           No Kitchen Service revenue in {active}. The year tabs above show which years have
           work in them.
         </div>
-      ) : active === 'all' ? (
-        // One table per year, newest first.
-        withChange.filter(y => y.rs.length > 0).map(y => <Rows key={y.year} label={y.year} rs={y.rs} />)
       ) : (
         <Rows label={active} rs={rows} />
       )}
