@@ -115,6 +115,29 @@ code {
 .hint { margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); font-size: 12px; color: var(--side-faint); line-height: 1.5; }
 .side .hint code { background: rgba(255,255,255,.12); color: var(--side-ink); }
 
+/* ============================================================
+   DANCHEONG (단청) — the painted colour band on Korean temple eaves.
+   Five bands in obangsaek, the five cardinal colours: 청 blue, 적 red,
+   황 yellow, 백 white, 흑 black. Drawn with the palette already in use
+   (the hanbok sky, the badge red, the honey, white, and a near-black
+   navy) so it reads as the app's own colours arranged traditionally,
+   not as a sticker from somewhere else.
+   3px tall and sitting under the wordmark: present, never loud.
+   ============================================================ */
+.dancheong {
+  height: 3px;
+  margin: -14px 0 20px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(
+    to right,
+    var(--sky)    0 20%,
+    var(--rust)   20% 40%,
+    var(--honey)  40% 60%,
+    #FFFFFF       60% 80%,
+    #0B1F45       80% 100%
+  );
+}
+
 .main { flex: 1; min-width: 0; padding: 30px 34px; }
 .ph { font-size: 22px; font-weight: 700; margin: 0; color: var(--ink); }
 .cap { color: var(--dim); font-size: 14px; margin: 4px 0 24px; }
@@ -337,6 +360,11 @@ code {
 .btn.ghost:hover:not(:disabled) { background: #EBE2D3; }
 .btn.danger { background: var(--rust); color: #FFFDF9; }
 .btn.danger:hover:not(:disabled) { background: #93231E; }
+/* The Sync now buttons wear the OKMAYA badge red — the owner's call: sync is
+   the one thing you reach for, and red on the cream page finds your thumb
+   faster than the navy, which now belongs to the sidebar. */
+.btn.sync { background: var(--rust); }
+.btn.sync:hover:not(:disabled) { background: #93231E; }
 .btnrow { display: flex; gap: 8px; }
 .decided { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
 .brief { white-space: pre-wrap; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px; margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink); font-family: inherit; }

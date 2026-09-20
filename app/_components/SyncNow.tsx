@@ -41,7 +41,7 @@ export default function SyncNow({
 
   return (
     <div className="tt-sync">
-      <button type="button" className="btn" disabled={pending} onClick={() => start(run)}>
+      <button type="button" className="btn sync" disabled={pending} onClick={() => start(run)}>
         {pending ? 'Syncing…' : label}
       </button>
       {pending && <span className="cap"> {hint}</span>}

@@ -30,6 +30,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {/* Desktop sidebar — hidden on phones (BottomNav takes over ≤768px). */}
           <aside className="side">
             <div className="brand"><img className="logo" src="/icons/icon-192.png" alt="" width={24} height={24} style={{ borderRadius: 6, verticalAlign: '-6px' }} /> Okmaya</div>
+            {/* 단청 — the temple-eave colour band, in the five cardinal colours. */}
+            <div className="dancheong" aria-hidden="true" />
             <Nav pendingCount={pending} />
             <p className="hint">One <code>records</code> table behind every tab. Your robots live in <code>agents/</code>.</p>
           </aside>

@@ -59,7 +59,7 @@ export default function SyncAll() {
 
   return (
     <div className="syncbar">
-      <button type="button" className="btn" disabled={pending} onClick={run} aria-busy={pending}>
+      <button type="button" className="btn sync" disabled={pending} onClick={run} aria-busy={pending}>
         {pending ? 'Syncing…' : '🔄 Sync now'}
       </button>
       <PrivateEyes />
