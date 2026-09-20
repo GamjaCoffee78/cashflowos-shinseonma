@@ -3,6 +3,8 @@
 //    imported from the PRODUCTION TIMELINE grids of the shared Google Sheet
 //    ("Okmaya Project WIP.xlsx") — see scripts/import-production.mjs.
 //    Nothing here touches the money tabs: 'production' is its own category.
+//    Top of the page answers "what's next?" across months; below it, one month
+//    at a time, the way the sheet lays it out.
 import Link from 'next/link'
 import { getRecords, todayISO, type Rec } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
@@ -24,7 +26,33 @@ function dayLabel(iso: string): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric' }).format(d)
 }
 
+// "Sat 19 Sep" — used by the Coming up list, which crosses months.
+function fullDayLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short',
+  }).format(d)
+}
+
+// How far off is it? "today" / "tomorrow" / "in 9 days". Plain days, no clock —
+// due_date is a calendar day, not a moment.
+function whenLabel(iso: string, today: string): string {
+  const a = Date.parse(`${iso}T00:00:00Z`)
+  const b = Date.parse(`${today}T00:00:00Z`)
+  if (Number.isNaN(a) || Number.isNaN(b)) return ''
+  const days = Math.round((a - b) / 86400000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'tomorrow'
+  if (days < 7) return `in ${days} days`
+  if (days < 14) return 'next week'
+  return `in ${Math.round(days / 7)} weeks`
+}
+
 const monthOf = (r: Rec) => (r.due_date ?? '').slice(0, 7)
+
+// How many of the next items to name at the top of the tab.
+const UPCOMING = 6
 
 export default async function Production({
   searchParams,
@@ -49,6 +77,14 @@ export default async function Production({
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
 
   const isDone = (r: Rec) => (r.status || '').toLowerCase() === 'done'
+
+  // What's coming — the next items from today on, ACROSS months, so the answer
+  // to "what's next?" doesn't depend on which month you happen to be looking at.
+  const upcoming = rows
+    .filter(r => !isDone(r) && (r.due_date ?? '') >= today)
+    .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
+  const nextUp = upcoming.slice(0, UPCOMING)
+
   const done = mine.filter(isDone).length
   const past = mine.filter(r => !isDone(r) && (r.due_date ?? '') < today).length
   const ahead = mine.filter(r => !isDone(r) && (r.due_date ?? '') >= today).length
@@ -66,10 +102,45 @@ export default async function Production({
 
   return (
     <>
-      <h1 className="ph">Production timeline 🏭</h1>
+      <h1 className="ph">Production Timeline 🏭</h1>
       <p className="cap">
         What production has to happen, month by month — from the Okmaya project sheet.
       </p>
+
+      {nextUp.length > 0 ? (
+        <section className="mm" aria-labelledby="pt-next">
+          <h2 id="pt-next">Coming up — the next {nextUp.length} on the timeline</h2>
+          <table className="mm-table">
+            <tbody>
+              {nextUp.map(r => (
+                <tr key={`next-${r.id}`}>
+                  <td style={{ whiteSpace: 'nowrap', color: 'var(--ink-soft)', fontSize: 13 }}>
+                    {fullDayLabel(r.due_date as string)}
+                  </td>
+                  <td style={{ fontSize: 14 }}>{r.title}</td>
+                  <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    <span className={`pill ${r.due_date === today ? 'overdue' : 'scheduled'}`}>
+                      {whenLabel(r.due_date as string, today)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {upcoming.length > nextUp.length ? (
+            <p className="cap" style={{ margin: '10px 0 0' }}>
+              …and {upcoming.length - nextUp.length} more still ahead.
+            </p>
+          ) : null}
+        </section>
+      ) : rows.length > 0 ? (
+        <section className="mm" aria-labelledby="pt-next">
+          <h2 id="pt-next">Coming up</h2>
+          <p className="cap" style={{ margin: 0 }}>
+            Nothing dated from today on — every item in the sheet has passed.
+          </p>
+        </section>
+      ) : null}
 
       {months.length > 0 ? (
         <p className="cap" style={{ marginTop: -14, marginBottom: 18 }}>

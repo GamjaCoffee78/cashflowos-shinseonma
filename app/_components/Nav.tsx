@@ -23,7 +23,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
   { label: 'Work', tabs: [
     { href: '/content', label: 'Content' },
     { href: '/tasks', label: 'Tasks' },
-    { href: '/production', label: 'Production' },
+    { href: '/production', label: 'Production Timeline' },
   ] },
   { label: 'Robot', tabs: [
     { href: '/approvals', label: 'Approvals' },
