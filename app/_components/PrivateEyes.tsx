@@ -19,7 +19,9 @@ import { useEffect, useState } from 'react'
 // The choice is remembered per device (localStorage), never sent to the server,
 // and OFF by default: a fresh browser always shows the real numbers.
 const KEY = 'okmaya_hide_money'
-const STARS = 'RM ✱✱✱✱✱'
+// A NON-BREAKING space and four stars: with a normal space the big Stat
+// tiles broke 'RM' onto its own line and the stars onto the next.
+const STARS = 'RM\u00A0✱✱✱✱'
 // "RM 1,306,292.78" · "RM 509,640.26" · "-RM 33,175.20" · "RM 0.00"
 const MONEY = /-?RM\s?-?[\d,]+(?:\.\d{1,2})?/g
 
@@ -84,9 +86,9 @@ export default function PrivateEyes() {
       data-keep-money
       aria-pressed={hidden}
       onClick={() => setHidden(h => !h)}
-      title={hidden ? 'Show the figures again' : 'Turn every RM figure into stars'}
+      title={hidden ? 'Confidential — tap to show the figures again' : 'Turn every RM figure into stars'}
     >
-      {hidden ? '👁 Show money' : '🙈 Hide money'}
+      {hidden ? '🔒 Confidential' : '🙈 Hide money'}
     </button>
   )
 }
