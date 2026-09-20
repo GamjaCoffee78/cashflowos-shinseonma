@@ -1,17 +1,21 @@
 import { type Rec, m } from '@/lib/records'
+import { coverFor } from '@/lib/covers'
 
 // The posts themselves, as cards you can click straight through to the post.
 //
-// The cover image comes from `meta.thumbnail_url` when the import saved one.
-// Nothing does yet — the Instagram import keeps the permalink and the numbers,
-// not the image — so most cards show a labelled placeholder instead of a broken
-// picture. The slot is real; fill `thumbnail_url` at import time and covers
-// appear with no change here.
+// The cover comes from one of two places, in order: a `meta.thumbnail_url` on
+// the row, or a file committed at public/covers/<ig_id>.jpg.
+//
+// The committed file is the reliable one. Instagram's CDN links are signed and
+// expire within days, so a URL saved in the database is a broken image on a
+// timer; the files were fetched once from the Graph API and now need no token
+// and no refresh. A post with neither gets a labelled placeholder, never a
+// broken picture.
 export default function PostCards({ rows }: { rows: Rec[] }) {
   return (
     <div className="pg">
       {rows.map(r => {
-        const thumb = r.meta?.thumbnail_url as string | undefined
+        const thumb = (r.meta?.thumbnail_url as string | undefined) || coverFor(r.meta?.ig_id)
         const url = r.meta?.permalink as string | undefined
         const views = r.meta?.views
         const status = (r.status || '').toLowerCase()
@@ -19,8 +23,9 @@ export default function PostCards({ rows }: { rows: Rec[] }) {
           <>
             <span className="pg-thumb">
               {thumb ? (
-                // Plain <img>: these are third-party URLs that expire, and a
-                // broken one should degrade to empty space, not a build error.
+                // Plain <img>, not next/image: a committed file needs no
+                // optimiser, and a third-party URL that has expired should
+                // degrade to empty space rather than fail a build.
                 <img src={thumb} alt="" loading="lazy" />
               ) : (
                 <span className="pg-ph">no cover</span>
