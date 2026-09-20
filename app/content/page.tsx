@@ -127,8 +127,6 @@ export default async function Content({
             <Stat label="Posts" value={rows.length} />
           </div>
 
-          <ContentMonths months={byMonth(rows)} />
-
           <section className="pgw">
             <div className="pgw-head">
               <h2>{rows.length} posts</h2>
@@ -151,6 +149,8 @@ export default async function Content({
             </div>
             <PostCards rows={listed} />
           </section>
+
+          <ContentMonths months={byMonth(rows)} />
         </>
       )}
     </>
