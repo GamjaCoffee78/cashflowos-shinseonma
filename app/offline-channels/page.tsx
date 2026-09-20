@@ -2,28 +2,37 @@
 // marketplace. This is the owner sheet's "OFFLINE CHANNELS (auto from Staff —
 // based on invoice)" section: TFP Retail (VG/BIG/BSC), Qra and Others.
 //
-// Same concept as Kitchen Services and Ecomm Sales: it MIRRORS rows that
-// already sit on Cash In / Cash Out. Nothing is moved, nothing is taken away
-// from the Dashboard totals.
+// Same concept as Kitchen Services: it MIRRORS rows that already sit on Cash
+// In. Nothing is moved, nothing is taken away from the Dashboard totals.
 //
 // Which rows belong here is decided by isOffline() in lib/ecomm.ts, in ONE
 // place, so this tab can never drift into double-counting a row that Ecomm
 // Sales, Sellers or Kitchen Services is already showing.
-import { getRecords, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec } from '@/lib/records'
+//
+// The page is split by YEAR with ?year= links, the same server-rendered
+// switcher Kitchen Services and Content use. Picking a year is what scopes the
+// figures, so the reporting window (ABANG.moneyFrom) is not applied — "2025"
+// has to mean all of 2025. The default is the newest year with sales in it,
+// which is the window's own period, so the page agrees with the Dashboard on
+// load.
+import { getRecords, rm, todayISO, type Rec } from '@/lib/records'
 import { isOffline, isWaiting, groupOf, norm } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
+import YearTabs from '@/app/_components/YearTabs'
+
+export const dynamic = 'force-dynamic'
 
 // Which offline channel a row belongs to.
 //
 // The importer files every offline row under ONE generic meta.group ("Offline")
 // and puts the sheet's actual line name in the TITLE — "TFP Retail
-// (VG/BIG/BSC)", "Qra", "Others". So for a generic bucket the title is what
-// names the channel; a row that carries a real, specific group keeps it.
+// (VG/BIG/BSC)", "Qra", "Offline — Others". So for a generic bucket the title
+// names the channel; a row carrying a real, specific group keeps it.
 //
-// Grouping by the title rather than a hard-coded list of the three names means
-// a fourth line added to the sheet's OFFLINE CHANNELS section shows up as its
-// own channel on its own, instead of being folded into "Others".
+// Grouping by title rather than a hard-coded list means a fourth line added to
+// the sheet's OFFLINE CHANNELS section shows up as its own channel, instead of
+// being folded into "Others".
 const GENERIC_GROUPS = ['offline', 'offline channels', 'other', 'others', '']
 
 const channelOf = (r: Rec) => {
@@ -32,100 +41,219 @@ const channelOf = (r: Rec) => {
   return String(r.title ?? '').trim() || g || 'Untitled'
 }
 
-export const dynamic = 'force-dynamic'
+const yearOf = (r: Rec) => String(r.due_date || r.created_at || '').slice(0, 4)
+const isYear = (y: string) => /^\d{4}$/.test(y)
+const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
-export default async function OfflineChannels() {
+export default async function OfflineChannels({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>
+}) {
+  const sp = await searchParams
   const all = await getRecords()
-  // Same reporting window as the Dashboard and every other money tab.
-  const rows = all.filter(r => isOffline(r) && inMoneyWindow(r))
-  const period = moneyFromLabel()
 
-  const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
-  const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
+  const offline = all.filter(isOffline)
 
-  // isOffline() is cash_in only — the sheet has no offline cost section, and
-  // sweeping the company's expenditure in here would be a lie. So every row on
-  // this tab is money IN.
-  const sales = rows
-  const revenue = total(sales)
-  const waitingAmt = total(sales.filter(isWaiting))
-  const paidAmt = total(sales.filter(r => !isWaiting(r)))
+  // Every year the BUSINESS has money in, not just the years offline sells —
+  // so a year with no offline sales still gets a tab reading 0, which is itself
+  // the answer rather than a gap.
+  const years = [...new Set([
+    ...all.filter(r => r.category === 'cash_in' || r.category === 'cash_out').map(yearOf),
+    ...offline.map(yearOf),
+  ])].filter(isYear).sort((a, b) => b.localeCompare(a))
 
-  // One section per channel, biggest earner first.
-  const groups = [...new Set(rows.map(channelOf))]
+  // Default to the newest year with actual sales, so nobody lands on an empty
+  // tab the moment a new year turns over.
+  const newestWithSales = years.find(y => offline.some(r => yearOf(r) === y))
+  const asked = String(sp.year ?? '').trim()
+  // An unknown ?year= falls back rather than erroring — a bookmarked link
+  // outliving its year should still show something honest.
+  const active = asked === 'all' ? 'all' : years.includes(asked) ? asked : (newestWithSales ?? 'all')
+
+  const counts: Record<string, number> = { all: offline.length }
+  for (const y of years) counts[y] = offline.filter(r => yearOf(r) === y).length
+
+  const rows = active === 'all' ? offline : offline.filter(r => yearOf(r) === active)
+  const scope = active === 'all' ? 'all time' : active
+
+  const revenue = total(rows)
+  const waitingAmt = total(rows.filter(isWaiting))
+  const paidAmt = total(rows.filter(r => !isWaiting(r)))
+
+  // One row per channel, biggest first. Revenue, orders, average and share all
+  // live in ONE table — they used to be three separate rows of stat cards,
+  // which read as clutter rather than as a breakdown.
+  const channels = [...new Set(rows.map(channelOf))]
     .map(name => {
       const rs = rows.filter(r => channelOf(r) === name)
-      const gSales = rs.filter(r => r.category === 'cash_in')
-      return { name, rs, sales: total(gSales), orders: gSales.length }
+      const amount = total(rs)
+      return {
+        name,
+        amount,
+        orders: rs.length,
+        avg: rs.length > 0 ? amount / rs.length : 0,
+        share: revenue > 0 ? (amount / revenue) * 100 : 0,
+      }
     })
-    .sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name))
+    .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name))
 
-  // Money rows carrying no meta.group at all. Deliberately NOT counted as
-  // offline (see lib/ecomm.ts) — but counted HERE, so money that belongs to no
-  // channel is visible rather than silently missing from every channel tab.
-  const untagged = all.filter(r => r.category === 'cash_in' && !groupOf(r) && inMoneyWindow(r))
-  const untaggedIn = total(untagged)
+  // Year by year — the cross-year comparison, so it belongs on All time only.
+  const byYear = years.map(year => {
+    const rs = offline.filter(r => yearOf(r) === year)
+    return { year, revenue: total(rs), orders: rs.length }
+  })
+  const withChange = byYear.map((y, i) => {
+    const prev = byYear[i + 1] // the list runs newest first, so this is the year before
+    return {
+      ...y,
+      changePct: prev && prev.revenue > 0 ? ((y.revenue - prev.revenue) / prev.revenue) * 100 : null,
+    }
+  })
+  const peakYear = Math.max(...byYear.map(y => y.revenue), 1)
 
-  // Every group present in the money rows — shown in the empty state so a
-  // mismatch between what's stored and what this tab looks for is visible.
+  const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
+  // Waiting money first, then newest — what needs chasing, then what happened.
+  const ledger = [...rows].sort(
+    (a, b) =>
+      Number(isWaiting(b)) - Number(isWaiting(a)) ||
+      String(b.due_date || '').localeCompare(String(a.due_date || '')),
+  )
+
+  // Money rows carrying no channel tag at all. Deliberately not counted as
+  // offline (see lib/ecomm.ts) — but reported, so money belonging to no channel
+  // is visible rather than silently missing from every channel tab.
+  const untagged = all.filter(r => r.category === 'cash_in' && !groupOf(r))
   const knownGroups = [...new Set(all.filter(r => r.category === 'cash_in').map(groupOf).filter(Boolean))].sort()
 
-  // Waiting money first — that's what needs chasing.
-  const sorted = (rs: Rec[]) => [...rs].sort((a, b) => Number(isWaiting(b)) - Number(isWaiting(a)))
+  const Bar = ({ pct }: { pct: number }) => (
+    <span className="mm-track" aria-hidden="true">
+      <span className="mm-bar in" style={{ width: `${Math.max(pct, pct > 0 ? 1.5 : 0)}%` }} />
+    </span>
+  )
 
   return (
     <>
       <h1 className="ph">Offline Channels 🏪</h1>
       <p className="cap">
-        Revenue from everything that isn&apos;t an online marketplace — the owner
-        sheet&apos;s OFFLINE CHANNELS section{period ? `, since ${period}` : ''}. Shopee,
-        TikTok, sellers and Kitchen Service have their own tabs and are not repeated here.
-        These rows still count on Cash In — this mirrors them, it doesn&apos;t move them.
+        Revenue from everything that isn&apos;t an online marketplace — the owner sheet&apos;s
+        OFFLINE CHANNELS section. Pick a year to scope everything below it. Shopee, TikTok,
+        sellers and Kitchen Service have their own tabs and are not repeated here. These rows
+        still count on Cash In — this mirrors them, it doesn&apos;t move them.
       </p>
 
+      <YearTabs years={years} active={active} counts={counts} base="/offline-channels" />
+
       <div className="grid">
-        <Stat label="Revenue" value={rm(revenue)} />
+        <Stat label={`Revenue · ${scope}`} value={rm(revenue)} />
         <Stat label="Paid" value={rm(paidAmt)} />
         <Stat label="Waiting" value={rm(waitingAmt)} yes={waitingAmt > 0} />
-        <Stat label="Channels" value={groups.length} />
+        <Stat label="Channels" value={channels.length} />
       </div>
 
-      {groups.length > 0 ? (
-        <>
-          <p className="rowlabel">Sales by channel</p>
-          <div className="grid">
-            {groups.map(g => <Stat key={g.name} label={g.name} value={rm(g.sales)} />)}
-          </div>
-
-          <p className="rowlabel">Orders &amp; averages</p>
-          <div className="grid">
-            {groups.map(g => <Stat key={`${g.name}-n`} label={`${g.name} orders`} value={g.orders} />)}
-            {groups.map(g => (
-              <Stat
-                key={`${g.name}-avg`}
-                label={`${g.name} avg`}
-                value={rm(g.orders > 0 ? g.sales / g.orders : 0)}
-              />
-            ))}
-          </div>
-        </>
+      {/* Breakdown by channel — revenue, orders, average and share in one
+          table, for whichever year is selected. */}
+      {channels.length > 0 ? (
+        <section className="ct" aria-labelledby="oc-h">
+          <h2 id="oc-h">By channel · {scope}</h2>
+          <table className="ct-table">
+            <caption className="mm-sr">
+              Offline revenue by channel, largest first, with orders, average order and share
+              of the period
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Channel</th>
+                <th scope="col">Revenue</th>
+                <th scope="col">Orders</th>
+                <th scope="col">Avg</th>
+                <th scope="col">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {channels.map(c => (
+                <tr key={c.name}>
+                  <th scope="row" className="ct-month">{c.name}</th>
+                  <td className="ct-total" data-label="Revenue">
+                    <span className="mm-val">{rm(c.amount)}</span>
+                    <Bar pct={c.share} />
+                  </td>
+                  <td className="ct-part" data-label="Orders">{c.orders}</td>
+                  <td className="ct-part" data-label="Avg">{rm(c.avg)}</td>
+                  <td className="ct-delta" data-label="Share">
+                    <span className="ct-pct flat">{Math.round(c.share)}%</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       ) : null}
 
-      {/* Money with no channel on it. Never folded into the totals above — but
-          never hidden either, because it is real money sitting on Cash In. */}
+      {/* Cross-year comparison, on All time only — inside a single year it
+          would just repeat the tabs above. */}
+      {active === 'all' && offline.length > 0 ? (
+        <section className="ct" aria-labelledby="oy-h">
+          <h2 id="oy-h">Year by year</h2>
+          <table className="ct-table">
+            <caption className="mm-sr">
+              Offline revenue for each year, newest first, with the change on the year before
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">Revenue</th>
+                <th scope="col">Orders</th>
+                <th scope="col">vs year before</th>
+              </tr>
+            </thead>
+            <tbody>
+              {withChange.map(y => {
+                const up = y.changePct !== null && y.changePct > 0
+                const down = y.changePct !== null && y.changePct < 0
+                return (
+                  <tr key={y.year}>
+                    <th scope="row" className="ct-month">{y.year}</th>
+                    <td className="ct-total" data-label="Revenue">
+                      <span className="mm-val">{rm(y.revenue)}</span>
+                      <Bar pct={(y.revenue / peakYear) * 100} />
+                    </td>
+                    <td className="ct-part" data-label="Orders">{y.orders}</td>
+                    <td className="ct-delta" data-label="vs year before">
+                      {y.changePct === null ? (
+                        <span className="ct-none" title="No earlier year to compare against">—</span>
+                      ) : (
+                        <span className={`ct-pct ${up ? 'up' : down ? 'down' : 'flat'}`}>
+                          <span aria-hidden="true">{up ? '▲' : down ? '▼' : '■'}</span>{' '}
+                          {y.changePct > 0 ? '+' : ''}
+                          {Math.round(y.changePct)}%
+                          <span className="mm-sr">
+                            {' '}
+                            {up ? 'up' : down ? 'down' : 'unchanged'} on the year before
+                          </span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
       {untagged.length > 0 ? (
         <p className="cap">
           Not counted above: {untagged.length} money-in row{untagged.length === 1 ? '' : 's'}{' '}
-          ({rm(untaggedIn)}) carry no channel tag at all. They still count on Cash In — they
-          just belong to no channel, so no channel tab claims them.
+          ({rm(total(untagged))}) carry no channel tag at all. They still count on Cash In —
+          they just belong to no channel, so no channel tab claims them.
         </p>
       ) : null}
 
+      {/* The ledger — every row behind the numbers above, one table. */}
       {all.length === 0 ? (
         <Empty />
-      ) : rows.length === 0 ? (
-        // Records ARE loading but none matched. The useful thing is WHICH
-        // groups exist, so the mismatch is visible instead of guessed at.
+      ) : offline.length === 0 ? (
         <div className="empty">
           No offline rows matched. A row lands here when it is money IN with a{' '}
           <code>meta.group</code> that isn&apos;t Shopee, TikTok, a seller, or Kitchen Service.
@@ -136,37 +264,44 @@ export default async function OfflineChannels() {
           <br />
           {knownGroups.length ? knownGroups.map(g => <code key={g}> {g} </code>) : '(none have a meta.group)'}
         </div>
+      ) : rows.length === 0 ? (
+        <div className="empty">
+          No offline revenue in {active}. The year tabs above show which years have sales in
+          them.
+        </div>
       ) : (
-        groups.map(g => (
-          <div key={g.name}>
-            <p className="rowlabel">{g.name} · {g.rs.length} row{g.rs.length === 1 ? '' : 's'}</p>
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>What</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted(g.rs).map(r => {
-                  const shownStatus = isOverdue(r) ? 'overdue' : r.status || '—'
-                  return (
-                    <tr key={r.id}>
-                      <td data-label="What">{r.title}</td>
-                      <td data-label="Status">
-                        <span className={`pill ${shownStatus}`}>{shownStatus}</span>
-                      </td>
-                      <td data-label="Date">{r.due_date || r.created_at?.slice(0, 10) || '—'}</td>
-                      <td data-label="Amount">{rm(r.amount)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))
+        <>
+          <p className="rowlabel">
+            Ledger · {scope} · {ledger.length} row{ledger.length === 1 ? '' : 's'} · {rm(revenue)}
+          </p>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>What</th>
+                <th>Channel</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger.map(r => {
+                const shownStatus = isOverdue(r) ? 'overdue' : r.status || '—'
+                return (
+                  <tr key={r.id}>
+                    <td data-label="What">{r.title}</td>
+                    <td data-label="Channel">{channelOf(r)}</td>
+                    <td data-label="Status">
+                      <span className={`pill ${shownStatus}`}>{shownStatus}</span>
+                    </td>
+                    <td data-label="Date">{r.due_date || r.created_at?.slice(0, 10) || '—'}</td>
+                    <td data-label="Amount">{rm(r.amount)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
       )}
     </>
   )
