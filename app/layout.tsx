@@ -35,7 +35,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Nav pendingCount={pending} />
             <p className="hint">One <code>records</code> table behind every tab. Your robots live in <code>agents/</code>.</p>
           </aside>
-          <main className="main"><ConnStatus /><SyncAll />{children}</main>
+          <main className="main">
+            {/* The secondary logo — 옥마야 in brush hangul with the OKMAYA badge.
+                Top right of every page, opposite the sidebar wordmark. Decorative,
+                so it carries an empty alt: a screen reader already announced the
+                brand in the sidebar, and hearing it twice helps nobody. */}
+            <div className="topmark">
+              <img src="/icons/okmaya-secondary.png" alt="" width={230} height={66} />
+            </div>
+            <ConnStatus />
+            <SyncAll />
+            {children}
+          </main>
         </div>
         {/* Phone bottom bar — hidden on desktop. */}
         <BottomNav />

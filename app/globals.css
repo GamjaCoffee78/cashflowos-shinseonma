@@ -205,6 +205,13 @@ code {
    Same clay button as everywhere else; the details list only appears after a run. */
 .syncbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 20px; }
 .syncbar .cap { margin: 0; }
+
+/* The secondary logo, top right of the page. It sits ABOVE the banner and the
+   sync strip and takes no height of its own on a phone, where the screen is
+   too narrow to spend 60px on a wordmark. */
+.topmark { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+.topmark img { height: 44px; width: auto; display: block; }
+@media (max-width: 768px) { .topmark img { height: 32px; } }
 .linkish { background: none; border: none; padding: 0; font: inherit; font-size: 13px; color: var(--clay); cursor: pointer; text-decoration: underline; }
 .linkish:hover { color: var(--clay-deep); }
 .synclist { flex-basis: 100%; list-style: none; margin: 0; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); font-size: 13px; color: var(--dim); line-height: 1.6; }
