@@ -5,7 +5,6 @@ import { getRecords } from '@/lib/records'
 import { tiktokDays, tiktokConfigured } from '@/lib/tiktok-ads'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
-import { syncTikTokNow } from './actions'
 
 export const dynamic = 'force-dynamic'
 // The 90-day backfill behind the Sync now button can take a while.
@@ -18,7 +17,7 @@ export default async function TikTokAds() {
       title="TikTok Ads 🎯"
       caption="Okmaya Official on TikTok Ads — synced every morning with the brief."
       days={days}
-      toolbar={tiktokConfigured && <SyncNow action={syncTikTokNow} label="🎯 Sync now" hint="Asking TikTok — the first run pulls 90 days, give it a moment." />}
+      toolbar={tiktokConfigured && <SyncNow source="tiktok" label="🎯 Sync now" hint="Asking TikTok — the first run pulls 90 days, give it a moment." />}
       empty={
         tiktokConfigured ? (
           <>No TikTok days synced yet — press <b>Sync now</b> above to pull the last 90 days, or wait for the 8:15am run.</>

@@ -7,7 +7,6 @@ import { calendarEvents, calendarConfigured, timeLabel, type CalEvent } from '@/
 import { addDays } from '@/lib/ads-daily'
 import Stat from '@/app/_components/Stat'
 import SyncNow from '@/app/_components/SyncNow'
-import { syncCalendarNow } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -55,7 +54,7 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
       <h1 className="ph">Calendar 📅</h1>
       <p className="cap">Your Google Calendar, copied in every morning with the brief. Read-only here — edit in Google.</p>
 
-      {calendarConfigured && <SyncNow action={syncCalendarNow} label="📅 Sync now" hint="Asking Google Calendar…" />}
+      {calendarConfigured && <SyncNow source="calendar" label="📅 Sync now" hint="Asking Google Calendar…" />}
 
       {events.length === 0 ? (
         <div className="empty">

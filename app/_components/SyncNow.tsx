@@ -1,27 +1,47 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 
 // The "Sync now" button, shared by the tabs that copy an outside source into
-// `records` (TikTok Ads, Meta Ads, Calendar). Pass the tab's server action;
-// it runs on the server with Vercel's keys, so nothing is needed on a laptop.
-export type SyncResult = { ok: true; message: string } | { ok: false; message: string }
+// `records` (TikTok Ads, Meta Ads, Calendar). It POSTs to /api/sync, which
+// runs the pull on the server with Vercel's keys and answers in plain JSON,
+// then refreshes the page so the new rows show. (A plain route, not a server
+// action — server actions were returning bare 500s on the live deployment.)
+export type SyncResult = { ok: boolean; message: string }
 
 export default function SyncNow({
-  action,
+  source,
   label,
   hint,
 }: {
-  action: () => Promise<SyncResult>
+  source: 'tiktok' | 'meta' | 'calendar'
   label: string          // "🎯 Sync now"
   hint: string           // shown while it runs
 }) {
+  const router = useRouter()
   const [pending, start] = useTransition()
   const [result, setResult] = useState<SyncResult | null>(null)
 
+  async function run() {
+    try {
+      const res = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!body) return setResult({ ok: false, message: `The server answered HTTP ${res.status} with no details.` })
+      setResult(body)
+      if (body.ok) router.refresh()
+    } catch (e) {
+      setResult({ ok: false, message: `Couldn't reach the server (${String((e as Error)?.message || e)}).` })
+    }
+  }
+
   return (
     <div className="tt-sync">
-      <button type="button" className="btn" disabled={pending} onClick={() => start(async () => setResult(await action()))}>
+      <button type="button" className="btn" disabled={pending} onClick={() => start(run)}>
         {pending ? 'Syncing…' : label}
       </button>
       {pending && <span className="cap"> {hint}</span>}

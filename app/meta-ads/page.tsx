@@ -5,7 +5,6 @@ import { getRecords } from '@/lib/records'
 import { metaDays, metaConfigured } from '@/lib/meta-ads'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
-import { syncMetaNow } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -17,7 +16,7 @@ export default async function MetaAds() {
       title="Meta Ads 📘"
       caption="Okmaya on Facebook + Instagram ads — synced every morning with the brief."
       days={days}
-      toolbar={metaConfigured && <SyncNow action={syncMetaNow} label="📘 Sync now" hint="Asking Meta — the first run pulls 90 days, give it a moment." />}
+      toolbar={metaConfigured && <SyncNow source="meta" label="📘 Sync now" hint="Asking Meta — the first run pulls 90 days, give it a moment." />}
       empty={
         metaConfigured ? (
           <>No Meta days synced yet — press <b>Sync now</b> above to pull the last 90 days, or wait for the 8:15am run.</>
