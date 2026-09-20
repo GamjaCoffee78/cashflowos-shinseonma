@@ -157,6 +157,70 @@ function monthLabel(key: string): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' }).format(d)
 }
 
+// ── One channel, month on month ──────────────────────────────────────────
+// "Is Shopee up or down, and by how much?" — the month's total for a channel
+// plus the percentage change from the month before.
+export type ChannelMonth = {
+  key: string
+  label: string
+  parts: number[]          // one per part name, same order as ChannelTrend.parts
+  total: number
+  // Change vs the previous month, as a percentage. null when there IS no
+  // previous month, or when the previous month was zero — you cannot express
+  // "up from nothing" as a percentage, and +Infinity% is not an answer.
+  changePct: number | null
+}
+
+export type ChannelTrend = {
+  channel: string
+  parts: string[]          // e.g. ['Shopee MY', 'Shopee SG']
+  months: ChannelMonth[]
+}
+
+// `prefix` is matched against meta.group, case-insensitively, so 'Shopee'
+// catches both Shopee MY and Shopee SG and keeps them as separate columns.
+export function getChannelMonthly(rows: Rec[], prefix = ABANG.focusChannel): ChannelTrend | null {
+  const needle = String(prefix || '').trim().toLowerCase()
+  if (!needle) return null
+
+  const perMonth = new Map<string, Map<string, number>>()
+  const partNames = new Set<string>()
+
+  for (const r of rows) {
+    if (r.category !== 'cash_in') continue
+    if (!inMoneyWindow(r)) continue
+    const group = String(r.meta?.group ?? '').trim()
+    if (!group.toLowerCase().startsWith(needle)) continue
+    const amount = Number(r.amount || 0)
+    if (!(amount > 0)) continue
+    const key = (r.due_date || todayISO()).slice(0, 7)
+    if (!/^\d{4}-\d{2}$/.test(key)) continue
+
+    partNames.add(group)
+    const m = perMonth.get(key) ?? new Map<string, number>()
+    m.set(group, (m.get(group) ?? 0) + amount)
+    perMonth.set(key, m)
+  }
+
+  if (!perMonth.size) return null
+
+  const parts = [...partNames].sort()
+  const keys = [...perMonth.keys()].sort()
+  const months: ChannelMonth[] = keys.map((key, i) => {
+    const m = perMonth.get(key)!
+    const amounts = parts.map(p => m.get(p) ?? 0)
+    const total = amounts.reduce((a, b) => a + b, 0)
+    let changePct: number | null = null
+    if (i > 0) {
+      const prev = [...(perMonth.get(keys[i - 1]) ?? new Map()).values()].reduce((a, b) => a + b, 0)
+      if (prev > 0) changePct = ((total - prev) / prev) * 100
+    }
+    return { key, label: monthLabel(key), parts: amounts, total, changePct }
+  })
+
+  return { channel: String(prefix).trim(), parts, months }
+}
+
 // Read one field out of a record's meta bag, with a dash fallback for display.
 export const m = (r: Rec, k: string) => {
   const v = r.meta?.[k]

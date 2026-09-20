@@ -1,8 +1,9 @@
-import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney } from '@/lib/records'
+import { getRecords, getFunnel, rm, inMoneyWindow, moneyFromLabel, getMonthlyMoney, getChannelMonthly } from '@/lib/records'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import FunnelBar from '@/app/_components/FunnelBar'
 import Stat from '@/app/_components/Stat'
 import MonthlyMoney from '@/app/_components/MonthlyMoney'
+import ChannelTrend from '@/app/_components/ChannelTrend'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,7 @@ export default async function Dashboard() {
 
   // ── Month by month ──────────────────────────────────────────────
   const months = getMonthlyMoney(rows)
+  const channel = getChannelMonthly(rows)
 
   return (
     <>
@@ -60,6 +62,8 @@ export default async function Dashboard() {
       </div>
 
       <MonthlyMoney months={months} period={period} />
+
+      <ChannelTrend trend={channel} period={period} />
     </>
   )
 }

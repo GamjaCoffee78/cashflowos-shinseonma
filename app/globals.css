@@ -343,3 +343,39 @@ code {
   .mm-cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
   .mm-netcell::before { margin-bottom: 0; }
 }
+
+
+/* ---- One channel, month on month (app/_components/ChannelTrend.tsx) ----- */
+.ct { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.ct h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 14px; }
+
+.ct-table { width: 100%; border-collapse: collapse; }
+.ct-table th, .ct-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ct-table tr:last-child th, .ct-table tr:last-child td { border-bottom: none; }
+.ct-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.ct-month { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; width: 1%; }
+.ct-part { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ct-total { min-width: 150px; }
+
+.ct-delta { white-space: nowrap; }
+/* Direction carries a sign, an arrow AND a screen-reader word — the tint is the
+   third signal, never the only one. */
+.ct-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ct-pct.up   { color: var(--sage); }
+.ct-pct.down { color: var(--rust); }
+.ct-pct.flat { color: var(--ink-soft); }
+.ct-none { color: var(--ink-faint); font-size: 13px; }
+
+@media (max-width: 700px) {
+  .ct-table, .ct-table tbody, .ct-table tr, .ct-table th, .ct-table td { display: block; }
+  .ct-table thead { position: absolute; left: -9999px; }
+  .ct-table tr { border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 12px; margin-bottom: 10px; }
+  .ct-table tr:last-child { margin-bottom: 0; }
+  .ct-table th, .ct-table td { border-bottom: none; padding: 0; }
+  .ct-month { width: auto; margin-bottom: 8px; }
+  .ct-part, .ct-total, .ct-delta { margin-bottom: 9px; }
+  .ct-delta { margin-bottom: 0; }
+  .ct-part::before, .ct-total::before, .ct-delta::before {
+    content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px;
+  }
+}
