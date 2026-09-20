@@ -1,6 +1,6 @@
-// 👉 Offline Channels — the money that did NOT come through an online
-// marketplace: walk-in, retail, events, wholesale, dealers, and anything else
-// the sheet names as its own channel.
+// 👉 Offline Channels — the REVENUE that did not come through an online
+// marketplace. This is the owner sheet's "OFFLINE CHANNELS (auto from Staff —
+// based on invoice)" section: TFP Retail (VG/BIG/BSC), Qra and Others.
 //
 // Same concept as Kitchen Services and Ecomm Sales: it MIRRORS rows that
 // already sit on Cash In / Cash Out. Nothing is moved, nothing is taken away
@@ -10,7 +10,7 @@
 // place, so this tab can never drift into double-counting a row that Ecomm
 // Sales, Sellers or Kitchen Services is already showing.
 import { getRecords, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec } from '@/lib/records'
-import { isMoney, isOffline, isWaiting, groupOf } from '@/lib/ecomm'
+import { isOffline, isWaiting, groupOf } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 
@@ -19,17 +19,17 @@ export const dynamic = 'force-dynamic'
 export default async function OfflineChannels() {
   const all = await getRecords()
   // Same reporting window as the Dashboard and every other money tab.
-  const rows = all.filter(r => isMoney(r) && isOffline(r) && inMoneyWindow(r))
+  const rows = all.filter(r => isOffline(r) && inMoneyWindow(r))
   const period = moneyFromLabel()
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
-  const sales = rows.filter(r => r.category === 'cash_in')
-  const costs = rows.filter(r => r.category === 'cash_out')
-
+  // isOffline() is cash_in only — the sheet has no offline cost section, and
+  // sweeping the company's expenditure in here would be a lie. So every row on
+  // this tab is money IN.
+  const sales = rows
   const revenue = total(sales)
-  const spend = total(costs)
   const waitingAmt = total(sales.filter(isWaiting))
   const paidAmt = total(sales.filter(r => !isWaiting(r)))
 
@@ -45,12 +45,12 @@ export default async function OfflineChannels() {
   // Money rows carrying no meta.group at all. Deliberately NOT counted as
   // offline (see lib/ecomm.ts) — but counted HERE, so money that belongs to no
   // channel is visible rather than silently missing from every channel tab.
-  const untagged = all.filter(r => isMoney(r) && !groupOf(r) && inMoneyWindow(r))
-  const untaggedIn = total(untagged.filter(r => r.category === 'cash_in'))
+  const untagged = all.filter(r => r.category === 'cash_in' && !groupOf(r) && inMoneyWindow(r))
+  const untaggedIn = total(untagged)
 
   // Every group present in the money rows — shown in the empty state so a
   // mismatch between what's stored and what this tab looks for is visible.
-  const knownGroups = [...new Set(all.filter(isMoney).map(groupOf).filter(Boolean))].sort()
+  const knownGroups = [...new Set(all.filter(r => r.category === 'cash_in').map(groupOf).filter(Boolean))].sort()
 
   // Waiting money first — that's what needs chasing.
   const sorted = (rs: Rec[]) => [...rs].sort((a, b) => Number(isWaiting(b)) - Number(isWaiting(a)))
@@ -59,10 +59,10 @@ export default async function OfflineChannels() {
     <>
       <h1 className="ph">Offline Channels 🏪</h1>
       <p className="cap">
-        Money in and out from everything that isn&apos;t an online marketplace
-        {period ? ` · since ${period}` : ''}. Shopee, TikTok, sellers and Kitchen Service have
-        their own tabs and are not repeated here. These rows still count on Cash In and Cash
-        Out — this mirrors them, it doesn&apos;t move them.
+        Revenue from everything that isn&apos;t an online marketplace — the owner
+        sheet&apos;s OFFLINE CHANNELS section{period ? `, since ${period}` : ''}. Shopee,
+        TikTok, sellers and Kitchen Service have their own tabs and are not repeated here.
+        These rows still count on Cash In — this mirrors them, it doesn&apos;t move them.
       </p>
 
       <div className="grid">
@@ -71,18 +71,6 @@ export default async function OfflineChannels() {
         <Stat label="Waiting" value={rm(waitingAmt)} yes={waitingAmt > 0} />
         <Stat label="Channels" value={groups.length} />
       </div>
-
-      {/* Costs and net only mean something once there ARE offline costs — an
-          RM 0.00 card next to the revenue reads as a missing number. */}
-      {costs.length > 0 ? (
-        <>
-          <p className="rowlabel">Costs &amp; net</p>
-          <div className="grid">
-            <Stat label="Costs" value={rm(spend)} />
-            <Stat label="Net" value={rm(revenue - spend)} />
-          </div>
-        </>
-      ) : null}
 
       {groups.length > 0 ? (
         <>
@@ -109,9 +97,9 @@ export default async function OfflineChannels() {
           never hidden either, because it is real money sitting on Cash In. */}
       {untagged.length > 0 ? (
         <p className="cap">
-          Not counted above: {untagged.length} money row{untagged.length === 1 ? '' : 's'} carry
-          no channel tag at all ({rm(untaggedIn)} of it money in). They still count on Cash In
-          and Cash Out — they just belong to no channel, so no channel tab claims them.
+          Not counted above: {untagged.length} money-in row{untagged.length === 1 ? '' : 's'}{' '}
+          ({rm(untaggedIn)}) carry no channel tag at all. They still count on Cash In — they
+          just belong to no channel, so no channel tab claims them.
         </p>
       ) : null}
 
@@ -121,7 +109,7 @@ export default async function OfflineChannels() {
         // Records ARE loading but none matched. The useful thing is WHICH
         // groups exist, so the mismatch is visible instead of guessed at.
         <div className="empty">
-          No offline rows matched. A row lands here when it has a{' '}
+          No offline rows matched. A row lands here when it is money IN with a{' '}
           <code>meta.group</code> that isn&apos;t Shopee, TikTok, a seller, or Kitchen Service.
           <br />
           <br />
@@ -138,7 +126,6 @@ export default async function OfflineChannels() {
               <thead>
                 <tr>
                   <th>What</th>
-                  <th>In / Out</th>
                   <th>Status</th>
                   <th>Date</th>
                   <th>Amount</th>
@@ -147,16 +134,14 @@ export default async function OfflineChannels() {
               <tbody>
                 {sorted(g.rs).map(r => {
                   const shownStatus = isOverdue(r) ? 'overdue' : r.status || '—'
-                  const out = r.category === 'cash_out'
                   return (
                     <tr key={r.id}>
                       <td data-label="What">{r.title}</td>
-                      <td data-label="In / Out">{out ? 'Out' : 'In'}</td>
                       <td data-label="Status">
                         <span className={`pill ${shownStatus}`}>{shownStatus}</span>
                       </td>
                       <td data-label="Date">{r.due_date || r.created_at?.slice(0, 10) || '—'}</td>
-                      <td data-label="Amount">{out ? `− ${rm(r.amount)}` : rm(r.amount)}</td>
+                      <td data-label="Amount">{rm(r.amount)}</td>
                     </tr>
                   )
                 })}

@@ -52,19 +52,31 @@ export const isKitchen = (r: Rec) => {
   return norm(String(r.title ?? '')).startsWith('kitchen service')
 }
 
-// An OFFLINE channel: money that did not come through an online marketplace.
+// An OFFLINE channel: REVENUE that did not come through an online marketplace.
 //
-// Defined by exclusion on purpose. The sheet names offline channels many ways
-// (walk-in, retail, event, bazaar, wholesale, dealer…) and a hard-coded list
-// would silently drop the next one someone invents. So: a money row with a
-// real meta.group that is not a marketplace, not a seller, and not Kitchen
-// Service — each of which already has its own tab.
+// In the owner sheet (okmaya_owner_v5_fix) "OFFLINE CHANNELS (auto from Staff —
+// based on invoice)" is a REVENUE section with three lines: TFP Retail
+// (VG/BIG/BSC), Qra, and Others. There is no offline cost section — every
+// expenditure line in that sheet (Product Orders, Packaging, Marketing, Fixed &
+// Operating, Miscellaneous) belongs to the business as a whole, not to a
+// channel.
+//
+// So this is cash_in ONLY. Without that guard the exclusion below would sweep
+// every one of those expenditure groups in and report the whole company's
+// costs as "offline costs".
+//
+// Defined by exclusion rather than a hard-coded list of the three names, so a
+// fourth offline line added to the sheet appears here on its own instead of
+// being silently dropped. The revenue sections are online / offline / kitchen,
+// so cash_in that is not a marketplace, not a seller and not Kitchen Service is
+// offline by definition.
 //
 // A row with NO meta.group at all is NOT offline. Hand-entered rows and the
 // receipts the bot files carry no group, and quietly counting them as offline
-// sales would inflate this tab with money nobody assigned to a channel. The
-// page reports how many it set aside, so they are never invisible.
+// sales would inflate this tab. The page reports how many it set aside, so they
+// are never invisible.
 export const isOffline = (r: Rec) => {
+  if (r.category !== 'cash_in') return false
   if (!groupOf(r)) return false
   return !isEcomm(r) && !isSeller(r) && !isKitchen(r)
 }
