@@ -561,3 +561,25 @@ a.pg-card:hover { border-color: var(--line-2); }
   .cal-dow { padding: 7px 2px; text-align: center; font-size: 10px; }
   .cal-num { font-size: 11px; }
 }
+/* ── Cash Out → "Where the money goes" (SpendBreakdown) ──────────────────
+   One collapsible block per spending section. <details>/<summary> keeps the
+   breakdown a server component — opening a section needs no JavaScript. */
+.sb-sec { border-bottom: 1px solid var(--line); }
+.sb-sec:last-of-type { border-bottom: none; }
+.sb-sec > summary {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 11px 0; cursor: pointer; list-style: none;
+}
+.sb-sec > summary::-webkit-details-marker { display: none; }
+/* The ▸ is the only affordance saying a row opens, so it is drawn, not relied
+   on from the browser default (which Safari hides). */
+.sb-sec > summary::before {
+  content: '▸'; color: var(--ink-faint); font-size: 11px; flex-shrink: 0;
+  transition: transform .15s ease;
+}
+.sb-sec[open] > summary::before { transform: rotate(90deg); }
+.sb-sec > summary:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: var(--r-8); }
+.sb-name { font-size: 13px; font-weight: 600; color: var(--ink); margin-right: auto; }
+.sb-amt { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sb-sec .ct-table { margin: 2px 0 14px; }
+.sb-n { color: var(--ink-faint); font-weight: 400; font-size: 12px; }

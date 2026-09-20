@@ -2,9 +2,10 @@
 // files for you. Safe to edit the columns/labels. It reads the ONE `records`
 // table, filtered to category='cash_out'. Rows with meta.auto_filed = the Vault
 // agent filed them on autopilot (🟢) — we badge those so you can spot them.
-import { getRecords, rm, m, todayISO, inMoneyWindow } from '@/lib/records'
+import { getRecords, rm, m, todayISO, inMoneyWindow, moneyFromLabel } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
+import SpendBreakdown from '@/app/_components/SpendBreakdown'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,7 @@ export default async function CashOut() {
     .reduce((s, r) => s + Number(r.amount || 0), 0)
   // How many the robot filed for you without asking (the autopilot count).
   const autoFiled = rows.filter(r => r.meta?.auto_filed).length
+  const period = moneyFromLabel()
 
   // Newest spend first (most recent due_date at the top).
   const sorted = [...rows].sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''))
@@ -36,11 +38,17 @@ export default async function CashOut() {
         <Stat label="🤖 Auto-filed" value={autoFiled} />
       </div>
 
+      {/* The analysis sits ABOVE the ledger: "where is the money going" first,
+          then the row-by-row record. The list below is unchanged. */}
+      <SpendBreakdown rows={rows} period={period} />
+
       {all.length === 0 ? (
         <Empty />
       ) : rows.length === 0 ? (
         <Empty label="money-out" />
       ) : (
+        <>
+        <p className="rowlabel">Every row · {rows.length}</p>
         <table className="tbl">
           <thead>
             <tr>
@@ -70,6 +78,7 @@ export default async function CashOut() {
             ))}
           </tbody>
         </table>
+        </>
       )}
     </>
   )
