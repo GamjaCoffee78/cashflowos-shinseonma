@@ -11,7 +11,7 @@
 import {
   getRecords, getChannelMonthly, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec,
 } from '@/lib/records'
-import { isMoney, isKitchen, isWaiting, groupOf } from '@/lib/ecomm'
+import { isKitchen, isWaiting, groupOf } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 import ChannelTrend from '@/app/_components/ChannelTrend'
@@ -28,17 +28,18 @@ export default async function KitchenServices() {
   const all = await getRecords()
   // Same reporting window as the Dashboard and the other money tabs, so this
   // tab can never disagree with them about what a period's revenue was.
-  const rows = all.filter(r => isMoney(r) && isKitchen(r) && inMoneyWindow(r))
+  // cash_in ONLY. The owner sheet has no per-channel cost line — its
+  // expenditure (Product Orders, Packaging, Marketing, Fixed & Operating,
+  // Miscellaneous) belongs to the business as a whole, not to Kitchen Service.
+  // Mirroring cash_out here would report company-wide costs as kitchen costs.
+  const rows = all.filter(r => r.category === 'cash_in' && isKitchen(r) && inMoneyWindow(r))
   const period = moneyFromLabel()
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
-  const sales = rows.filter(r => r.category === 'cash_in')
-  const costs = rows.filter(r => r.category === 'cash_out')
-
+  const sales = rows
   const revenue = total(sales)
-  const spend = total(costs)
   const waitingAmt = total(sales.filter(isWaiting))
   const paidAmt = total(sales.filter(r => !isWaiting(r)))
   const jobs = sales.length
@@ -66,7 +67,6 @@ export default async function KitchenServices() {
         <thead>
           <tr>
             <th>What</th>
-            <th>In / Out</th>
             <th>Status</th>
             <th>Date</th>
             <th>Amount</th>
@@ -75,16 +75,14 @@ export default async function KitchenServices() {
         <tbody>
           {sorted(rs).map(r => {
             const shownStatus = isOverdue(r) ? 'overdue' : r.status || '—'
-            const out = r.category === 'cash_out'
             return (
               <tr key={r.id}>
                 <td data-label="What">{r.title}</td>
-                <td data-label="In / Out">{out ? 'Out' : 'In'}</td>
                 <td data-label="Status">
                   <span className={`pill ${shownStatus}`}>{shownStatus}</span>
                 </td>
                 <td data-label="Date">{r.due_date || r.created_at?.slice(0, 10) || '—'}</td>
-                <td data-label="Amount">{out ? `− ${rm(r.amount)}` : rm(r.amount)}</td>
+                <td data-label="Amount">{rm(r.amount)}</td>
               </tr>
             )
           })}
@@ -97,9 +95,8 @@ export default async function KitchenServices() {
     <>
       <h1 className="ph">Kitchen Services 🍳</h1>
       <p className="cap">
-        Kitchen Service revenue, pulled out of the money rows
-        {period ? ` · since ${period}` : ''}. These rows still count on Cash In and Cash Out —
-        this mirrors them, it doesn&apos;t move them.
+        Kitchen Service revenue — money in only{period ? ` · since ${period}` : ''}. These
+        rows still count on Cash In — this mirrors them, it doesn&apos;t move them.
       </p>
 
       <div className="grid">
@@ -109,22 +106,9 @@ export default async function KitchenServices() {
         <Stat label="Jobs" value={jobs} />
       </div>
 
-      {/* Costs and net only mean something once there ARE kitchen costs — an
-          RM 0.00 costs card next to the revenue reads as a missing number. */}
-      {costs.length > 0 ? (
-        <>
-          <p className="rowlabel">Costs &amp; net</p>
-          <div className="grid">
-            <Stat label="Costs" value={rm(spend)} />
-            <Stat label="Net" value={rm(revenue - spend)} />
-            <Stat label="Avg per job" value={rm(avg)} />
-          </div>
-        </>
-      ) : (
-        <div className="grid">
-          <Stat label="Avg per job" value={rm(avg)} />
-        </div>
-      )}
+      <div className="grid">
+        <Stat label="Avg per job" value={rm(avg)} />
+      </div>
 
       {/* Month on month — the same component the Dashboard and Ecomm Sales use. */}
       <ChannelTrend trend={getChannelMonthly(all, KITCHEN)} period={period} />
