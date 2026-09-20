@@ -12,18 +12,26 @@
   --ink-soft:  #5F564B; /* secondary text         */
   --ink-faint: #978C7B; /* faint labels / micro-caps */
 
-  --clay:      #D97757;             /* primary accent       */
-  --clay-deep: #BE5C3B;             /* hover / pressed      */
-  --clay-tint:   rgba(217,119,87,.12);
-  --clay-tint-2: rgba(217,119,87,.20);
+  /* OKMAYA BRAND — sampled from the logo itself (public/icons/icon-512.png),
+     not picked by eye: the hanbok navy is the largest block of colour in the
+     mark (#184088), the OKMAYA badge is #d03028 and the hanbok highlight is
+     #b0d0f0. (The logo's money green is deliberately NOT used — the owner's
+     call; green stays reserved for "paid / done".) The accent is that navy, lifted a
+     little so it still reads as a button rather than as black text.
+     The cream paper stays: it is the logo's own background. */
+  --clay:      #1E4C96;             /* primary accent — Okmaya navy */
+  --clay-deep: #143A73;             /* hover / pressed              */
+  --clay-tint:   rgba(30,76,150,.12);
+  --clay-tint-2: rgba(30,76,150,.20);
+  --sky:       #B0D0F0;             /* hanbok highlight             */
 
   --line:   rgba(33,28,22,.10);
   --line-2: rgba(33,28,22,.18);
 
   /* autonomy zones: 🟢 autopilot · 🟡 ask · 🔴 never */
-  --sage:  #4B7A5A;
+  --sage:  #4B7A5A;   /* "paid / done" only — not a brand colour */
   --honey: #B6802A;
-  --rust:  #A9533F;
+  --rust:  #C2302A;   /* the OKMAYA badge red   */
 
   /* radius scale */
   --r-8:    8px;
@@ -59,7 +67,7 @@
      deuteranopia. This pair scores 18.9 (protan) / 29.1 (tritan) and passes the
      lightness band, chroma floor, normal-vision floor and 3:1 contrast checks. */
   --money-in:  #2F6FB5;
-  --money-out: var(--clay);   /* #D97757 */
+  --money-out: var(--clay);   /* Okmaya navy */
 }
 
 * { box-sizing: border-box; }
@@ -120,7 +128,7 @@ code {
 /* done / good → 🟢 sage */
 .pill.won, .pill.done, .pill.paid, .pill.closed, .pill.filed, .pill.posted, .pill.executed, .pill.approved { background: rgba(75,122,90,.16); color: #2E5A40; }
 /* problem / overdue → 🔴 rust */
-.pill.lost, .pill.overdue, .pill.rejected, .pill.failed, .pill.expired { background: rgba(169,83,63,.16); color: #8A3E2D; }
+.pill.lost, .pill.overdue, .pill.rejected, .pill.failed, .pill.expired { background: rgba(194,48,42,.14); color: #93231E; }
 /* nurture / cold (neutral ink) */
 .pill.nurture { background: var(--paper-2); color: var(--ink-soft); }
 
@@ -172,7 +180,7 @@ code {
 
 .empty { color: var(--dim); font-size: 14px; padding: 26px; border: 1px dashed var(--line-2); border-radius: var(--r-13); text-align: center; line-height: 1.6; }
 /* banners — soft paper alerts. base = 🔴 rust error; .info = blue; .warn = 🟡 honey */
-.banner { background: rgba(169,83,63,.10); border: 1px solid rgba(169,83,63,.30); color: #7C3A2B; border-radius: var(--r-13); padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 20px; }
+.banner { background: rgba(194,48,42,.09); border: 1px solid rgba(194,48,42,.28); color: #8C221D; border-radius: var(--r-13); padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 20px; }
 .banner code { color: var(--ink); background: rgba(33,28,22,.06); }
 .banner.info { background: rgba(90,140,190,.10); border-color: rgba(90,140,190,.32); color: #2C5478; }
 .banner.warn { background: rgba(182,128,42,.12); border-color: rgba(182,128,42,.34); color: #6E521A; }
@@ -317,7 +325,7 @@ code {
 .btn.ghost { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line-2); }
 .btn.ghost:hover:not(:disabled) { background: #EBE2D3; }
 .btn.danger { background: var(--rust); color: #FFFDF9; }
-.btn.danger:hover:not(:disabled) { background: #8A3E2D; }
+.btn.danger:hover:not(:disabled) { background: #93231E; }
 .btnrow { display: flex; gap: 8px; }
 .decided { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
 .brief { white-space: pre-wrap; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px; margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink); font-family: inherit; }
@@ -327,7 +335,7 @@ code {
 .login-card { width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-20); padding: 26px 24px; box-shadow: 0 10px 40px rgba(33,28,22,.06); }
 .login-input { width: 100%; box-sizing: border-box; background: var(--paper); border: 1px solid var(--line-2); border-radius: var(--r-13); padding: 12px 13px; font-size: 15px; color: var(--ink); }
 .login-input:focus { outline: none; border-color: var(--clay); box-shadow: 0 0 0 3px var(--clay-tint); }
-.login-error { color: #8A3E2D; font-size: 13px; margin: 10px 0 0; line-height: 1.5; }
+.login-error { color: #93231E; font-size: 13px; margin: 10px 0 0; line-height: 1.5; }
 
 /* ---- Two-row dashboard: money row lives in .grid; funnel above it ---- */
 .rowlabel { font-size: 13px; color: var(--ink-soft); font-weight: 600; margin: 0 0 10px; }
@@ -572,10 +580,10 @@ a.pg-card:hover { border-color: var(--line-2); }
 
 /* Tag tones. One accent per customer/order prefix, reused by the chips, the
    swatches and the day list so the same tag always looks the same. */
-.tone-clay  { --tone: var(--clay);  --tone-bg: rgba(217,119,87,.12); }
+.tone-clay  { --tone: var(--clay);  --tone-bg: rgba(30,76,150,.12); }
 .tone-sage  { --tone: var(--sage);  --tone-bg: rgba(75,122,90,.12); }
 .tone-honey { --tone: var(--honey); --tone-bg: rgba(182,128,42,.14); }
-.tone-rust  { --tone: var(--rust);  --tone-bg: rgba(169,83,63,.12); }
+.tone-rust  { --tone: var(--rust);  --tone-bg: rgba(194,48,42,.12); }
 .tone-ink   { --tone: var(--ink-soft); --tone-bg: rgba(33,28,22,.07); }
 
 /* ---- 1. What needs me now ---- */
