@@ -509,7 +509,10 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pg-ph { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
 .pg-chip { position: absolute; top: 7px; left: 7px; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-pill); background: var(--card); border: 1px solid var(--line); color: var(--ink-soft); }
-.pg-collab { position: absolute; top: 7px; right: 7px; max-width: calc(100% - 70px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; font-weight: 600; padding: 2px 6px; border-radius: var(--r-pill); background: var(--clay-tint); border: 1px solid var(--clay); color: var(--clay-deep); }
+.pg-collab { position: absolute; top: 7px; right: 7px; white-space: nowrap; font-size: 10px; letter-spacing: .02em; font-weight: 700; padding: 3px 7px; border-radius: var(--r-pill); background: var(--clay-deep); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+/* Solid, not tinted. This badge sits on top of a photograph, so a translucent
+   fill puts 10px text over whatever happens to be behind it — which is how it
+   first shipped, and it was unreadable. */
 .pg-body { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 10px; flex: 1; }
 /* Two lines, then ellipsis — captions run long and a card that grows to fit one
    of them drags a whole row out of line. */

@@ -74,7 +74,9 @@ function Grid({ rows }: { rows: Rec[] }) {
                 // Worth marking: that account is nearly three times the size,
                 // so these reach further for reasons the brand page can't
                 // claim credit for.
-                <span className="pg-collab">@{String(r.meta?.account ?? 'collab')}</span>
+                <span className="pg-collab" title={`Posted from @${String(r.meta?.account ?? '')}`}>
+                  collab
+                </span>
               ) : null}
             </span>
 
