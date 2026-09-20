@@ -35,6 +35,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
   ] },
   { label: 'Marketing', tabs: [
     { href: '/tiktok-ads', label: 'TikTok Ads' },
+    { href: '/meta-ads', label: 'Meta Ads' },
   ] },
   { label: 'Robot', tabs: [
     { href: '/approvals', label: 'Approvals' },

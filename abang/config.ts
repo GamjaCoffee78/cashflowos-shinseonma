@@ -136,6 +136,19 @@ export const ABANG = {
     syncDays: 3,
     backfillDays: 90,
   },
+
+  // ── 👉 META ADS ───────────────────────────────────────────────────────────
+  /**
+   * The Meta Ads tab (Facebook + Instagram ads). Same shape as TikTok: the
+   * daily cron pulls yesterday from Meta's Marketing API and stores one
+   * `meta_ads` record per day. Needs META_ADS_TOKEN in Vercel (a long-lived
+   * System User token with ads_read); without it the tab shows a setup note.
+   */
+  metaAds: {
+    adAccountId: '',          // e.g. 'act_1234567890' — Ads Manager → Account overview
+    syncDays: 3,
+    backfillDays: 90,
+  },
 }
 
 /**

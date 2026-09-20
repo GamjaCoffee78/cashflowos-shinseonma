@@ -6,6 +6,7 @@ import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
+import { syncMetaAds } from '@/lib/meta-ads'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -66,6 +67,14 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error('[CFO] tiktok sync failed:', e)
     tiktok = { error: String((e as Error)?.message || e).slice(0, 200) }
+  }
+  // Same for Meta Ads (tab only — no line in the brief).
+  let meta: any = null
+  try {
+    meta = await syncMetaAds()
+  } catch (e) {
+    console.error('[CFO] meta sync failed:', e)
+    meta = { error: String((e as Error)?.message || e).slice(0, 200) }
   }
 
   const rows = await getRecords()
@@ -155,6 +164,7 @@ export async function GET(req: Request) {
     needs_yes: proposed.length,
     proposals_created: created,
     tiktok,
+    meta,
   })
 }
 
