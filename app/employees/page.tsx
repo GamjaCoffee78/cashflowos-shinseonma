@@ -1,4 +1,5 @@
-import { AGENTS } from '@/agents/registry'
+import { AGENTS, SCHEDULED } from '@/agents/registry'
+import RunAgent from '@/app/_components/RunAgent'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,11 @@ export default async function Employees() {
               )}
             </p>
             <p className="ac-role">{a.autonomyNote}</p>
+            {/* On-demand heads (manualOnly) get a Run now button — they have no
+                cron waking them, so this press IS their trigger. */}
+            {SCHEDULED.some(s => s.key === a.key && s.manualOnly) && (
+              <RunAgent agentKey={a.key} label="Run now" />
+            )}
             <p className="ac-lastrun">
               {run
                 ? `Last run: ${new Date(run.when).toLocaleString('en-MY')}`

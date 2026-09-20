@@ -50,7 +50,7 @@ export const AGENTS: AgentMeta[] = [
     key: 'cold-lead',
     label: 'Cold-Lead Follow-up',
     emoji: '🎯',
-    autonomyNote: '🟡 Daily: drafts a nudge for leads quiet > 3 days. You send it.',
+    autonomyNote: '🟡 Head of Sales. On demand (/cold-lead or Run now): drafts a nudge for every lead quiet > 3 days. Never sends — you do.',
   },
   {
     key: 'content-approval',
@@ -291,6 +291,7 @@ export const EXECUTORS: Record<string, Executor> = {
 // ============================================================
 import type { Rec } from '@/lib/records'
 import { rm } from '@/lib/records'
+import { definition as coldLeadDefinition, daysQuiet as coldLeadDaysQuiet } from './cold-lead/definition'
 
 // `auto: true` = this one is 🟢 graduated (autopilot: run it, then just tell me).
 // Omitted/false = 🟡 ask first (the safe default every agent starts on).
@@ -299,6 +300,10 @@ export type ScheduledCheck = {
   key: string
   label: string
   check: (rows: Rec[], today: string) => ProposalDraft[]
+  // manualOnly = the daily cron SKIPS this one; it only runs when a human asks
+  // (the /<agent-key> Telegram command, or Run now on the AI Employees tab).
+  // Lets a head be on-demand without spending one of Hobby's 2 cron slots.
+  manualOnly?: boolean
 }
 
 // Whole days between a due date and today (positive = overdue).
@@ -338,4 +343,30 @@ const overdueInvoiceCheck: ScheduledCheck = {
       }),
 }
 
-export const SCHEDULED: ScheduledCheck[] = [overdueInvoiceCheck]
+// Sales · Cold-Lead Follow-up — the HEAD OF SALES from the AI C-Suite blueprint.
+// Installed 2026-09-20. Open leads quiet more than QUIET_DAYS → draft a warm
+// nudge for the owner to send. DRAFT only: `auto` is never set, so every one of
+// these passes through the 🟡 ASK zone. manualOnly, so no cron slot is spent.
+const coldLeadCheck: ScheduledCheck = {
+  key: 'cold-lead',
+  label: 'Cold-Lead Follow-up',
+  manualOnly: true,
+  check: (rows, today) =>
+    coldLeadDefinition
+      .lookAt(rows)
+      .map((r) => ({
+        // Keyed by row + day, so pressing Run now twice in one day can't create
+        // the same proposal twice (propose() ignores a duplicate key).
+        idempotencyKey: `cold-lead:${r.id}:${today}`,
+        payload: {
+          row_id: r.id,
+          channel: 'whatsapp',
+          text: coldLeadDefinition.suggest(r),
+        },
+        text:
+          `🎯 Quiet lead: <b>${r.title}</b> (${coldLeadDaysQuiet(r, today)}d, ${r.status || 'no stage'}). ` +
+          `Draft a nudge for you to send?`,
+      })),
+}
+
+export const SCHEDULED: ScheduledCheck[] = [overdueInvoiceCheck, coldLeadCheck]

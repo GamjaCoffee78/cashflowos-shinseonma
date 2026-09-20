@@ -126,6 +126,10 @@ export async function GET(req: Request) {
   const owner = process.env.OWNER_CHAT_ID?.trim()
   let created = 0
   for (const agent of SCHEDULED) {
+    // manualOnly heads are on-demand only — the human fires them from Telegram
+    // (/<agent-key>) or the Run now button. The cron never wakes them, so they
+    // cost nothing against Hobby's 2 cron slots.
+    if (agent.manualOnly) continue
     let drafts: ProposalDraft[] = []
     try {
       drafts = agent.check(rows, today)
