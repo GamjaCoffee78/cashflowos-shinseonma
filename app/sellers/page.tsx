@@ -18,6 +18,10 @@ import Stat from '@/app/_components/Stat'
 
 export const dynamic = 'force-dynamic'
 
+// The ?y= value meaning "every year at once". A word, not a number, so it can
+// never collide with a real year. Matches the Ecomm tab.
+const ALL = 'all'
+
 // Which market a seller belongs to. Hyphens/underscores are flattened first so
 // 'shopee_sg_seller' is read as SG, not missed.
 const marketOf = (r: Rec): 'MY' | 'SG' | 'Other' => {
@@ -52,7 +56,12 @@ export default async function Sellers({
   const year =
     y && years.includes(y) ? y : years.includes(thisYear) ? thisYear : years[0] ?? thisYear
 
-  const rows = everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
+  // "All" is an explicit choice, never the default — the tab still opens on
+  // the current year, which is what you want to see most days.
+  const showAll = y === ALL
+  const rows = showAll
+    ? everyYear
+    : everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
@@ -91,7 +100,7 @@ export default async function Sellers({
     <>
       <h1 className="ph">Sellers 🧑‍💼</h1>
       <p className="cap">
-        MY and SG sellers — sales in {year}. Split out of Ecomm so marketplace settlements
+        MY and SG sellers — sales{showAll ? ' across every year' : ` in ${year}`}. Split out of Ecomm so marketplace settlements
         stay clean. These rows still count on Cash In — this mirrors them, it
         doesn&apos;t move them. Seller costs are on Cash Out.
       </p>
@@ -99,12 +108,20 @@ export default async function Sellers({
       {/* The year chips ARE the period control for this tab. */}
       {years.length > 0 ? (
         <nav className="yearbar" aria-label="Year">
+          {/* "All" first: it is the widest view, so it reads as the outer one. */}
+          <Link
+            href={`/sellers?y=${ALL}`}
+            className={`yearchip${showAll ? ' active' : ''}`}
+            aria-current={showAll ? 'page' : undefined}
+          >
+            All
+          </Link>
           {years.map(k => (
             <Link
               key={k}
               href={`/sellers?y=${k}`}
-              className={`yearchip${k === year ? ' active' : ''}`}
-              aria-current={k === year ? 'page' : undefined}
+              className={`yearchip${!showAll && k === year ? ' active' : ''}`}
+              aria-current={!showAll && k === year ? 'page' : undefined}
             >
               {k}
             </Link>
@@ -147,6 +164,9 @@ export default async function Sellers({
       ) : rows.length > 0 ? null : everyYear.length > 0 ? (
         // Seller rows DO exist — this year just has none. Say that, rather
         // than implying the matching rule failed.
+        // Only reachable with a year selected: under All, rows IS everyYear,
+        // so an empty result means no seller rows at all and falls through to
+        // the diagnostic below.
         <div className="empty">No seller sales in {year}.</div>
       ) : (
         // No seller rows at all. Don't just say "empty" — the useful thing is
