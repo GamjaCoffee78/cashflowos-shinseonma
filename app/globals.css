@@ -428,3 +428,73 @@ code {
   .yy-cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
   .yy-tamt { font-size: 18px; }
 }
+
+
+/* ---- Platform tabs (app/_components/PlatformTabs.tsx) ------------------ */
+/* Plain links, so switching channel is a normal navigation the back button
+   understands — no client-side tab state to get out of step with the URL. */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
+.tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); font-size: 13px; font-weight: 600; text-decoration: none; }
+.tab:hover { border-color: var(--line-2); color: var(--ink); }
+.tab.on { background: var(--clay-tint); border-color: var(--clay); color: var(--clay-deep); }
+.tab .n { font-size: 11px; font-weight: 700; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.tab.on .n { color: var(--clay-deep); }
+
+/* ---- Views by month (app/_components/ContentMonths.tsx) ---------------- */
+/* Same table-with-bars shape as Sales by month, so the two read as one family. */
+.cm { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.cm h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 10px; }
+.cm-table { width: 100%; border-collapse: collapse; }
+.cm-table th, .cm-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.cm-table tr:last-child th, .cm-table tr:last-child td { border-bottom: none; }
+.cm-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.cm-month { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; width: 1%; }
+.cm-cell { min-width: 140px; }
+.cm-val { display: block; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cm-track { display: block; height: 6px; margin-top: 5px; background: var(--line); border-radius: var(--r-pill); overflow: hidden; }
+.cm-bar { display: block; height: 100%; border-radius: var(--r-pill); background: var(--money-in); }
+/* The biggest month is worth finding at a glance; it is still labelled, so the
+   tint is a second signal and never the only one. */
+.cm-bar.peak { background: var(--clay); }
+.cm-posts { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; width: 1%; }
+
+/* ---- Post cards (app/_components/PostCards.tsx) ------------------------ */
+.pgw { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.pgw-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.pgw-head h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0; }
+.sortbar { display: inline-flex; gap: 4px; }
+.sortlink { font-size: 12px; font-weight: 600; color: var(--ink-faint); text-decoration: none; padding: 4px 10px; border-radius: var(--r-pill); }
+.sortlink:hover { color: var(--ink); }
+.sortlink.on { background: var(--paper-2); color: var(--ink); }
+
+/* Fluid: fit as many covers as the width allows rather than a fixed count, so
+   the grid works the same in a narrow window and on a wide monitor. */
+.pg { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.pg-card { display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-13); overflow: hidden; text-decoration: none; color: inherit; }
+a.pg-card:hover { border-color: var(--line-2); }
+.pg-thumb { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 5; max-width: 100%; background: var(--paper-2); border-bottom: 1px solid var(--line); overflow: hidden; }
+.pg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pg-ph { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+.pg-chip { position: absolute; top: 7px; left: 7px; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-pill); background: var(--card); border: 1px solid var(--line); color: var(--ink-soft); }
+.pg-body { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 10px; flex: 1; }
+/* Two lines, then ellipsis — captions run long and a card that grows to fit one
+   of them drags a whole row out of line. */
+.pg-title { font-size: 12px; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pg-meta { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.pg-views { font-size: 13px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pg-date { font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 700px) {
+  .cm-table, .cm-table tbody, .cm-table tr, .cm-table th, .cm-table td { display: block; }
+  .cm-table thead { position: absolute; left: -9999px; }
+  .cm-table tr { border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 12px; margin-bottom: 10px; }
+  .cm-table tr:last-child { margin-bottom: 0; }
+  .cm-table th, .cm-table td { border-bottom: none; padding: 0; }
+  .cm-month { width: auto; margin-bottom: 8px; }
+  .cm-cell { min-width: 0; margin-bottom: 9px; }
+  .cm-posts { width: auto; }
+  .cm-cell::before, .cm-posts::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
+  /* Three across stays legible on a phone; two wastes the width. */
+  .pg { grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .pg-title { font-size: 11px; }
+}
