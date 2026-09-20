@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import Nav from './_components/Nav'
 import BottomNav from './_components/BottomNav'
 import ConnStatus from './_components/ConnStatus'
+import SyncAll from './_components/SyncAll'
 import { getPendingCount } from '@/lib/records'
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Nav pendingCount={pending} />
             <p className="hint">One <code>records</code> table behind every tab. Your robots live in <code>agents/</code>.</p>
           </aside>
-          <main className="main"><ConnStatus />{children}</main>
+          <main className="main"><ConnStatus /><SyncAll />{children}</main>
         </div>
         {/* Phone bottom bar — hidden on desktop. */}
         <BottomNav />
