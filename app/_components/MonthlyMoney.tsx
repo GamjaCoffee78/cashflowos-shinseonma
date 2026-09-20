@@ -46,6 +46,7 @@ export default function MonthlyMoney({
           <tr>
             <th scope="col">Month</th>
             <th scope="col">Money in</th>
+            <th scope="col">Biggest source</th>
             <th scope="col">Money out</th>
             <th scope="col">Net</th>
           </tr>
@@ -60,6 +61,19 @@ export default function MonthlyMoney({
                 <span className="mm-track" aria-hidden="true">
                   <span className="mm-bar in" style={{ width: width(m.cashIn) }} />
                 </span>
+              </td>
+
+              <td className="mm-cell mm-srccell" data-label="Biggest source">
+                {m.topSource ? (
+                  <>
+                    <span className="mm-src">{m.topSource.name}</span>
+                    <span className="mm-srcamt">
+                      {rm(m.topSource.amount)} · {Math.round(m.topSource.share * 100)}% of sales
+                    </span>
+                  </>
+                ) : (
+                  <span className="mm-srcamt">— no sales —</span>
+                )}
               </td>
 
               <td className="mm-cell" data-label="Money out">
