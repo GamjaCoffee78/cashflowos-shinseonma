@@ -1,5 +1,5 @@
-// 👉 Sellers — the MY and SG seller rows, split out of Ecomm Sales so the
-// marketplace settlement numbers aren't mixed with seller money.
+// 👉 Sellers — the MY and SG seller SALES (money in), split out of Ecomm Sales
+// so the marketplace settlement numbers aren't mixed with seller money.
 //
 // Like every money view here it MIRRORS rows from `records`; it moves nothing.
 // A row lands here when its `meta.group` contains "seller" (see lib/ecomm.ts) —
@@ -25,21 +25,23 @@ const marketOf = (r: Rec): 'MY' | 'SG' | 'Other' => {
 
 export default async function Sellers() {
   const all = await getRecords()
-  const rows = all.filter(r => isMoney(r) && isSeller(r) && inMoneyWindow(r))
+  // Seller SALES only (money in). Seller-side costs are money-out and stay on
+  // Cash Out, matching Ecomm Sales.
+  const rows = all.filter(
+    r => r.category === 'cash_in' && isSeller(r) && inMoneyWindow(r),
+  )
   const period = moneyFromLabel()
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
-  const sales = rows.filter(r => r.category === 'cash_in')
-  const costs = rows.filter(r => r.category === 'cash_out')
+  const sales = rows
   const inMarket = (mk: 'MY' | 'SG' | 'Other') => sales.filter(r => marketOf(r) === mk)
 
   const salesMY = total(inMarket('MY'))
   const salesSG = total(inMarket('SG'))
   const salesOther = total(inMarket('Other'))
   const totalSales = salesMY + salesSG + salesOther
-  const totalCosts = total(costs)
   const waitingAmt = total(sales.filter(isWaiting))
   const paidAmt = total(sales.filter(r => !isWaiting(r)))
 
@@ -67,9 +69,9 @@ export default async function Sellers() {
     <>
       <h1 className="ph">Sellers 🧑‍💼</h1>
       <p className="cap">
-        MY and SG sellers — money in and out{period ? ` · since ${period}` : ''}. Split out of
-        Ecomm Sales so marketplace settlements stay clean. These rows still count on Cash In
-        and Cash Out — this mirrors them, it doesn&apos;t move them.
+        MY and SG sellers — sales{period ? ` · since ${period}` : ''}. Split out of
+        Ecomm Sales so marketplace settlements stay clean. These rows still count on Cash In —
+        this mirrors them, it doesn&apos;t move them. Seller costs are on Cash Out.
       </p>
 
       <p className="rowlabel">Sales by market</p>
@@ -80,10 +82,8 @@ export default async function Sellers() {
         <Stat label="Total sales" value={rm(totalSales)} />
       </div>
 
-      <p className="rowlabel">Costs &amp; net</p>
+      <p className="rowlabel">Paid vs waiting</p>
       <div className="grid">
-        <Stat label="Costs" value={rm(totalCosts)} />
-        <Stat label="Net" value={rm(totalSales - totalCosts)} />
         <Stat label="Paid" value={rm(paidAmt)} />
         <Stat label="Waiting" value={rm(waitingAmt)} yes={waitingAmt > 0} />
       </div>
@@ -130,7 +130,6 @@ export default async function Sellers() {
               <thead>
                 <tr>
                   <th>What</th>
-                  <th>In / Out</th>
                   <th>Status</th>
                   <th>Date</th>
                   <th>Amount</th>
@@ -139,16 +138,14 @@ export default async function Sellers() {
               <tbody>
                 {sorted(g.rs).map(r => {
                   const shownStatus = isOverdue(r) ? 'overdue' : r.status || '—'
-                  const out = r.category === 'cash_out'
                   return (
                     <tr key={r.id}>
                       <td data-label="What">{r.title}</td>
-                      <td data-label="In / Out">{out ? 'Out' : 'In'}</td>
                       <td data-label="Status">
                         <span className={`pill ${shownStatus}`}>{shownStatus}</span>
                       </td>
                       <td data-label="Date">{r.due_date || r.created_at?.slice(0, 10) || '—'}</td>
-                      <td data-label="Amount">{out ? `− ${rm(r.amount)}` : rm(r.amount)}</td>
+                      <td data-label="Amount">{rm(r.amount)}</td>
                     </tr>
                   )
                 })}
