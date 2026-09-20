@@ -23,6 +23,10 @@ import ChannelTrend from '@/app/_components/ChannelTrend'
 
 export const dynamic = 'force-dynamic'
 
+// The ?y= value meaning "every year at once". A word, not a number, so it can
+// never collide with a real year.
+const ALL = 'all'
+
 // "2026-03" → "Mar 2026". en-US, not en-GB: en-GB abbreviates September as
 // "Sept", the only four-letter month, which reads as a typo beside the others.
 function monthLabel(key: string): string {
@@ -92,8 +96,16 @@ export default async function EcommSales({
   // "sales in ." — fall back to this year so the caption always reads.
   const year =
     y && years.includes(y) ? y : years.includes(thisYear) ? thisYear : years[0] ?? thisYear
+  // "All" is an explicit choice, never the default — the tab still opens on the
+  // current year, which is what you want to see most days.
+  const showAll = y === ALL
+  // ChannelTrend renders "· since {period}", which would read "since all
+  // years" — so All passes nothing and the heading stays "month on month".
+  const period = showAll ? null : year
 
-  const rows = everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
+  const rows = showAll
+    ? everyYear
+    : everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
@@ -150,7 +162,8 @@ export default async function EcommSales({
     <>
       <h1 className="ph">Ecomm 🛒</h1>
       <p className="cap">
-        Shopee MY, Shopee SG and TikTok Shop — sales in {year}. These rows still count on
+        Shopee MY, Shopee SG and TikTok Shop — sales
+        {showAll ? ' across every year' : ` in ${year}`}. These rows still count on
         Cash In — this mirrors them, it doesn&apos;t move them. Marketplace costs are on
         Cash Out.
       </p>
@@ -158,12 +171,20 @@ export default async function EcommSales({
       {/* The year chips ARE the period control for this tab. */}
       {years.length > 0 ? (
         <nav className="yearbar" aria-label="Year">
+          {/* "All" first: it is the widest view, so it reads as the outer one. */}
+          <Link
+            href={`/ecomm-sales?y=${ALL}`}
+            className={`yearchip${showAll ? ' active' : ''}`}
+            aria-current={showAll ? 'page' : undefined}
+          >
+            All
+          </Link>
           {years.map(k => (
             <Link
               key={k}
               href={`/ecomm-sales?y=${k}`}
-              className={`yearchip${k === year ? ' active' : ''}`}
-              aria-current={k === year ? 'page' : undefined}
+              className={`yearchip${!showAll && k === year ? ' active' : ''}`}
+              aria-current={!showAll && k === year ? 'page' : undefined}
             >
               {k}
             </Link>
@@ -203,7 +224,7 @@ export default async function EcommSales({
 
       {/* Month on month within the chosen year, one section per channel. */}
       {ECOMM_CHANNELS.map(c => (
-        <ChannelTrend key={c} trend={trendFor(rows, c)} period={year} />
+        <ChannelTrend key={c} trend={trendFor(rows, c)} period={period} />
       ))}
 
       {all.length === 0 ? (
@@ -211,7 +232,7 @@ export default async function EcommSales({
       ) : everyYear.length === 0 ? (
         <Empty label="marketplace rows (nothing has a Shopee or TikTok meta.group)" />
       ) : rows.length === 0 ? (
-        <Empty label={`marketplace sales in ${year}`} />
+        <Empty label={`marketplace sales${showAll ? '' : ` in ${year}`}`} />
       ) : (
         groups.map(g => <Rows key={g.name} label={g.name} rs={g.rs} />)
       )}
