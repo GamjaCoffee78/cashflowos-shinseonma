@@ -686,3 +686,32 @@ a.pg-card:hover { border-color: var(--line-2); }
 .yearchip:hover { border-color: var(--line-2); color: var(--ink); }
 /* Active is filled AND bolder — not colour alone. */
 .yearchip.active { background: var(--clay); border-color: var(--clay); color: #fff; font-weight: 700; }
+
+/* ---- Where it came from (app/_components/AccountSplit.tsx) ------------- */
+.as { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
+.as h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 12px; }
+.as-table { width: 100%; border-collapse: collapse; }
+.as-table th, .as-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.as-table tr:last-child th, .as-table tr:last-child td { border-bottom: none; }
+.as-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.as-acct { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; width: 1%; }
+.as-cell { min-width: 150px; }
+.as-val { display: block; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.as-track { display: block; height: 6px; margin-top: 5px; background: var(--line); border-radius: var(--r-pill); overflow: hidden; }
+.as-bar { display: block; height: 100%; border-radius: var(--r-pill); background: var(--money-in); }
+/* The collab row is the founder's account — same clay the card badge uses, so
+   the two read as the same thing. The row is labelled either way. */
+.as-bar.collab { background: var(--clay); }
+.as-num { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .as-table, .as-table tbody, .as-table tr, .as-table th, .as-table td { display: block; }
+  .as-table thead { position: absolute; left: -9999px; }
+  .as-table tr { border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 12px; margin-bottom: 10px; }
+  .as-table tr:last-child { margin-bottom: 0; }
+  .as-table th, .as-table td { border-bottom: none; padding: 0; }
+  .as-acct { width: auto; margin-bottom: 8px; }
+  .as-cell, .as-num { min-width: 0; margin-bottom: 9px; }
+  .as-num:last-child { margin-bottom: 0; }
+  .as-cell::before, .as-num::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
+}

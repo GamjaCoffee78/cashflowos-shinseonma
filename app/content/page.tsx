@@ -9,6 +9,7 @@ import PlatformTabs from '@/app/_components/PlatformTabs'
 import ContentMonths, { type ContentMonth } from '@/app/_components/ContentMonths'
 import PostCards from '@/app/_components/PostCards'
 import Pager from '@/app/_components/Pager'
+import AccountSplit, { type AccountRow } from '@/app/_components/AccountSplit'
 import { engagementFor } from '@/lib/insights'
 
 export const dynamic = 'force-dynamic'
@@ -36,6 +37,7 @@ const isOn = (r: Rec, key: string) =>
   !key || (ALIASES[key] ?? [key]).includes(platformOf(r))
 
 const viewsOf = (r: Rec) => Number(r.meta?.views ?? 0) || 0
+const isCollab = (r: Rec) => r.meta?.collab === true
 const savesOf = (r: Rec) => engagementFor(r.meta)?.saved ?? 0
 const sharesOf = (r: Rec) => engagementFor(r.meta)?.shares ?? 0
 
@@ -159,6 +161,23 @@ export default async function Content({
   const kept = sum(recent, r => savesOf(r) + sharesOf(r))
   const keptBefore = sum(prior, r => savesOf(r) + sharesOf(r))
 
+  // The same quarter, split by the account that posted it. Collabs stay in the
+  // grid with everything else — they are Okmaya content — but the brand page
+  // has to be readable on its own, and a blended figure hides it.
+  const split: AccountRow[] = [
+    { key: 'brand', label: 'okmaya.official', rows: recent.filter(r => !isCollab(r)) },
+    { key: 'collab', label: 'seonma_shin', rows: recent.filter(isCollab) },
+  ]
+    .filter(g => g.rows.length)
+    .map(g => ({
+      key: g.key,
+      label: g.label,
+      posts: g.rows.length,
+      reach: sum(g.rows, r => Number(r.meta?.reach ?? 0) || 0),
+      median: medianOf(g.rows.map(viewsOf)),
+      kept: sum(g.rows, r => savesOf(r) + sharesOf(r)),
+    }))
+
   const recentViews = sum(recent, viewsOf)
   const engagement = recentViews
     ? (sum(recent, r => (Number(r.meta?.likes ?? 0) || 0) + (Number(r.meta?.comments ?? 0) || 0)) /
@@ -217,6 +236,8 @@ export default async function Content({
               hint={`${prior.length} the quarter before`}
             />
           </div>
+
+          <AccountSplit rows={split} fmt={compact} />
 
           <section className="pgw">
             <div className="pgw-head">
