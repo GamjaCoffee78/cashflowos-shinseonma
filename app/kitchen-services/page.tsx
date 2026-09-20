@@ -5,38 +5,22 @@
 // Cash In, Cash Out and the Dashboard totals — nothing is taken away, exactly
 // like Ecomm Sales does for the marketplaces.
 //
-// A row belongs here when its `meta.group` starts with "Kitchen" (what the
-// owner-sheet importer stamps on), or — for a hand-entered row that carries no
-// group at all — when its title starts with "Kitchen Service". The title
-// fallback is deliberately narrow so a one-off "Kitchen equipment" purchase
-// never wanders onto this tab.
+// Which rows belong here is decided by isKitchen() in lib/ecomm.ts — the SAME
+// rule Offline Channels uses to EXCLUDE them, so a row can never show on both
+// tabs or fall between them.
 import {
   getRecords, getChannelMonthly, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec,
 } from '@/lib/records'
+import { isMoney, isKitchen, isWaiting, groupOf } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 import ChannelTrend from '@/app/_components/ChannelTrend'
 
-// Matched case-insensitively against the START of meta.group, so "Kitchen
-// Service", "Kitchen Services" and "Kitchen Service — Outlet 2" all land here
-// and keep their own names as section headings.
+// Which rows are Kitchen Service is decided by isKitchen() in lib/ecomm.ts —
+// the SAME rule Offline Channels uses to exclude them, so a row can never show
+// on both tabs or fall between them. 'Kitchen' is the channel name passed to
+// the month-on-month component.
 const KITCHEN = 'Kitchen'
-
-// Same "not in the bank yet" statuses Cash In uses, so the tabs agree.
-const WAITING = ['waiting', 'unpaid', 'overdue', 'pending']
-
-// This tab reports MONEY. Anything else is somebody else's category.
-const MONEY = new Set(['cash_in', 'cash_out'])
-
-const groupOf = (r: Rec) => String(r.meta?.group ?? '').trim()
-// Underscores and hyphens are word characters, so 'kitchen_service' would not
-// match a plain word test — flatten them before comparing.
-const norm = (s: string) => s.toLowerCase().replace(/[_\-/|]+/g, ' ').trim()
-const isKitchen = (r: Rec) => {
-  const g = groupOf(r)
-  if (g) return norm(g).startsWith(norm(KITCHEN))
-  return norm(String(r.title ?? '')).startsWith('kitchen service')
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -44,12 +28,9 @@ export default async function KitchenServices() {
   const all = await getRecords()
   // Same reporting window as the Dashboard and the other money tabs, so this
   // tab can never disagree with them about what a period's revenue was.
-  const rows = all.filter(
-    r => MONEY.has(r.category ?? '') && isKitchen(r) && inMoneyWindow(r),
-  )
+  const rows = all.filter(r => isMoney(r) && isKitchen(r) && inMoneyWindow(r))
   const period = moneyFromLabel()
 
-  const isWaiting = (r: Rec) => WAITING.includes((r.status || '').toLowerCase())
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
 
@@ -63,12 +44,13 @@ export default async function KitchenServices() {
   const jobs = sales.length
   const avg = jobs > 0 ? revenue / jobs : 0
 
-  // One section per distinct meta.group, biggest earner first. Untagged rows
-  // that got here on the title fallback are collected under their own heading
-  // rather than silently borrowing someone else's.
-  const groups = [...new Set(rows.map(r => groupOf(r) || 'Kitchen Service (untagged)'))]
+  // One section per distinct meta.group, biggest earner first. A row matched on
+  // its title carries no group, so it gets its own honest heading rather than
+  // silently borrowing someone else's.
+  const label = (r: Rec) => groupOf(r) || 'Kitchen Service (untagged)'
+  const groups = [...new Set(rows.map(label))]
     .map(name => {
-      const rs = rows.filter(r => (groupOf(r) || 'Kitchen Service (untagged)') === name)
+      const rs = rows.filter(r => label(r) === name)
       const gSales = rs.filter(r => r.category === 'cash_in')
       return { name, rs, sales: total(gSales), jobs: gSales.length }
     })

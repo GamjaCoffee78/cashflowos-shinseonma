@@ -19,6 +19,7 @@ const MORE: MoreTab[] = [
   { href: '/ecomm-sales', label: 'Ecomm Sales', ico: '🛒' },
   { href: '/sellers', label: 'Sellers', ico: '🧑‍💼' },
   { href: '/kitchen-services', label: 'Kitchen Services', ico: '🍳' },
+  { href: '/offline-channels', label: 'Offline Channels', ico: '🏪' },
   { href: '/leads', label: 'Leads', ico: '🧲' },
   { href: '/customers', label: 'Customers', ico: '🧑‍🤝‍🧑' },
   { href: '/content', label: 'Content', ico: '📣' },

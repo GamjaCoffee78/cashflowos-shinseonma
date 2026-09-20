@@ -17,6 +17,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/ecomm-sales', label: 'Ecomm Sales' },
     { href: '/sellers', label: 'Sellers' },
     { href: '/kitchen-services', label: 'Kitchen Services' },
+    { href: '/offline-channels', label: 'Offline Channels' },
   ] },
   { label: 'Pipeline', tabs: [
     { href: '/leads', label: 'Leads' },
