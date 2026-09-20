@@ -51,13 +51,7 @@ function recipients(): string[] {
 // along with it instead of spending the second Vercel cron slot. Past dates are
 // simply never matched again — safe to leave in place, tidy up when convenient.
 const ANNOUNCEMENTS: Record<string, string> = {
-  '2026-09-20':
-    '📣 <b>Claude Malaysia Meeting — 9:00am today.</b>\n' +
-    'Rise and shine, OMY team! Bring:\n' +
-    '1. 🧥 Jacket\n' +
-    '2. 💧 Water bottle\n' +
-    '3. 💻 Laptop + charger\n' +
-    '4. 🍪 Snacks',
+  // '2026-10-01': '📣 <b>Team meeting — 9:00am today.</b>\nBring your laptop 💻',
 }
 
 const sum = (rows: Rec[]) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)
