@@ -4,8 +4,11 @@
 import { getRecords, rm } from '@/lib/records'
 import { tiktokDays, tiktokTotals, tiktokConfigured, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import Stat from '@/app/_components/Stat'
+import SyncNow from './SyncNow'
 
 export const dynamic = 'force-dynamic'
+// The 90-day backfill behind the Sync now button can take a while.
+export const maxDuration = 60
 
 const pct = (n: number) => `${n.toFixed(2)}%`
 const rm2 = (n: number) => 'RM ' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -40,10 +43,12 @@ export default async function TikTokAds() {
         {last ? ` Last day loaded: ${dayLabel(last.date)}.` : ''}
       </p>
 
+      {tiktokConfigured && <SyncNow />}
+
       {days.length === 0 ? (
         <div className="empty">
           {tiktokConfigured ? (
-            <>No TikTok days synced yet — the next 8:15am run will pull the last 90 days. Or run <code>npm run sync:tiktok</code> now.</>
+            <>No TikTok days synced yet — press <b>Sync now</b> above to pull the last 90 days, or wait for the 8:15am run.</>
           ) : (
             <>
               TikTok isn&apos;t wired yet. Add <code>COMPOSIO_API_KEY</code> to Vercel (the account that has TikTok Ads linked in Composio),
