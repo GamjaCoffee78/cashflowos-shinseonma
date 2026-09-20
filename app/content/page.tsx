@@ -11,6 +11,8 @@ import PostCards from '@/app/_components/PostCards'
 import Pager from '@/app/_components/Pager'
 import AccountSplit, { type AccountRow } from '@/app/_components/AccountSplit'
 import { engagementFor } from '@/lib/insights'
+import ContentCoach from '@/app/_components/ContentCoach'
+import { getCoach } from '@/lib/coach'
 
 export const dynamic = 'force-dynamic'
 
@@ -178,6 +180,11 @@ export default async function Content({
       kept: sum(g.rows, r => savesOf(r) + sharesOf(r)),
     }))
 
+  // What's working: the window's three best posts, and three ideas built from
+  // them. Awaited here so the panel renders with the page rather than popping
+  // in — it's one cached read on all but the first load of the day.
+  const coach = await getCoach(recent, content)
+
   const recentViews = sum(recent, viewsOf)
   const engagement = recentViews
     ? (sum(recent, r => (Number(r.meta?.likes ?? 0) || 0) + (Number(r.meta?.comments ?? 0) || 0)) /
@@ -272,6 +279,8 @@ export default async function Content({
             <PostCards rows={shown} byMonth={!flat} />
             <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : savedFirst ? 'saved' : undefined, n)} />
           </section>
+
+          <ContentCoach coach={coach} />
 
           <ContentMonths months={byMonth(rows)} />
         </>
