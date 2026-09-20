@@ -7,6 +7,7 @@ import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
+import { syncCalendar } from '@/lib/calendar'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -75,6 +76,14 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error('[CFO] meta sync failed:', e)
     meta = { error: String((e as Error)?.message || e).slice(0, 200) }
+  }
+  // And Google Calendar → `event` rows (read-only copy; the Calendar tab).
+  let calendar: any = null
+  try {
+    calendar = await syncCalendar()
+  } catch (e) {
+    console.error('[CFO] calendar sync failed:', e)
+    calendar = { error: String((e as Error)?.message || e).slice(0, 200) }
   }
 
   const rows = await getRecords()
@@ -165,6 +174,7 @@ export async function GET(req: Request) {
     proposals_created: created,
     tiktok,
     meta,
+    calendar,
   })
 }
 

@@ -145,9 +145,23 @@ export const ABANG = {
    * System User token with ads_read); without it the tab shows a setup note.
    */
   metaAds: {
-    adAccountId: '',          // e.g. 'act_1234567890' — Ads Manager → Account overview
+    adAccountId: 'act_3910350865950897',   // "Okmaya" (MYR), business 옥마야 Okmaya
     syncDays: 3,
     backfillDays: 90,
+  },
+
+  // ── 👉 CALENDAR ───────────────────────────────────────────────────────────
+  /**
+   * The Calendar tab. The daily cron copies Google Calendar events (past
+   * `pastDays` → next `futureDays`) into `event` records through Composio, where
+   * the Google account is linked. Read-only: the app never writes to Google.
+   * Reuses COMPOSIO_API_KEY; the ids below are not secrets.
+   */
+  calendar: {
+    calendarId: 'huiyee.lee@okmayaofficial.com',
+    composioAccount: 'ca_joPzpFAk1MLz',   // the Google Calendar connection in the Composio project
+    pastDays: 14,
+    futureDays: 60,
   },
 }
 

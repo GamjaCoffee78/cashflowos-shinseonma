@@ -22,6 +22,7 @@ const MORE: MoreTab[] = [
   { href: '/offline-channels', label: 'Offline Channels', ico: '🏪' },
   { href: '/leads', label: 'Leads', ico: '🧲' },
   { href: '/customers', label: 'Customers', ico: '🧑‍🤝‍🧑' },
+  { href: '/calendar', label: 'Calendar', ico: '📅' },
   { href: '/content', label: 'Content', ico: '📣' },
   { href: '/tasks', label: 'Tasks', ico: '✅' },
   { href: '/production', label: 'Production Timeline', ico: '🏭' },
