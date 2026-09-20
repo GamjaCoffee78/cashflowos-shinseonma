@@ -90,7 +90,10 @@ export default async function EcommSales({
     .reverse()
   // Default to this year; if it has nothing yet, show the most recent that does.
   const thisYear = todayISO().slice(0, 4)
-  const year = y && years.includes(y) ? y : years.includes(thisYear) ? thisYear : years[0]
+  // years[0] is undefined when there are no rows at all, which would print
+  // "sales in ." — fall back to this year so the caption always reads.
+  const year =
+    y && years.includes(y) ? y : years.includes(thisYear) ? thisYear : years[0] ?? thisYear
 
   const rows = everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
 

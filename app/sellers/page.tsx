@@ -5,7 +5,13 @@
 // A row lands here when its `meta.group` contains "seller" (see lib/ecomm.ts) —
 // the same rule Ecomm Sales uses to EXCLUDE them, so a row can never show on
 // both tabs or fall between them.
-import { getRecords, inMoneyWindow, moneyFromLabel, rm, todayISO, type Rec } from '@/lib/records'
+//
+// YEAR FILTER: like Ecomm, this tab deliberately IGNORES the app-wide money
+// window (ABANG.moneyFrom, currently 2026-01-01). That window keeps the
+// Dashboard on the current year; here the point is to look back, so the year
+// chips decide the period and every year with rows is reachable.
+import Link from 'next/link'
+import { getRecords, rm, todayISO, type Rec } from '@/lib/records'
 import { isMoney, isSeller, isWaiting, groupOf, norm } from '@/lib/ecomm'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
@@ -23,14 +29,32 @@ const marketOf = (r: Rec): 'MY' | 'SG' | 'Other' => {
   return 'Other' // shown in its own section, never silently folded into MY
 }
 
-export default async function Sellers() {
+export default async function Sellers({
+  searchParams,
+}: {
+  searchParams: Promise<{ y?: string }>
+}) {
+  const { y } = await searchParams
   const all = await getRecords()
   // Seller SALES only (money in). Seller-side costs are money-out and stay on
-  // Cash Out, matching Ecomm Sales.
-  const rows = all.filter(
-    r => r.category === 'cash_in' && isSeller(r) && inMoneyWindow(r),
+  // Cash Out, matching Ecomm. No money window — the year chips are the period.
+  const everyYear = all.filter(
+    r => r.category === 'cash_in' && isSeller(r) && !!r.due_date,
   )
-  const period = moneyFromLabel()
+
+  // Only years that actually have rows, newest first — so next January adds
+  // itself and an empty year is never offered.
+  const years = [...new Set(everyYear.map(r => (r.due_date as string).slice(0, 4)))]
+    .sort()
+    .reverse()
+  // Default to this year; if it has nothing yet, show the most recent that does.
+  const thisYear = todayISO().slice(0, 4)
+  // years[0] is undefined when there are no rows at all, which would print
+  // "sales in ." — fall back to this year so the caption always reads.
+  const year =
+    y && years.includes(y) ? y : years.includes(thisYear) ? thisYear : years[0] ?? thisYear
+
+  const rows = everyYear.filter(r => (r.due_date as string).slice(0, 4) === year)
 
   const isOverdue = (r: Rec) => isWaiting(r) && !!r.due_date && r.due_date < todayISO()
   const total = (rs: Rec[]) => rs.reduce((s, r) => s + Number(r.amount || 0), 0)
@@ -69,10 +93,26 @@ export default async function Sellers() {
     <>
       <h1 className="ph">Sellers 🧑‍💼</h1>
       <p className="cap">
-        MY and SG sellers — sales{period ? ` · since ${period}` : ''}. Split out of
-        Ecomm so marketplace settlements stay clean. These rows still count on Cash In —
-        this mirrors them, it doesn&apos;t move them. Seller costs are on Cash Out.
+        MY and SG sellers — sales in {year}. Split out of Ecomm so marketplace settlements
+        stay clean. These rows still count on Cash In — this mirrors them, it
+        doesn&apos;t move them. Seller costs are on Cash Out.
       </p>
+
+      {/* The year chips ARE the period control for this tab. */}
+      {years.length > 1 ? (
+        <nav className="yearbar" aria-label="Year">
+          {years.map(k => (
+            <Link
+              key={k}
+              href={`/sellers?y=${k}`}
+              className={`yearchip${k === year ? ' active' : ''}`}
+              aria-current={k === year ? 'page' : undefined}
+            >
+              {k}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
 
       <p className="rowlabel">Sales by market</p>
       <div className="grid">
@@ -106,10 +146,13 @@ export default async function Sellers() {
 
       {all.length === 0 ? (
         <Empty />
-      ) : rows.length === 0 ? (
-        // Records ARE loading but none matched. Don't just say "empty" — the
-        // useful thing is WHICH groups exist, so the mismatch is visible
-        // instead of guessed at.
+      ) : rows.length > 0 ? null : everyYear.length > 0 ? (
+        // Seller rows DO exist — this year just has none. Say that, rather
+        // than implying the matching rule failed.
+        <div className="empty">No seller sales in {year}.</div>
+      ) : (
+        // No seller rows at all. Don't just say "empty" — the useful thing is
+        // WHICH groups exist, so the mismatch is visible instead of guessed at.
         <div className="empty">
           No seller rows matched. A row lands here when its <code>meta.group</code> contains
           the word &quot;seller&quot;.
@@ -120,7 +163,9 @@ export default async function Sellers() {
           <br />
           {knownGroups.length ? knownGroups.map(g => <code key={g}> {g} </code>) : '(none have a meta.group)'}
         </div>
-      ) : (
+      )}
+
+      {rows.length > 0 ? (
         groups.map(g => (
           <div key={g.name}>
             <p className="rowlabel">
@@ -153,7 +198,7 @@ export default async function Sellers() {
             </table>
           </div>
         ))
-      )}
+      ) : null}
     </>
   )
 }
