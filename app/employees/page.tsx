@@ -1,5 +1,6 @@
 import { AGENTS, SCHEDULED } from '@/agents/registry'
 import RunAgent from '@/app/_components/RunAgent'
+import ShopeeReport from '@/app/_components/ShopeeReport'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,9 @@ export default async function Employees() {
             {SCHEDULED.some(s => s.key === a.key && s.manualOnly) && (
               <RunAgent agentKey={a.key} label="Run now" />
             )}
+            {/* The Head of Sales also reports the marketplace numbers. Read-only,
+                so it sits outside the propose/approve funnel entirely. */}
+            {a.key === 'cold-lead' && <ShopeeReport />}
             <p className="ac-lastrun">
               {run
                 ? `Last run: ${new Date(run.when).toLocaleString('en-MY')}`

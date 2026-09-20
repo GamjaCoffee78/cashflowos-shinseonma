@@ -11,6 +11,7 @@ import {
 } from '@/lib/telegram'
 import { loadTurns, appendTurn, bumpDailyCounter } from '@/lib/bot-memory'
 import { getRecords, rm, todayISO, todayWeekday } from '@/lib/records'
+import { shopeeReport, formatShopeeReport, parseMonth, lastCompleteMonth } from '@/lib/shopee-report'
 import { claim, executeClaimed, summarizeResult, undoAction, runAutopilot, proposeAndNotify } from '@/lib/actions'
 import { readImage, type VisionResult } from '@/lib/vision'
 import { BOT_TOOLS, runBotTool } from '@/lib/bot-tools'
@@ -350,6 +351,25 @@ async function handleMessage(msg: any): Promise<Response> {
     }
     const res = await undoAction(Number(undoMatch[1]))
     await sendMessage(chatId, res.message)
+    return Response.json({ ok: true })
+  }
+
+  // /shopee [month] — the Head of Sales' marketplace report. Read-only: it totals
+  // Shopee cash_in rows for one calendar month and answers in chat. Nothing is
+  // proposed, written or sent. With no month named it reports the last COMPLETE
+  // month, so a figure you pass on to someone else never moves under you.
+  const shopeeCmd = text.match(/^\/shopee(?:@\S+)?\s*(.*)$/i)
+  if (shopeeCmd) {
+    const today = todayISO()
+    const asked = parseMonth(shopeeCmd[1], today)
+    const month = asked || lastCompleteMonth(today)
+    const rows = await getRecords()
+    const report = shopeeReport(rows, month, today)
+    await sendMessage(
+      chatId,
+      formatShopeeReport(report) +
+        (asked ? '' : `\n\n<i>Last complete month. Try /shopee sep for another one.</i>`),
+    )
     return Response.json({ ok: true })
   }
 
