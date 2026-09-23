@@ -1,6 +1,7 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { syncTikTokAds, tiktokConfigured } from './tiktok-ads'
 import { syncMetaAds, metaConfigured } from './meta-ads'
+import { syncShopee, shopeeConfigured } from './shopee'
 import { syncCalendar, calendarConfigured } from './calendar'
 import { syncOwnerSheet, ownerSheetConfigured } from './owner-sheet'
 
@@ -42,6 +43,7 @@ const STEPS: Source[] = [
   { key: 'tiktok_ads', label: 'TikTok Ads', configured: tiktokConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncTikTokAds() },
   { key: 'meta_ads', label: 'Meta Ads', configured: metaConfigured, missing: 'META_ADS_TOKEN', run: () => syncMetaAds() },
   { key: 'calendar', label: 'Calendar', configured: calendarConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncCalendar() },
+  { key: 'shopee', label: 'Shopee orders', configured: shopeeConfigured, missing: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY', run: () => syncShopee() },
   { key: 'owner_sheet', label: 'Owner sheet', configured: ownerSheetConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncOwnerSheet() },
 ]
 

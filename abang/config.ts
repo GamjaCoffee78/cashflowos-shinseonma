@@ -150,6 +150,24 @@ export const ABANG = {
     backfillDays: 90,
   },
 
+  // ── 👉 SHOPEE ─────────────────────────────────────────────────────────────
+  /**
+   * The live Shopee link (lib/shopee.ts). The daily cron pulls the last
+   * `syncDays` of orders straight from Shopee's Open API and writes the SAME
+   * `cash_in` rows the xlsx import used to — keyed on the order id, so the two
+   * can never double-count. Needs SHOPEE_PARTNER_ID + SHOPEE_PARTNER_KEY in
+   * Vercel, and one visit to /api/shopee/authorize per shop.
+   *
+   * `region` labels the rows (meta.group) so the Ecomm tab groups them.
+   * `fetchNet` asks Shopee for the escrow (after-fees) amount per order — it is
+   * one API call per order, so leave it off unless you need the net figure.
+   */
+  shopee: {
+    region: 'Shopee MY',
+    syncDays: 7,
+    fetchNet: false,
+  },
+
   // ── 👉 CALENDAR ───────────────────────────────────────────────────────────
   /**
    * The Calendar tab. The daily cron copies Google Calendar events (past

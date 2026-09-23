@@ -15,7 +15,7 @@ export default function SyncNow({
   label,
   hint,
 }: {
-  source: 'tiktok' | 'meta' | 'calendar'
+  source: 'tiktok' | 'meta' | 'calendar' | 'shopee'
   label: string          // "🎯 Sync now"
   hint: string           // shown while it runs
 }) {

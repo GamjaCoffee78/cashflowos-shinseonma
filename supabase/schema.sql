@@ -122,6 +122,28 @@ insert into storage.buckets (id, name, public)
 values ('vault', 'vault', false)
 on conflict (id) do nothing;
 
+-- ------------------------------------------------------------
+-- SHOPEE AUTH — the tokens for the Shopee Open API (lib/shopee.ts).
+--
+-- Its own table, NOT `records`, on purpose: the morning brief feeds `records`
+-- rows to Claude as untrusted data, and a refresh token must never ride along
+-- in a prompt. One row per authorised shop.
+--
+-- Shopee's access_token lasts 4 hours and the refresh_token 30 days, and BOTH
+-- are replaced on every refresh — so they have to live somewhere durable, not
+-- in an env var.
+-- ------------------------------------------------------------
+create table if not exists shopee_auth (
+  shop_id       bigint      primary key,
+  shop_name     text,
+  region        text,
+  access_token  text        not null,
+  refresh_token text        not null,
+  expires_at    timestamptz not null,          -- when access_token dies
+  authorised_at timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
 -- ============================================================
 -- NO SEED ROWS. This shop runs on real data — the database starts EMPTY and
 -- every number in the app is your own. (The template's demo rows — Acme,

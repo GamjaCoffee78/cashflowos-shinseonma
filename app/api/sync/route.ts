@@ -4,6 +4,7 @@ import { syncAll } from '@/lib/sync-all'
 import { syncTikTokAds } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar } from '@/lib/calendar'
+import { syncShopee } from '@/lib/shopee'
 
 // The "Sync now" endpoint behind every button: POST { source } → runs the
 // same pull the 08:15 cron does for that one source, nothing else (no brief,
@@ -20,6 +21,7 @@ const SOURCES = {
   tiktok: { run: syncTikTokAds, unit: 'day(s)', label: 'TikTok' },
   meta: { run: syncMetaAds, unit: 'day(s)', label: 'Meta' },
   calendar: { run: syncCalendar, unit: 'event(s)', label: 'Google Calendar' },
+  shopee: { run: syncShopee, unit: 'order(s)', label: 'Shopee' },
 } as const
 
 export async function POST(req: Request) {
