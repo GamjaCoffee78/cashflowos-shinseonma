@@ -158,12 +158,12 @@ export const ABANG = {
    * can never double-count. Needs SHOPEE_PARTNER_ID + SHOPEE_PARTNER_KEY in
    * Vercel, and one visit to /api/shopee/authorize per shop.
    *
-   * `region` labels the rows (meta.group) so the Ecomm tab groups them.
+   * Each shop's region and currency come from Shopee itself (MY, SG, …), so a
+   * second shop only needs authorising — no setting here changes.
    * `fetchNet` asks Shopee for the escrow (after-fees) amount per order — it is
    * one API call per order, so leave it off unless you need the net figure.
    */
   shopee: {
-    region: 'Shopee MY',
     syncDays: 7,
     fetchNet: false,
   },

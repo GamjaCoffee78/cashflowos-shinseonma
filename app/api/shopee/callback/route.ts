@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { exchangeCode, saveAuth, shopeeConfigured } from '@/lib/shopee'
-import { ABANG } from '@/abang/config'
+import { exchangeCode, saveAuth, shopInfo, shopeeConfigured } from '@/lib/shopee'
 
 // Step 2: Shopee sends the shopkeeper back here with a one-time code. We trade
 // it for the access + refresh tokens and store them in `shopee_auth`, then send
@@ -26,10 +25,15 @@ export async function GET(req: Request) {
 
   try {
     const auth = await exchangeCode(code, shopId)
-    await saveAuth(auth, { region: ABANG.shopee.region })
+    // Ask Shopee which shop this is — the region decides which tab it feeds.
+    const info = await shopInfo(shopId, auth.access_token)
+    await saveAuth(auth, info)
+    const region = (info.region || '').toUpperCase()
     return page(
       '✅ Shopee is linked',
-      `<p>Shop <code>${shopId}</code> is authorised. Your orders now sync every morning with the brief — or press <b>Sync now</b> on the Ecomm tab.</p>`,
+      `<p><b>${info.shop_name || `Shop ${shopId}`}</b>${region ? ` (${region})` : ''} is authorised. Its orders now sync every morning with the brief — or press <b>Sync now</b> on the ` +
+        `${region ? `Shopee ${region}` : 'Shopee'} tab.</p>` +
+        `<p>Linking a second shop? Open this authorise link again while signed in to that shop's Seller Centre.</p>`,
     )
   } catch (e) {
     return page('⚠️ That didn’t work', `<p>${String((e as Error)?.message || e).slice(0, 300)}</p><p>Try <a href="/api/shopee/authorize">authorising again</a> — the code Shopee sends is single-use and expires quickly.</p>`)

@@ -6,8 +6,11 @@ import { daysAgoISO, addDays, num } from './ads-daily'
 
 // Shopee Open API v2 → the ONE `records` table.
 //
-// One row per order in its OWN category, `shopee_order`, shown on the Shopee MY
-// tab. Deliberately NOT `cash_in`: the money tabs and the Ecomm tab already
+// One row per order in its OWN category, `shopee_order`, shown on the per-shop
+// Shopee tabs (Shopee MY, Shopee SG — one per authorised shop).
+//
+// Region and currency come from Shopee per shop, never from config, so MYR and
+// SGD money is never added together and a third shop needs no code change. Deliberately NOT `cash_in`: the money tabs and the Ecomm tab already
 // count the orders that came in from the xlsx exports, so a separate category
 // means the live sync can never overwrite that data or double-count it. Nothing
 // here touches an existing row.
@@ -64,6 +67,18 @@ async function call(url: string, init?: RequestInit): Promise<any> {
 // Shopee sends the shopkeeper back to `redirect` with ?code=&shop_id=.
 export function authorizeUrl(redirect: string): string {
   return publicUrl('/api/v2/shop/auth_partner', { redirect })
+}
+
+// Which shop is this? Shopee knows its name and region ('MY', 'SG', …), so we
+// never guess from config — that is what keeps two shops apart.
+export async function shopInfo(shopId: number, accessToken: string): Promise<{ shop_name?: string; region?: string }> {
+  try {
+    const body = await call(shopUrl('/api/v2/shop/get_shop_info', shopId, accessToken))
+    const r = body.response ?? body
+    return { shop_name: r?.shop_name ? String(r.shop_name) : undefined, region: r?.region ? String(r.region).toUpperCase() : undefined }
+  } catch {
+    return {} // a shop that won't say stays unlabelled rather than mislabelled
+  }
 }
 
 // ---- 3) Tokens: exchange the one-time code, then keep them fresh. ----
@@ -134,6 +149,7 @@ type ShopeeOrder = {
   date: string
   buyer: string
   total: number
+  currency: string
   items: { name: string; variation: string; qty: number; price: number }[]
 }
 
@@ -169,7 +185,7 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
     const body = await call(
       shopUrl('/api/v2/order/get_order_detail', shopId, token, {
         order_sn_list: sns.slice(i, i + 50).join(','),
-        response_optional_fields: 'total_amount,buyer_username,create_time,pay_time,order_status,item_list',
+        response_optional_fields: 'total_amount,currency,buyer_username,create_time,pay_time,order_status,item_list',
       }),
     )
     for (const o of body.response?.order_list ?? []) {
@@ -181,6 +197,7 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
         date: new Date(at * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }),
         buyer: String(o.buyer_username || ''),
         total: num(o.total_amount),
+        currency: String(o.currency || '').toUpperCase(),
         items: (o.item_list ?? []).map((it: any) => ({
           name: String(it.item_name || ''),
           variation: String(it.model_name || ''),
@@ -219,7 +236,7 @@ function shortName(n: string): string {
   return space > 20 ? cut.slice(0, space) : cut
 }
 
-function toRecord(o: ShopeeOrder, shop: string, net?: number) {
+function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: string }, net?: number) {
   const parts = o.items.map(i => `${i.qty}× ${shortName(i.name) || 'item'}${i.variation ? ` (${i.variation})` : ''}`)
   const label = parts.slice(0, 2).join(', ') + (parts.length > 2 ? ` +${parts.length - 2} more` : '')
   const qty = o.items.reduce((s, i) => s + i.qty, 0)
@@ -232,7 +249,10 @@ function toRecord(o: ShopeeOrder, shop: string, net?: number) {
     notes: `${qty} item${qty === 1 ? '' : 's'} · buyer ${o.buyer || '—'} · Shopee: ${o.status}`,
     meta: {
       source: 'shopee_api',        // NOT 'shopee' — that is the xlsx import's rows
-      shop,
+      shop: shop.label,
+      shop_id: shop.id,
+      shop_region: shop.region,    // 'MY' | 'SG' — which tab the row belongs to
+      currency: o.currency,        // MYR / SGD — never summed across the two
       platform: 'Shopee',
       customer: o.buyer || undefined,
       shopee_order_id: o.order_sn,
@@ -260,7 +280,9 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {})
   let fetched = 0, inserted = 0, updated = 0, skipped = 0
   const sample: string[] = []
   for (const shop of shops) {
-    const label = shop.shop_name || `Shopee ${shop.region || ''}`.trim() || 'Shopee'
+    const region = (shop.region || '').toUpperCase()
+    const label = `Shopee${region ? ` ${region}` : ''}`
+    const stamp = { label, id: shop.shop_id, region }
     const sns = await listOrderSns(shop.shop_id, shop.access_token, from, to)
     const orders = (await orderDetails(shop.shop_id, shop.access_token, sns)).filter(o => {
       if (SKIP_STATUS.has(o.status)) { skipped++; return false }
@@ -288,7 +310,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {})
 
     const toInsert: any[] = []
     for (const o of orders) {
-      const row = toRecord(o, label, net.get(o.order_sn))
+      const row = toRecord(o, stamp, net.get(o.order_sn))
       const id = existing.get(o.order_sn)
       if (id) {
         const { error } = await supabase.from('records').update(row).eq('id', id)
@@ -306,11 +328,14 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {})
 }
 
 // ---- 6) Read helpers for the Shopee MY tab. ----
-export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string }
+export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string }
 
-export function shopeeOrders(rows: Rec[]): ShopeeRow[] {
+// `region` is 'MY' | 'SG' — each tab asks only for its own shop's orders, so
+// two currencies can never land in one total.
+export function shopeeOrders(rows: Rec[], region: string): ShopeeRow[] {
+  const want = region.toUpperCase()
   return rows
-    .filter(r => r.category === CATEGORY && r.meta?.shopee_order_id)
+    .filter(r => r.category === CATEGORY && r.meta?.shopee_order_id && String(r.meta?.shop_region || '').toUpperCase() === want)
     .map(r => ({
       id: r.id,
       order_sn: String(r.meta.shopee_order_id),
@@ -320,6 +345,7 @@ export function shopeeOrders(rows: Rec[]): ShopeeRow[] {
       amount: num(r.amount),
       net: r.meta.net ? num(r.meta.net) : undefined,
       status: String(r.meta.shopee_status || ''),
+      currency: String(r.meta.currency || ''),
     }))
     .sort((a, b) => b.date.localeCompare(a.date))
 }
@@ -330,4 +356,22 @@ export function shopeeTotals(orders: ShopeeRow[], n: number) {
   const w = orders.filter(o => o.date >= from)
   const revenue = w.reduce((s, o) => s + o.amount, 0)
   return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0 }
+}
+
+// Money, in the shop's own currency. Falls back to the plain code for anything
+// we have not met, rather than pretending it is Ringgit.
+const SYMBOL: Record<string, string> = { MYR: 'RM', SGD: 'S$', THB: '฿', IDR: 'Rp', PHP: '₱', VND: '₫', TWD: 'NT$', BRL: 'R$' }
+export function money(n: number, currency: string): string {
+  const s = SYMBOL[currency.toUpperCase()] || currency.toUpperCase() || ''
+  return `${s} ${n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
+}
+
+// The currency a tab should label its totals with: whatever its orders use.
+export const currencyOf = (orders: ShopeeRow[], fallback: string) => orders.find(o => o.currency)?.currency || fallback
+
+// Every shop authorised so far, for the "not linked yet" message on each tab.
+export async function linkedRegions(): Promise<string[]> {
+  if (!supabaseConfigured) return []
+  const { data } = await supabase.from('shopee_auth').select('region')
+  return (data ?? []).map(r => String(r.region || '').toUpperCase()).filter(Boolean)
 }

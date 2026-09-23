@@ -21,6 +21,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
   { label: 'Sales', tabs: [
     { href: '/ecomm-sales', label: 'Ecomm' },
     { href: '/shopee-my', label: 'Shopee MY' },
+    { href: '/shopee-sg', label: 'Shopee SG' },
     { href: '/sellers', label: 'Sellers' },
     { href: '/kitchen-services', label: 'Kitchen Services' },
     { href: '/offline-channels', label: 'Offline Channels' },
