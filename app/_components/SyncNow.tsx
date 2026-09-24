@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 
 // The "Sync now" button, shared by the tabs that copy an outside source into
@@ -17,7 +17,7 @@ export default function SyncNow({
   region,
 }: {
   source: 'tiktok' | 'meta' | 'calendar' | 'shopee'
-  label: string          // "🎯 Sync now"
+  label: ReactNode       // "🎯 Sync now", or an icon + text
   hint: string           // shown while it runs
   region?: string        // Shopee: sync only this shop
 }) {
