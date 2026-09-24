@@ -18,6 +18,19 @@ const weekday = (iso: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-MY', { weekday: 'short', timeZone: 'UTC' })
 }
 
+// Shopee's mark — the orange shopping bag with an S — drawn inline so the button
+// needs no image file. Sits on a white disc so it reads on the red button.
+function ShopeeMark() {
+  return (
+    <svg className="shopee-mark" viewBox="0 0 24 24" width="18" height="18" aria-label="Shopee">
+      <circle cx="12" cy="12" r="12" fill="#fff" />
+      <path d="M8.6 8.2a3.4 3.4 0 0 1 6.8 0" fill="none" stroke="#EE4D2D" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M6 8.2h12l-.8 10.1a1.4 1.4 0 0 1-1.4 1.3H8.2a1.4 1.4 0 0 1-1.4-1.3z" fill="#EE4D2D" />
+      <text x="12" y="17.2" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#fff" fontFamily="Arial, sans-serif">S</text>
+    </svg>
+  )
+}
+
 // Pie slice colours: the five best sellers, then a neutral for "everything else".
 const PIE = ['#1E4C96', '#6E96C4', '#B6802A', '#4B7A5A', '#8A6BB0', '#C9BFAF']
 
@@ -204,7 +217,7 @@ export default async function ShopeeTab({
         )}
       </div>
 
-      {shopeeConfigured && <SyncNow source="shopee" region={region} label="🛍️ Sync now" hint={`Asking Shopee ${region} for the latest orders…`} />}
+      {shopeeConfigured && <SyncNow source="shopee" region={region} label={<><ShopeeMark /> Sync</>} hint={`Asking Shopee ${region} for the latest orders…`} />}
 
       {orders.length === 0 ? (
         <div className="empty">

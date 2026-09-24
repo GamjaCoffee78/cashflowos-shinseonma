@@ -224,6 +224,7 @@ code {
 .sp-bar.today { background: var(--clay-deep); box-shadow: 0 0 0 2px var(--clay-tint); }
 .sp-axis { display: flex; justify-content: space-between; padding-top: 6px; font-size: 11px; color: var(--ink-faint); }
 
+.shopee-mark { vertical-align: -4px; margin-right: 2px; }
 .sp-cut { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
 .sp-pie-wrap { display: flex; align-items: center; gap: 24px; }
 .sp-pie-wrap .sp-best { flex: 1; min-width: 0; }
