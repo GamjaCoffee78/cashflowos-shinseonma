@@ -4,14 +4,17 @@ import { getDoc, listDocs, invoiceBalance } from '@/lib/billing'
 import { DOC_TYPES, fmtDate, money, totals } from '@/lib/billing-shared'
 import BillingActions from '@/app/_components/BillingActions'
 import DocSheet from '@/app/_components/DocSheet'
+import { shareToken } from '@/lib/billing-share'
+import { listContacts } from '@/lib/billing'
 
 export const dynamic = 'force-dynamic'
 
 
 // One billing document, laid out as the printed page. "Print / Save PDF" uses
 // the browser's print dialog; the print stylesheet hides the app around it.
-export default async function DocView({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocView({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ send?: string }> }) {
   const { id } = await params
+  const { send } = await searchParams
   const doc = await getDoc(Number(id))
   if (!doc) notFound()
   const docs = await listDocs()
@@ -26,8 +29,11 @@ export default async function DocView({ params }: { params: Promise<{ id: string
       <div className="bl-bar no-print">
         <Link href="/billing">← Billing</Link>
         <BillingActions
-          doc={{ id: doc.id, type: doc.type, number: doc.number, status: doc.status, email: doc.party.email, name: doc.party.name, total: t.total, dueDate: doc.dueDate }}
+          doc={{ id: doc.id, type: doc.type, number: doc.number, status: doc.status, email: doc.party.email, phone: doc.party.phone, attn: doc.party.attn, name: doc.party.name, total: t.total, dueDate: doc.dueDate }}
           balance={bal?.balance ?? null}
+          sharePath={(() => { const tk = shareToken(doc.id); return tk ? `/share/${tk}` : null })()}
+          openSend={send === '1'}
+          contacts={(await listContacts()).map(c => ({ name: c.name, phone: c.phone, email: c.email, attn: c.attn }))}
         />
       </div>
 

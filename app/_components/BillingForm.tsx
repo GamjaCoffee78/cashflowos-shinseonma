@@ -58,7 +58,7 @@ export default function BillingForm({
         })
         const r = await res.json().catch(() => ({ ok: false, message: `HTTP ${res.status}` }))
         if (!r.ok) return setErr(r.message)
-        router.push(`/billing/${r.id}`)
+        router.push(`/billing/${r.id}${issue ? '?send=1' : ''}`)
         router.refresh()
       } catch (e) {
         setErr(String((e as Error)?.message || e))
