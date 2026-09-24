@@ -16,6 +16,7 @@ const PRIMARY = [
 
 // Everything not on the bottom bar lives in the More sheet.
 const MORE: MoreTab[] = [
+  { href: '/billing', label: 'Billing', ico: '🧾' },
   { href: '/ecomm-sales', label: 'Ecomm', ico: '🛒' },
   { href: '/shopee-my', label: 'Shopee MY', ico: '🛍️' },
   { href: '/shopee-sg', label: 'Shopee SG', ico: '🛍️' },
@@ -40,7 +41,7 @@ const MORE: MoreTab[] = [
 export default function BottomNav() {
   const path = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
-  const moreActive = MORE.some(t => t.href === path)
+  const moreActive = MORE.some(t => t.href === path || path.startsWith(t.href + '/'))
   return (
     <>
       <nav className="bottomnav">
