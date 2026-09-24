@@ -167,6 +167,11 @@ create table if not exists tiktok_auth (
   updated_at    timestamptz not null default now()
 );
 
+-- Tokens: server (service role) only. With RLS on and no policies, the public
+-- anon key can't read them. Matches shopee_auth in the live database.
+alter table shopee_auth enable row level security;
+alter table tiktok_auth enable row level security;
+
 -- ============================================================
 -- NO SEED ROWS. This shop runs on real data — the database starts EMPTY and
 -- every number in the app is your own. (The template's demo rows — Acme,
