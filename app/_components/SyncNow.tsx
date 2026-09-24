@@ -16,7 +16,7 @@ export default function SyncNow({
   hint,
   region,
 }: {
-  source: 'tiktok' | 'meta' | 'calendar' | 'shopee'
+  source: 'tiktok' | 'meta' | 'calendar' | 'shopee' | 'tiktok_shop'
   label: ReactNode       // "🎯 Sync now", or an icon + text
   hint: string           // shown while it runs
   region?: string        // Shopee: sync only this shop

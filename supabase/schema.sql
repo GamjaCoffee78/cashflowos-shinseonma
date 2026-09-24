@@ -144,6 +144,29 @@ create table if not exists shopee_auth (
   updated_at    timestamptz not null default now()
 );
 
+-- ------------------------------------------------------------
+-- TIKTOK SHOP AUTH — tokens for the TikTok Shop Partner API (lib/tiktok-shop.ts).
+--
+-- Same reasoning as shopee_auth: its own table, never `records`, because the
+-- morning brief feeds `records` rows to Claude as untrusted data and a refresh
+-- token must never ride along in a prompt.
+--
+-- TikTok's access token lasts 7 days and the refresh token 1 year, and a
+-- refresh returns new values for both, so they need somewhere durable.
+-- One row per authorised shop; `cipher` is what every shop-scoped call needs.
+-- ------------------------------------------------------------
+create table if not exists tiktok_auth (
+  shop_id       text        primary key,
+  shop_name     text,
+  region        text,
+  cipher        text,
+  access_token  text        not null,
+  refresh_token text        not null,
+  expires_at    timestamptz not null,          -- when access_token dies
+  authorised_at timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
 -- ============================================================
 -- NO SEED ROWS. This shop runs on real data — the database starts EMPTY and
 -- every number in the app is your own. (The template's demo rows — Acme,

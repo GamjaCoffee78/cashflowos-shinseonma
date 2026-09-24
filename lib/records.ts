@@ -29,7 +29,7 @@ export const LEAD_STAGES = ['new', 'contacted', 'appointment', 'closed', 'nurtur
 // The Shopee tabs hold a year of individual orders — tens of thousands of rows
 // nobody else reads — so they are fetched by lib/shopee.ts directly instead of
 // riding along in the whole-app read below.
-export const HEAVY_CATEGORIES = ['shopee_order']
+export const HEAVY_CATEGORIES = ['shopee_order', 'tiktok_order']
 
 // Every tab calls this, then filters in its own way.
 export async function getRecords(): Promise<Rec[]> {
