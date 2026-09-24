@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   if (!Number.isInteger(id) || id <= 0) return bad('Which item?')
   const { data: row, error: readErr } = await supabase
     .from('records')
-    .select('id, title, status, due_date, category, meta')
+    .select('id, title, notes, status, due_date, category, meta')
     .eq('id', id)
     .in('category', Object.keys(EDITABLE))
     .maybeSingle()
@@ -99,9 +99,16 @@ export async function POST(req: Request) {
     // New wording for the item (and, for social posts, its [channels] tag).
     const title = String(body?.title || '').trim().slice(0, 300)
     if (!title) return bad('The text can\'t be empty.')
-    if (title === (row as any).title) return NextResponse.json({ ok: true, message: 'No change.' })
+    // Ideas also carry notes; only touched when the form sends them.
+    const notes = typeof body?.notes === 'string' ? body.notes.trim().slice(0, 1000) : undefined
+    const notesChanged = notes !== undefined && notes !== ((row as any).notes ?? '')
+    if (title === (row as any).title && !notesChanged) return NextResponse.json({ ok: true, message: 'No change.' })
     const edits = Array.isArray(meta.edits) ? meta.edits : []
-    patch = { title, meta: { ...meta, edits: [...edits, { from: (row as any).title, at: now }] } }
+    patch = {
+      title,
+      ...(notesChanged ? { notes: notes || null } : {}),
+      meta: { ...meta, edits: [...edits, { from: (row as any).title, at: now }] },
+    }
   } else if (action === 'done') {
     patch = { status: 'done', meta: { ...meta, done_at: now } }
   } else if (action === 'undo') {
