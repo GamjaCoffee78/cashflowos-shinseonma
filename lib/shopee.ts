@@ -301,7 +301,10 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
 
 // ---- 5) The sync the cron and the Sync now button call. ----
 export async function syncShopee(opts: { days?: number; until?: number; dryRun?: boolean; region?: string; netBudgetMs?: number } = {}) {
-  const netStopAt = Date.now() + (opts.netBudgetMs ?? 15_000)
+  // The payout clock starts at the FIRST lookup, not at the start of the sync —
+  // listing orders alone can eat a short budget before a single payout is asked.
+  let netStopAt = 0
+  let netTried = 0
   netError = ''
   let netAdded = 0
   if (!shopeeConfigured) return { skipped: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' as const }
@@ -372,6 +375,8 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
     }
 
     // After-fees amount, only for orders that don't have one yet.
+    const needNet = orders.filter(o => existing.get(o.order_sn)?.net == null).length
+    if (ABANG.shopee.fetchNet && needNet) { netStopAt ||= Date.now() + (opts.netBudgetMs ?? 15_000); netTried += needNet }
     const net = ABANG.shopee.fetchNet
       ? await escrowNet(shop.shop_id, shop.access_token, orders.filter(o => existing.get(o.order_sn)?.net == null).map(o => o.order_sn), netStopAt)
       : new Map<string, number>()
@@ -395,7 +400,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       inserted += toInsert.slice(i, i + 500).length
     }
   }
-  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, netAdded, ...(netError ? { netError } : {}), ...(opts.dryRun ? { sample } : {}) }
+  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, netAdded, netTried, ...(netError ? { netError } : {}), ...(opts.dryRun ? { sample } : {}) }
 }
 
 // Just this shop's recent orders, straight from the table. Deliberately NOT

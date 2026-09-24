@@ -43,7 +43,7 @@ const STEPS: Source[] = [
   { key: 'tiktok_ads', label: 'TikTok Ads', configured: tiktokConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncTikTokAds() },
   { key: 'meta_ads', label: 'Meta Ads', configured: metaConfigured, missing: 'META_ADS_TOKEN', run: () => syncMetaAds() },
   { key: 'calendar', label: 'Calendar', configured: calendarConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncCalendar() },
-  { key: 'shopee', label: 'Shopee orders', configured: shopeeConfigured, missing: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY', run: () => syncShopee({ netBudgetMs: 5_000 }) },
+  { key: 'shopee', label: 'Shopee orders', configured: shopeeConfigured, missing: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY', run: () => syncShopee({ netBudgetMs: 8_000 }) },
   { key: 'owner_sheet', label: 'Owner sheet', configured: ownerSheetConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncOwnerSheet() },
 ]
 
@@ -63,6 +63,7 @@ function describe(r: any): string {
     ? ` ${r.missing} stored row(s) are no longer in the sheet — left alone, nothing is ever deleted.`
     : ''
   if (r?.netAdded) tail += ` Payout (after fees) found for ${r.netAdded} order(s).`
+  if (r?.netTried && !r?.netAdded && !r?.netError) tail += ` Shopee returned no payout for ${r.netTried} order(s) checked.`
   if (r?.netError) tail += ` Shopee refused the payout lookup: ${r.netError}`
   if (!inserted && !updated && !cancelled) return `${span}nothing new, already up to date.${tail}`
   const bits = [`${inserted} added`, `${updated} refreshed`]
