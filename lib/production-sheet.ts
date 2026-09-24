@@ -499,12 +499,28 @@ async function place(category: string, date: string, title: string): Promise<str
 
 // The one entry point the API calls after it has saved the change in the app.
 export async function applyToGrid(
-  change: { action: 'add' | 'move' | 'done' | 'undo'; category: string; title: string; date: string; from?: string },
+  change: { action: 'add' | 'move' | 'done' | 'undo' | 'edit'; category: string; title: string; date: string; from?: string; oldTitle?: string },
 ): Promise<{ ok: boolean; message: string; sheetKey?: string }> {
   if (!productionSheetConfigured() || !BLOCKS[change.category]) return { ok: true, message: '' }
   try {
     const key = keyOf(change.category, change.date, change.title)
     if (change.action === 'add') {
+      const m = await place(change.category, change.date, change.title)
+      return { ok: !/^no /.test(m), message: m, sheetKey: key }
+    }
+    if (change.action === 'edit' && change.oldTitle) {
+      // New wording: same cells when the channels didn't change, else clear
+      // the old ones and place the post in its new channel rows.
+      const f = await monthBlock(change.category, change.date.slice(0, 7))
+      if (typeof f === 'string') return { ok: false, message: f }
+      const cells = findTask(f, change.date, change.category, change.oldTitle)
+      const was = splitChannels(change.category, change.oldTitle)
+      const now = splitChannels(change.category, change.title)
+      if (cells.length && (was.channels ?? []).join('/') === (now.channels ?? []).join('/')) {
+        await writeCells(f, cells.map(c => ({ ...c, value: now.text })))
+        return { ok: true, message: `updated in ${f.tab}`, sheetKey: key }
+      }
+      await writeCells(f, cells.map(c => ({ ...c, value: '' })))
       const m = await place(change.category, change.date, change.title)
       return { ok: !/^no /.test(m), message: m, sheetKey: key }
     }

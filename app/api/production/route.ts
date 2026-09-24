@@ -95,6 +95,13 @@ export async function POST(req: Request) {
   } else if (action === 'idea_drop' || action === 'idea_restore') {
     if (row.category !== 'content_idea') return bad('That is not an idea.')
     patch = { status: action === 'idea_drop' ? 'dropped' : 'idea' }
+  } else if (action === 'edit') {
+    // New wording for the item (and, for social posts, its [channels] tag).
+    const title = String(body?.title || '').trim().slice(0, 300)
+    if (!title) return bad('The text can\'t be empty.')
+    if (title === (row as any).title) return NextResponse.json({ ok: true, message: 'No change.' })
+    const edits = Array.isArray(meta.edits) ? meta.edits : []
+    patch = { title, meta: { ...meta, edits: [...edits, { from: (row as any).title, at: now }] } }
   } else if (action === 'done') {
     patch = { status: 'done', meta: { ...meta, done_at: now } }
   } else if (action === 'undo') {
@@ -122,6 +129,7 @@ export async function POST(req: Request) {
   let grid = ''
   if (action === 'idea_schedule') grid = await gridNote({ action: 'add', category: 'social_plan', title, date: String(patch.due_date) }, id, newMeta)
   else if (action === 'move') grid = await gridNote({ action: 'move', category: row.category, title, date: String(patch.due_date), from: row.due_date }, id, newMeta)
+  else if (action === 'edit' && row.category !== 'content_idea') grid = await gridNote({ action: 'edit', category: row.category, title: String(patch.title), date: row.due_date, oldTitle: title }, id, newMeta)
   else if (action === 'done' || action === 'undo') grid = await gridNote({ action, category: row.category, title, date: row.due_date }, null, newMeta)
   refresh()
   return NextResponse.json({ ok: true, message: `Saved.${grid}${await sheetNote()}` })
