@@ -104,7 +104,9 @@ export async function writeProductionSheet(): Promise<{ ok: boolean; message: st
 // ---- ① Sheet → app ----------------------------------------------------------
 
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 }
-const TAB = /^\s*brand\s+timeline\s+([a-z]{3,4})\s+(\d{2}|\d{4})\s*$/i
+// Any tab whose name ENDS in a month and year: "Brand Timeline Oct 26",
+// "Production Oct 2026", "October 26"… (the team renames tabs; the month is what matters).
+const TAB = /(?:^|[\s\-_])(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?[\s\-_']*(\d{2}|\d{4})\s*$/i
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const COL0 = 3 // column D
 
@@ -112,7 +114,7 @@ const COL0 = 3 // column D
 export function tabMonth(title: string): string | null {
   const m = TAB.exec(title)
   if (!m) return null
-  const mo = MONTHS[m[1].toLowerCase()]
+  const mo = MONTHS[m[1].toLowerCase().slice(0, 3)]
   if (!mo) return null
   const y = m[2].length === 2 ? 2000 + Number(m[2]) : Number(m[2])
   return `${y}-${String(mo).padStart(2, '0')}`
@@ -262,14 +264,17 @@ export async function ensureNextMonthTab(today: string, opts: { fromDay?: number
   if (Number(today.slice(8, 10)) < (opts.fromDay ?? 20)) return { skipped: 'not yet — runs from the 20th' }
   const [y, m] = today.split('-').map(Number)
   const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`
-  const title = `Brand Timeline ${SHORT[Number(next.slice(5)) - 1]} ${next.slice(2, 4)}`
   const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
 
   const info = await proxy('GET', base, undefined, { fields: 'sheets.properties(sheetId,title,index)' })
   const tabs = ((info?.sheets ?? []) as any[]).map(s => s.properties).map((p: any) => ({ id: p.sheetId, title: String(p.title), index: p.index, month: tabMonth(String(p.title)) }))
-  if (tabs.some(t => t.month === next)) return { skipped: `${title} already exists` }
+  const existing = tabs.find(t => t.month === next)
+  if (existing) return { skipped: `${existing.title} already exists` }
   const src = tabs.filter(t => t.month && t.month < next).sort((a, b) => (a.month! < b.month! ? 1 : -1))[0]
-  if (!src) return { skipped: 'no Brand Timeline tab to copy' }
+  if (!src) return { skipped: 'no month tab to copy' }
+  // Same naming as the tab it copies: "Brand Timeline Oct 26" → "… Nov 26".
+  const prefix = src.title.replace(TAB, '').trim()
+  const title = `${prefix ? prefix + ' ' : ''}${SHORT[Number(next.slice(5)) - 1]} ${next.slice(2, 4)}`
 
   const dup = await proxy('POST', `${base}:batchUpdate`, {
     requests: [{ duplicateSheet: { sourceSheetId: src.id, insertSheetIndex: src.index + 1, newSheetName: title } }],
