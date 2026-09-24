@@ -120,23 +120,30 @@ export function tabMonth(title: string): string | null {
   return `${y}-${String(mo).padStart(2, '0')}`
 }
 
-// One month tab's grid → [{ date, title }]. Pure, so it can be tested alone.
-export function parseProductionGrid(grid: string[][], month: string): { date: string; title: string }[] {
+// One block of one month tab → [{ date, title, channel? }]. Pure, so it can be
+// tested alone. `label` finds the block's name in columns A–C ("PRODUCTION
+// TIMELINE"); `cont` lets a block keep going under a second side label (the
+// social block is "SOCIAL CONTENT CALENDAR" then "SOCIAL" down the side);
+// `channel` reads column C (IGF / IGR / IGST / REELS) for each task row.
+export function parseBlock(
+  grid: string[][], month: string, label: RegExp, opts: { cont?: RegExp; channel?: boolean } = {},
+): { date: string; title: string; channel?: string }[] {
   const cell = (r: number, c: number) => String(grid[r]?.[c] ?? '').trim()
   const isHeader = (r: number) => DOW.every((d, i) => cell(r, COL0 + i).toUpperCase() === d)
-  const label = grid.findIndex(row => row.slice(0, COL0).some(v => /production\s+timeline/i.test(String(v ?? ''))))
-  if (label < 0) return []
+  const at = grid.findIndex(row => row.slice(0, COL0).some(v => label.test(String(v ?? ''))))
+  if (at < 0) return []
   // The block starts at the Mon–Sun header at or above the label (the label is a
   // merged cell, so its text sits in the block's first row or its middle).
   let start = -1
-  for (let r = label; r >= 0; r--) if (isHeader(r)) { start = r; break }
+  for (let r = at; r >= 0; r--) if (isHeader(r)) { start = r; break }
   if (start < 0) return []
+  // …and ends at the next header, or where column A names a different block.
   let end = grid.length
   for (let r = start + 1; r < grid.length; r++) {
-    const side = grid[r].slice(0, COL0).map(v => String(v ?? '').trim()).filter(Boolean)
-    if (isHeader(r) || (r > label && side.length && !side.some(v => /production\s+timeline/i.test(v)))) { end = r; break }
+    const a = cell(r, 0)
+    if (isHeader(r) || (r > at && a && !label.test(a) && !opts.cont?.test(a))) { end = r; break }
   }
-  const out: { date: string; title: string }[] = []
+  const out: { date: string; title: string; channel?: string }[] = []
   let days: (number | null)[] = Array(7).fill(null)
   for (let r = start + 1; r < end; r++) {
     const vals = DOW.map((_, i) => cell(r, COL0 + i))
@@ -145,14 +152,43 @@ export function parseProductionGrid(grid: string[][], month: string): { date: st
       days = vals.map(v => (/^\d{1,2}$/.test(v) ? Number(v) : null))
       continue
     }
+    const channel = opts.channel ? cell(r, 2).toUpperCase() : undefined
     vals.forEach((v, i) => {
       const d = days[i]
       if (!v || !d || d > 31) return
-      out.push({ date: `${month}-${String(d).padStart(2, '0')}`, title: v.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim() })
+      out.push({
+        date: `${month}-${String(d).padStart(2, '0')}`,
+        title: v.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim(),
+        ...(channel ? { channel } : {}),
+      })
     })
   }
   return out
 }
+
+export const parseProductionGrid = (grid: string[][], month: string) => parseBlock(grid, month, /production\s+timeline/i)
+
+// The social block lists one post per channel row; fold the same post on the
+// same day into ONE item, "[IGR/IGST/REELS] Sundubu boiling video".
+export function parseSocialGrid(grid: string[][], month: string) {
+  const byKey = new Map<string, { date: string; text: string; channels: string[] }>()
+  for (const it of parseBlock(grid, month, /social\s+content\s+calendar/i, { cont: /^social\b/i, channel: true })) {
+    const k = `${it.date}|${it.title}`
+    const e = byKey.get(k) ?? { date: it.date, text: it.title, channels: [] }
+    if (it.channel && !e.channels.includes(it.channel)) e.channels.push(it.channel)
+    byKey.set(k, e)
+  }
+  return [...byKey.values()].map(e => ({ date: e.date, title: e.channels.length ? `[${e.channels.join('/')}] ${e.text}` : e.text }))
+}
+
+export const parseEventsGrid = (grid: string[][], month: string) => parseBlock(grid, month, /events\s*\/\s*others/i)
+
+// The three calendars the app reads from each month tab, and where each lands.
+const KINDS = [
+  { category: 'production', source: 'sheet_production', parse: parseProductionGrid },
+  { category: 'social_plan', source: 'sheet_social', parse: parseSocialGrid },
+  { category: 'events_other', source: 'sheet_events', parse: parseEventsGrid },
+] as const
 
 // Same task, whatever the spacing, punctuation or case.
 const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '')
@@ -172,18 +208,32 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
     .map(title => ({ title, month: tabMonth(title) }))
     .filter((t): t is { title: string; month: string } => !!t.month && t.month >= from)
 
-  const items: { date: string; title: string; tab: string }[] = []
+  const grids: { tab: string; month: string; grid: string[][] }[] = []
   for (let i = 0; i < tabs.length; i += 6) {
     const got = await Promise.all(tabs.slice(i, i + 6).map(async t => {
-      const g = await proxy('GET', `${base}/values/${encodeURIComponent(`'${t.title}'!A1:J400`)}`, undefined, { valueRenderOption: 'FORMATTED_VALUE' })
-      const grid = ((g?.values ?? []) as any[][]).map(row => (row ?? []).map(c => String(c ?? '')))
-      return parseProductionGrid(grid, t.month).map(x => ({ ...x, tab: t.title }))
+      const g = await proxy('GET', `${base}/values/${encodeURIComponent(`'${t.title}'!A1:J600`)}`, undefined, { valueRenderOption: 'FORMATTED_VALUE' })
+      return { tab: t.title, month: t.month, grid: ((g?.values ?? []) as any[][]).map(row => (row ?? []).map(c => String(c ?? ''))) }
     }))
-    items.push(...got.flat())
+    grids.push(...got)
   }
 
+  const totals = { fetched: 0, inserted: 0, archived: 0 }
+  for (const kind of KINDS) {
+    const items = grids.flatMap(g => kind.parse(g.grid, g.month).map(x => ({ ...x, tab: g.tab })))
+    const r = await reconcile(kind.category, kind.source, items)
+    totals.fetched += items.length
+    totals.inserted += r.inserted
+    totals.archived += r.archived
+  }
+  const months = tabs.map(t => t.month).sort()
+  return { ...totals, updated: 0, tabs: tabs.length, from: (months[0] ?? '') + '-01', to: months[months.length - 1] ?? '' }
+}
+
+// Bring one category in line with the sheet: add what's new, archive what the
+// sheet no longer has (months that parsed only; app-added items never).
+async function reconcile(category: string, source: string, items: { date: string; title: string; tab: string }[]) {
   // What the app already has, keyed by task + ORIGINAL date.
-  const { data, error } = await supabase.from('records').select('id, title, due_date, meta').eq('category', 'production').limit(10000)
+  const { data, error } = await supabase.from('records').select('id, title, due_date, meta').eq('category', category).limit(10000)
   if (error) throw new Error(error.message)
   const have = new Set<string>()
   for (const r of (data ?? []) as any[]) {
@@ -202,17 +252,17 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
       title: it.title.slice(0, 300),
       status: 'planned',
       amount: 0,
-      category: 'production',
+      category,
       due_date: it.date,
       notes: `[NEW] Okmaya Project WIP — ${it.tab}`,
-      meta: { source: 'sheet_production', month: it.date.slice(0, 7), sheet_key: key, tab: it.tab },
+      meta: { source, month: it.date.slice(0, 7), sheet_key: key, tab: it.tab },
     })
   }
   for (let i = 0; i < toInsert.length; i += 500) {
     const { error } = await supabase.from('records').insert(toInsert.slice(i, i + 500))
     if (error) throw new Error(`insert failed: ${error.message}`)
   }
-  // Tidy: archive what the sheet no longer has, month by month.
+
   const sheetKeys = new Set(items.map(it => `${it.date}|${norm(it.title)}`))
   const readMonths = new Set(items.map(it => it.date.slice(0, 7)))
   const stale = ((data ?? []) as any[]).filter(r => {
@@ -221,19 +271,17 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
     if (!readMonths.has(orig.slice(0, 7))) return false
     return !sheetKeys.has(`${orig}|${norm(r.title || '')}`) && !(r.meta?.sheet_key && sheetKeys.has(r.meta.sheet_key))
   })
-  // By explicit id, 100 at a time (one call each, not one per row, so a first
-  // big tidy-up still fits inside the sync's time limit).
+  // By explicit id, 100 at a time, never deleted: '<category>_archived'.
   const ids = stale.map(r => r.id as number)
   for (let i = 0; i < ids.length; i += 100) {
     const { error } = await supabase
       .from('records')
-      .update({ category: 'production_archived' })
+      .update({ category: `${category}_archived` })
       .in('id', ids.slice(i, i + 100))
-      .eq('category', 'production')
+      .eq('category', category)
     if (error) throw new Error(`archive failed: ${error.message}`)
   }
-
-  return { archived: stale.length, from: from === '0000-00' ? (tabs.map(t => t.month).sort()[0] ?? '') + '-01' : `${from}-01`, to: tabs.map(t => t.month).sort().pop() ?? from, tabs: tabs.length, fetched: items.length, inserted: toInsert.length, updated: 0 }
+  return { inserted: toInsert.length, archived: stale.length }
 }
 
 // ---- ③ Next month's tab ------------------------------------------------------
