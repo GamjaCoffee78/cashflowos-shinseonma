@@ -14,10 +14,12 @@ export default function SyncNow({
   source,
   label,
   hint,
+  region,
 }: {
   source: 'tiktok' | 'meta' | 'calendar' | 'shopee'
   label: string          // "🎯 Sync now"
   hint: string           // shown while it runs
+  region?: string        // Shopee: sync only this shop
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -28,7 +30,7 @@ export default function SyncNow({
       const res = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source }),
+        body: JSON.stringify({ source, region }),
       })
       const body = await res.json().catch(() => null)
       if (!body) return setResult({ ok: false, message: `The server answered HTTP ${res.status} with no details.` })

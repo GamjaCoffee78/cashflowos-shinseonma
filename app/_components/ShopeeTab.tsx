@@ -44,12 +44,12 @@ export default async function ShopeeTab({
     <>
       <h1 className="ph">{title}</h1>
       <p className="cap">
-        Orders pulled live from your Shopee {region} shop, synced every morning with the brief. Figures are in {cur} and
-        are never mixed with the other shop&apos;s. Separate from the Ecomm tab, which still shows what you imported from
+        Orders pulled live from your Shopee {region} shop, synced every morning with the brief. Figures are in {cur}, and are
+        never mixed with the other shop&apos;s. Separate from the Ecomm tab, which still shows what you imported from
         your Shopee exports — nothing here changes those.
       </p>
 
-      {shopeeConfigured && <SyncNow source="shopee" label="🛍️ Sync now" hint="Asking Shopee for the latest orders…" />}
+      {shopeeConfigured && <SyncNow source="shopee" region={region} label="🛍️ Sync now" hint={`Asking Shopee ${region} for the latest orders…`} />}
 
       {orders.length === 0 ? (
         <div className="empty">

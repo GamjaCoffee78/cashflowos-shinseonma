@@ -21,7 +21,7 @@ const SOURCES = {
   tiktok: { run: syncTikTokAds, unit: 'day(s)', label: 'TikTok' },
   meta: { run: syncMetaAds, unit: 'day(s)', label: 'Meta' },
   calendar: { run: syncCalendar, unit: 'event(s)', label: 'Google Calendar' },
-  shopee: { run: syncShopee, unit: 'order(s)', label: 'Shopee' },
+  shopee: { run: (o?: any) => syncShopee(o), unit: 'order(s)', label: 'Shopee' },
 } as const
 
 export async function POST(req: Request) {
@@ -41,7 +41,8 @@ export async function POST(req: Request) {
   const source = SOURCES[body?.source as keyof typeof SOURCES]
   if (!source) return NextResponse.json({ ok: false, message: 'Unknown source.' }, { status: 400 })
   try {
-    const r: any = await source.run()
+    const region = typeof body?.region === 'string' ? body.region : undefined
+    const r: any = await (source.run as (o?: any) => Promise<any>)(region ? { region } : undefined)
     if (r.skipped) {
       return NextResponse.json({ ok: false, message: `${r.skipped} — add it in Vercel → Settings → Environment Variables, then redeploy.` })
     }

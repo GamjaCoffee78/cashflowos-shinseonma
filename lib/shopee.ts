@@ -285,18 +285,23 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
 }
 
 // ---- 5) The sync the cron and the Sync now button call. ----
-export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {}) {
+export async function syncShopee(opts: { days?: number; dryRun?: boolean; region?: string } = {}) {
   if (!shopeeConfigured) return { skipped: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' as const }
   if (!supabaseConfigured && !opts.dryRun) return { skipped: 'Supabase not configured' as const }
 
-  const shops = await authorisedShops()
-  if (!shops.length) return { skipped: 'no Shopee shop authorised yet — open /api/shopee/authorize once' as const }
+  const all = await authorisedShops()
+  // One shop at a time: each tab syncs only its own, so a request stays well
+  // inside Vercel's 60s and one slow shop can't time out the other.
+  const want = (opts.region || '').toUpperCase()
+  const shops = want ? all.filter(s => (s.region || '').toUpperCase() === want) : all
+  if (!all.length) return { skipped: 'no Shopee shop authorised yet — open /api/shopee/authorize once' as const }
+  if (!shops.length) return { skipped: `no Shopee ${want} shop authorised yet — open /api/shopee/authorize while signed in to it` as const }
 
   const days = opts.days ?? ABANG.shopee.syncDays
   const from = daysAgoISO(days)
   const to = todayISO()
 
-  let fetched = 0, inserted = 0, updated = 0, skipped = 0
+  let fetched = 0, inserted = 0, updated = 0, skipped = 0, unchanged = 0
   const sample: string[] = []
   for (const shop of shops) {
     const region = (shop.region || '').toUpperCase()
@@ -319,23 +324,28 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {})
     // category is read or written — the cash_in rows are never touched.
     const { data, error } = await supabase
       .from('records')
-      .select('id, meta')
+      .select('id, amount, status, meta')
       .eq('category', CATEGORY)
       .gte('due_date', from)
       .limit(5000)
     if (error) throw new Error(`could not read existing Shopee rows: ${error.message}`)
-    const existing = new Map<string, number>()
-    for (const r of data ?? []) if (r.meta?.shopee_order_id) existing.set(String(r.meta.shopee_order_id), r.id)
+    const existing = new Map<string, { id: number; amount: number; status: string }>()
+    for (const r of data ?? []) {
+      if (!r.meta?.shopee_order_id) continue
+      existing.set(String(r.meta.shopee_order_id), { id: r.id, amount: num(r.amount), status: String(r.meta.shopee_status || '') })
+    }
 
     const toInsert: any[] = []
     for (const o of orders) {
       const row = toRecord(o, stamp, net.get(o.order_sn))
-      const id = existing.get(o.order_sn)
-      if (id) {
-        const { error } = await supabase.from('records').update(row).eq('id', id)
-        if (error) throw new Error(`update order ${o.order_sn} failed: ${error.message}`)
-        updated++
-      } else toInsert.push(row)
+      const was = existing.get(o.order_sn)
+      if (!was) { toInsert.push(row); continue }
+      // Nothing moved? Don't spend a write on it — a daily sync mostly re-reads
+      // orders it already has, and one UPDATE each is what times the run out.
+      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005) { unchanged++; continue }
+      const { error } = await supabase.from('records').update(row).eq('id', was.id)
+      if (error) throw new Error(`update order ${o.order_sn} failed: ${error.message}`)
+      updated++
     }
     for (let i = 0; i < toInsert.length; i += 500) {
       const { error } = await supabase.from('records').insert(toInsert.slice(i, i + 500))
@@ -343,7 +353,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean } = {})
       inserted += toInsert.slice(i, i + 500).length
     }
   }
-  return { from, to, shops: shops.length, fetched, inserted, updated, skipped, ...(opts.dryRun ? { sample } : {}) }
+  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, skipped, ...(opts.dryRun ? { sample } : {}) }
 }
 
 // ---- 6) Read helpers for the Shopee MY tab. ----
