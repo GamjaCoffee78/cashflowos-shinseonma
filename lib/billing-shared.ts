@@ -122,3 +122,10 @@ export type Contact = Party & { id?: number; kind: ContactKind; terms: number; n
 export const emptyContact = (kind: ContactKind = 'customer'): Contact => ({ ...emptyParty(), kind, terms: 30, notes: '' })
 // Which contacts suit a document: POs go to suppliers, everything else to customers.
 export const contactFits = (c: Contact, type: DocType) => c.kind === 'both' || c.kind === (type === 'PO' ? 'supplier' : 'customer')
+
+// A saved product / service (the Items list). Picking one on a document fills
+// the description, unit and price.
+export type Item = { id?: number; code: string; name: string; uom: string; price: number; cost: number; notes: string }
+export const emptyItem = (): Item => ({ code: '', name: '', uom: 'UNIT', price: 0, cost: 0, notes: '' })
+// What the Items page suggests from past Shopee / TikTok orders.
+export type ItemSuggestion = { name: string; price: number; currency: string; sold: number; from: string }

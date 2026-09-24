@@ -1,4 +1,4 @@
-import { listContacts, listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
+import { listContacts, listItems, listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
 import { DOC_TYPES, TYPE_KEYS, emptyContact, emptyLine, emptyParty, type BillingDoc, type Contact, type DocType } from '@/lib/billing-shared'
 import { todayISO } from '@/lib/records'
 import BillingForm from '@/app/_components/BillingForm'
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 //   ?edit=12             — edit draft 12
 export default async function NewDoc({ searchParams }: { searchParams: Promise<{ type?: string; from?: string; edit?: string; contact?: string }> }) {
   const sp = await searchParams
-  const [docs, saved] = await Promise.all([listDocs(), listContacts()])
+  const [docs, saved, items] = await Promise.all([listDocs(), listContacts(), listItems()])
   const today = todayISO()
 
   let initial: BillingDoc & { id?: number }
@@ -60,7 +60,7 @@ export default async function NewDoc({ searchParams }: { searchParams: Promise<{
     <>
       <h1 className="ph">{edit ? `Edit ${edit.number}` : `New ${DOC_TYPES[initial.type].label}`}</h1>
       <p className="cap">Save as draft to keep working on it, or issue it to lock the number and figures.</p>
-      <BillingForm initial={initial} contacts={contacts} invoices={invoices} />
+      <BillingForm initial={initial} contacts={contacts} invoices={invoices} items={items} />
     </>
   )
 }

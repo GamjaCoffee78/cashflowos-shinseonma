@@ -5,7 +5,7 @@ import ContactsManager from '@/app/_components/ContactsManager'
 export const dynamic = 'force-dynamic'
 
 // 👉 Contacts — the saved customers and suppliers the Billing form picks from.
-//    category='billing_contact' rows (lib/billing.ts). Removing one archives it;
+//    category='billing_contact' rows (lib/billing.ts). Deleting one removes only the contact;
 //    documents already issued keep their own copy of the details.
 export default async function Contacts() {
   const [contacts, docs] = await Promise.all([listContacts(), listDocs()])
