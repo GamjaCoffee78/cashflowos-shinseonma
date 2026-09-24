@@ -291,11 +291,12 @@ export default async function ShopeeTab({
           {days.map(d => {
             const dayTotal = d.rows.reduce((s, o) => s + o.amount, 0)
             return (
-              <section className="sp-day" key={d.date}>
-                <div className="sp-day-head">
-                  <span className="d">{d.date === today ? 'Today' : `${weekday(d.date)} ${dayLabel(d.date)}`}</span>
+              // Each day folds shut; only today starts open. Tap a date to see its orders.
+              <details className="sp-day" key={d.date} open={d.date === today}>
+                <summary className="sp-day-head">
+                  <span className="d"><span className="sp-caret">▸</span>{d.date === today ? 'Today' : `${weekday(d.date)} ${dayLabel(d.date)}`}</span>
                   <span className="t">{d.rows.length} order{d.rows.length === 1 ? '' : 's'} · {m(dayTotal)}</span>
-                </div>
+                </summary>
                 <ul className="sp-orders">
                   {d.rows.map(o => {
                     const st = statusOf(o.status)
@@ -316,7 +317,7 @@ export default async function ShopeeTab({
                     )
                   })}
                 </ul>
-              </section>
+              </details>
             )
           })}
           {orders.length > recent.length ? (
