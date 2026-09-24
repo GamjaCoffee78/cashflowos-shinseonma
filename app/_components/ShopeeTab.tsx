@@ -5,7 +5,7 @@
 // against the periods before them → the shape of the month → what's selling →
 // the orders themselves, grouped by day so a date is read once, not forty times.
 import { todayISO } from '@/lib/records'
-import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, earliestDay, fetchShopeeOrders, type ShopeeRow } from '@/lib/shopee'
+import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, earliestDay, fetchShopeeOrders, fetchShopeeMonths, type ShopeeRow } from '@/lib/shopee'
 import { daysAgoISO } from '@/lib/ads-daily'
 import SyncNow from '@/app/_components/SyncNow'
 
@@ -128,6 +128,14 @@ export default async function ShopeeTab({
   }
   const best = topProducts(orders.filter(o => o.date >= daysAgoISO(29)))
   const since = earliestDay(orders)
+  // The whole synced history, as month totals — two columns per row, so this
+  // stays cheap even when the shop has a year of orders behind it.
+  const months = await fetchShopeeMonths(region, '2020-01-01')
+  const monthMax = Math.max(1, ...months.map(x => x.revenue))
+  const monthName = (ym: string) => {
+    const [y, mo] = ym.split('-').map(Number)
+    return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString('en-MY', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+  }
 
   return (
     <>
@@ -206,6 +214,24 @@ export default async function ShopeeTab({
                   </li>
                 ))}
               </ol>
+            </section>
+          )}
+
+          {months.length > 1 && (
+            <section className="sp-card">
+              <p className="nav-label" style={{ margin: '0 0 10px' }}>By month · everything synced</p>
+              <table className="sp-months">
+                <tbody>
+                  {months.map(x => (
+                    <tr key={x.month}>
+                      <td className="mn">{monthName(x.month)}</td>
+                      <td className="mb"><span style={{ width: `${Math.max(2, (x.revenue / monthMax) * 100)}%` }} /></td>
+                      <td className="mo">{x.orders.toLocaleString('en-MY')}</td>
+                      <td className="mr">{m(x.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </section>
           )}
 

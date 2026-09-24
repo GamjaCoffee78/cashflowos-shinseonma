@@ -405,6 +405,37 @@ export async function fetchShopeeOrders(region: string, days = 60): Promise<Rec[
   return all.map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
 }
 
+// Month totals for a shop, going back as far as asked. Only two columns are
+// read, so a year of orders costs a fraction of loading the rows themselves.
+export async function fetchShopeeMonths(region: string, sinceISO: string) {
+  if (!supabaseConfigured) return [] as { month: string; orders: number; revenue: number }[]
+  const PAGE = 1000
+  const tally = new Map<string, { orders: number; revenue: number }>()
+  for (let start = 0; ; start += PAGE) {
+    const { data, error } = await supabase
+      .from('records')
+      .select('due_date, amount')
+      .eq('category', CATEGORY)
+      .filter('meta->>shop_region', 'eq', region.toUpperCase())
+      .gte('due_date', sinceISO)
+      .order('due_date', { ascending: false })
+      .range(start, start + PAGE - 1)
+    if (error) { console.warn('[CFO] could not read Shopee months:', error.message); break }
+    for (const r of data ?? []) {
+      const month = String(r.due_date || '').slice(0, 7)
+      if (!month) continue
+      const t = tally.get(month) ?? { orders: 0, revenue: 0 }
+      t.orders++
+      t.revenue += num(r.amount)
+      tally.set(month, t)
+    }
+    if (!data || data.length < PAGE) break
+  }
+  return [...tally.entries()]
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .map(([month, t]) => ({ month, ...t }))
+}
+
 // ---- 6) Read helpers for the Shopee MY tab. ----
 export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string }
 

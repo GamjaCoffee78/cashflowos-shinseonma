@@ -231,6 +231,15 @@ code {
 .sp-best .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sp-best .q { flex: none; font-weight: 600; color: var(--ink-soft); font-size: 13px; }
 
+.sp-months { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sp-months td { padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.sp-months tr:last-child td { border-bottom: none; }
+.sp-months .mn { white-space: nowrap; padding-right: 14px; color: var(--ink-soft); }
+.sp-months .mb { width: 100%; }
+.sp-months .mb span { display: block; height: 8px; border-radius: 4px; background: var(--clay); }
+.sp-months .mo { white-space: nowrap; padding-left: 14px; color: var(--ink-faint); font-size: 12.5px; }
+.sp-months .mr { white-space: nowrap; padding-left: 14px; font-weight: 700; text-align: right; }
+
 .sp-day { margin-bottom: 14px; }
 .sp-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 12px; background: var(--paper-2); border-radius: var(--r-8); font-size: 13px; }
 .sp-day-head .d { font-weight: 700; }
