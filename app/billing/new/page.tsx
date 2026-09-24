@@ -1,5 +1,5 @@
-import { listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
-import { DOC_TYPES, TYPE_KEYS, emptyLine, emptyParty, type BillingDoc, type DocType, type Party } from '@/lib/billing-shared'
+import { listContacts, listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
+import { DOC_TYPES, TYPE_KEYS, emptyContact, emptyLine, emptyParty, type BillingDoc, type Contact, type DocType } from '@/lib/billing-shared'
 import { todayISO } from '@/lib/records'
 import BillingForm from '@/app/_components/BillingForm'
 
@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic'
 //   ?type=INV            — blank invoice
 //   ?type=INV&from=12    — convert document 12 (e.g. DO → Invoice, INV → Credit Note)
 //   ?edit=12             — edit draft 12
-export default async function NewDoc({ searchParams }: { searchParams: Promise<{ type?: string; from?: string; edit?: string }> }) {
+export default async function NewDoc({ searchParams }: { searchParams: Promise<{ type?: string; from?: string; edit?: string; contact?: string }> }) {
   const sp = await searchParams
-  const docs = await listDocs()
+  const [docs, saved] = await Promise.all([listDocs(), listContacts()])
   const today = todayISO()
 
   let initial: BillingDoc & { id?: number }
@@ -36,9 +36,22 @@ export default async function NewDoc({ searchParams }: { searchParams: Promise<{
     if (type === 'PO' && src && src.type !== 'PO') { initial.party = emptyParty(); initial.refNo = '' }
   }
 
-  // Past customers / suppliers, newest first, so the team picks instead of retyping.
-  const parties: Record<string, Party> = {}
-  for (const d of docs) if (d.party?.name && !parties[d.party.name]) parties[d.party.name] = d.party
+  // Saved contacts, plus anyone billed before who isn't saved yet (so old
+  // customers are still one tap away).
+  const contacts: Contact[] = [...saved]
+  const seen = new Set(saved.map(c => c.name.toLowerCase()))
+  for (const d of docs) {
+    const key = d.party?.name?.toLowerCase()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    contacts.push({ ...emptyContact(d.type === 'PO' ? 'supplier' : 'customer'), ...d.party, terms: d.terms })
+  }
+  // Starting from a contact: /billing/new?type=INV&contact=12
+  const pre = saved.find(c => c.id === Number(sp.contact))
+  if (pre && !edit && !initial.party.name) {
+    initial.party = { name: pre.name, address: pre.address, attn: pre.attn, phone: pre.phone, email: pre.email, regNo: pre.regNo }
+    if (initial.type === 'INV' || initial.type === 'PO') initial.terms = pre.terms
+  }
   const invoices = docs
     .filter((d: StoredDoc) => d.type === 'INV' && d.status !== 'draft' && d.status !== 'cancelled')
     .map(d => ({ number: d.number, name: d.party.name, balance: invoiceBalance(d, docs).balance }))
@@ -47,7 +60,7 @@ export default async function NewDoc({ searchParams }: { searchParams: Promise<{
     <>
       <h1 className="ph">{edit ? `Edit ${edit.number}` : `New ${DOC_TYPES[initial.type].label}`}</h1>
       <p className="cap">Save as draft to keep working on it, or issue it to lock the number and figures.</p>
-      <BillingForm initial={initial} parties={Object.values(parties)} invoices={invoices} />
+      <BillingForm initial={initial} contacts={contacts} invoices={invoices} />
     </>
   )
 }

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { CATEGORY, getDoc, listDocs, nextNumber, toRow, invoiceBalance, type StoredDoc } from '@/lib/billing'
-import { DOC_TYPES, TYPE_KEYS, addDays, emptyParty, type BillingDoc, type DocType } from '@/lib/billing-shared'
+import { CATEGORY, CONTACT_CATEGORY, contactRow, getDoc, listContacts, listDocs, nextNumber, toRow, invoiceBalance, type StoredDoc } from '@/lib/billing'
+import { DOC_TYPES, TYPE_KEYS, addDays, emptyParty, type BillingDoc, type Contact, type ContactKind, type DocType } from '@/lib/billing-shared'
 
 // The Billing tab's writes. POST { action, … } → { ok, message, id? }.
 //   save    — create a document, or update one that is still a DRAFT
@@ -50,8 +50,36 @@ function clean(body: any): BillingDoc | string {
   }
 }
 
+function cleanContact(body: any): Contact | string {
+  const name = s(body?.name, 200)
+  if (!name) return 'Give the contact a name.'
+  const kind = (['customer', 'supplier', 'both'].includes(s(body?.kind)) ? s(body?.kind) : 'customer') as ContactKind
+  return {
+    kind, name, address: s(body?.address, 600), attn: s(body?.attn, 120), phone: s(body?.phone, 60),
+    email: s(body?.email, 200), regNo: s(body?.regNo, 80), terms: Math.max(0, Math.round(n(body?.terms))), notes: s(body?.notes, 1000),
+  }
+}
+
+// Remember the party of a document in Contacts: add it if the name is new,
+// else refresh its details (a supplier who is also a customer becomes 'both').
+async function rememberParty(doc: BillingDoc) {
+  const kind: ContactKind = doc.type === 'PO' ? 'supplier' : 'customer'
+  const all = await listContacts()
+  const old = all.find(c => c.name.toLowerCase() === doc.party.name.toLowerCase())
+  const merged: Contact = {
+    ...(old ?? { kind, terms: doc.terms, notes: '' }),
+    ...Object.fromEntries(Object.entries(doc.party).filter(([, v]) => v)),
+    name: old?.name ?? doc.party.name,
+    kind: old && old.kind !== kind ? 'both' : kind,
+  } as Contact
+  if (old?.id) await supabase.from('records').update(contactRow(merged)).eq('id', old.id).eq('category', CONTACT_CATEGORY)
+  else await supabase.from('records').insert(contactRow(merged))
+}
+
 async function refresh(id?: number) {
   revalidatePath('/billing')
+  revalidatePath('/billing/contacts')
+  revalidatePath('/billing/new')
   if (id) revalidatePath(`/billing/${id}`)
 }
 
@@ -70,6 +98,8 @@ export async function POST(req: Request) {
       if (inv.status === 'cancelled') return bad(`${doc.refNo} is cancelled.`)
     }
 
+    if (body?.saveContact) await rememberParty(doc).catch(e => console.warn('[CFO] contact save failed:', e))
+
     const id = Number(body?.id) || 0
     if (id) {
       const old = await getDoc(id)
@@ -87,6 +117,27 @@ export async function POST(req: Request) {
     if (error) return bad(`Couldn't save: ${error.message}`)
     await refresh()
     return NextResponse.json({ ok: true, id: data.id, message: `${doc.number} created.` })
+  }
+
+  if (action === 'contact_save') {
+    const c = cleanContact(body)
+    if (typeof c === 'string') return bad(c)
+    const cid = Number(body?.id) || 0
+    const all = await listContacts()
+    if (all.some(x => x.id !== cid && x.name.toLowerCase() === c.name.toLowerCase())) return bad(`${c.name} is already in Contacts.`)
+    const { error } = cid
+      ? await supabase.from('records').update(contactRow(c)).eq('id', cid).eq('category', CONTACT_CATEGORY)
+      : await supabase.from('records').insert(contactRow(c))
+    if (error) return bad(`Couldn't save: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: `${c.name} saved.` })
+  }
+
+  if (action === 'contact_remove') {
+    const { error } = await supabase.from('records').update({ status: 'archived' }).eq('id', Number(body?.id)).eq('category', CONTACT_CATEGORY)
+    if (error) return bad(`Couldn't remove: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: 'Removed from Contacts.' })
   }
 
   const id = Number(body?.id)

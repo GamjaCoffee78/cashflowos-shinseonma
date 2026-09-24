@@ -3,23 +3,26 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  DOC_TYPES, TYPE_KEYS, addDays, emptyLine, lineAmount, money, totals,
-  type BillingDoc, type DocType, type Line, type Party,
+  DOC_TYPES, TYPE_KEYS, addDays, contactFits, emptyLine, lineAmount, money, totals,
+  type BillingDoc, type Contact, type DocType, type Line, type Party,
 } from '@/lib/billing-shared'
+import DocSheet from './DocSheet'
 
 // The create/edit form for a billing document. Totals update as you type;
 // the server re-checks everything and assigns the running number on save.
 export default function BillingForm({
-  initial, parties, invoices,
+  initial, contacts, invoices,
 }: {
   initial: BillingDoc & { id?: number }
-  parties: Party[]
+  contacts: Contact[]
   invoices: { number: string; name: string; balance: number }[]
 }) {
   const router = useRouter()
   const [d, setD] = useState(initial)
   const [err, setErr] = useState('')
   const [pending, start] = useTransition()
+  const [preview, setPreview] = useState(false)
+  const [saveContact, setSaveContact] = useState(true)
   const cfg = DOC_TYPES[d.type]
   const t = totals(d)
 
@@ -28,13 +31,20 @@ export default function BillingForm({
   const setLine = (i: number, k: keyof Line, v: string) =>
     setD(p => ({ ...p, lines: p.lines.map((l, j) => (j === i ? { ...l, [k]: k === 'desc' || k === 'uom' ? v : Number(v) } : l)) }))
 
+  // Contacts that suit this document first (suppliers for a PO, customers otherwise).
+  const fits = contacts.filter(c => contactFits(c, d.type))
+  const known = contacts.find(c => c.name.toLowerCase() === d.party.name.trim().toLowerCase())
+  const toParty = (c: Contact): Party => ({ name: c.name, address: c.address, attn: c.attn, phone: c.phone, email: c.email, regNo: c.regNo })
   const pickParty = (name: string) => {
-    const found = parties.find(p => p.name === name)
-    setD(p => ({ ...p, party: found ? { ...found } : { ...p.party, name } }))
+    const found = contacts.find(c => c.name === name)
+    setD(p => found
+      ? { ...p, party: toParty(found), ...(p.type === 'INV' || p.type === 'PO' ? { terms: found.terms, dueDate: '' } : {}) }
+      : { ...p, party: { ...p.party, name } })
   }
   const pickInvoice = (num: string) => {
     const inv = invoices.find(i => i.number === num)
-    setD(p => ({ ...p, refNo: num, party: inv && !p.party.name ? { ...(parties.find(x => x.name === inv.name) ?? p.party) } : p.party }))
+    const c = inv && contacts.find(x => x.name === inv.name)
+    setD(p => ({ ...p, refNo: num, party: c && !p.party.name ? toParty(c) : p.party }))
   }
 
   const save = (issue: boolean) =>
@@ -44,7 +54,7 @@ export default function BillingForm({
       try {
         const res = await fetch('/api/billing', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'save', ...d, issue }),
+          body: JSON.stringify({ action: 'save', ...d, issue, saveContact }),
         })
         const r = await res.json().catch(() => ({ ok: false, message: `HTTP ${res.status}` }))
         if (!r.ok) return setErr(r.message)
@@ -81,7 +91,11 @@ export default function BillingForm({
         <div className="bf-grid">
           <label className="bf-wide">Name
             <input list="bf-parties" value={d.party.name} onChange={e => pickParty(e.target.value)} placeholder="Company or person" />
-            <datalist id="bf-parties">{parties.map(p => <option key={p.name} value={p.name} />)}</datalist>
+            <datalist id="bf-parties">{fits.map(c => <option key={c.id ?? c.name} value={c.name} />)}</datalist>
+            <small className="bf-hint">
+              {fits.length ? `Type or pick from ${fits.length} saved ${d.type === 'PO' ? 'supplier' : 'customer'}${fits.length === 1 ? '' : 's'}. ` : ''}
+              <a href="/billing/contacts" target="_blank">Manage contacts</a>
+            </small>
           </label>
           <label className="bf-wide">Address<textarea rows={3} value={d.party.address} onChange={e => setParty('address', e.target.value)} /></label>
           <label>Attention<input value={d.party.attn} onChange={e => setParty('attn', e.target.value)} /></label>
@@ -166,11 +180,35 @@ export default function BillingForm({
         </div>
       </section>
 
+      {d.party.name.trim() ? (
+        <label className="bf-check">
+          <input type="checkbox" checked={saveContact} onChange={e => setSaveContact(e.target.checked)} />
+          {known ? `Update ${known.name}'s details in Contacts` : `Save ${d.party.name.trim()} to Contacts as a ${d.type === 'PO' ? 'supplier' : 'customer'}`}
+        </label>
+      ) : null}
+
       {err ? <p className="bf-err">{err}</p> : null}
-      <div className="btnrow">
+      <div className="btnrow bf-actions">
+        <button type="button" className="btn ghost" onClick={() => setPreview(true)}>👀 Preview</button>
         <button type="button" className="btn ghost" disabled={pending} onClick={() => save(false)}>Save draft</button>
         <button type="button" className="btn" disabled={pending} onClick={() => save(true)}>Issue {cfg.label}</button>
       </div>
+
+      {preview ? (
+        <div className="bf-preview" role="dialog" aria-modal="true" aria-label="Preview" onClick={() => setPreview(false)}>
+          <div className="bf-preview-in" onClick={e => e.stopPropagation()}>
+            <div className="bf-preview-bar">
+              <b>Preview — not saved yet</b>
+              <span className="btnrow">
+                <button type="button" className="btn ghost" onClick={() => setPreview(false)}>← Keep editing</button>
+                <button type="button" className="btn ghost" disabled={pending} onClick={() => { setPreview(false); save(false) }}>Save draft</button>
+                <button type="button" className="btn" disabled={pending} onClick={() => { setPreview(false); save(true) }}>Issue</button>
+              </span>
+            </div>
+            <DocSheet doc={{ ...d, dueDate: due, lines: d.lines.filter(l => l.desc.trim()).length ? d.lines.filter(l => l.desc.trim()) : d.lines }} />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

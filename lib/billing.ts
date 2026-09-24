@@ -1,6 +1,6 @@
 import 'server-only'
 import { supabase, supabaseConfigured } from './supabase'
-import { DOC_TYPES, paidSum, totals, type BillingDoc, type DocType } from './billing-shared'
+import { DOC_TYPES, emptyContact, paidSum, totals, type BillingDoc, type Contact, type DocType } from './billing-shared'
 
 // Billing documents (PO, DO, Invoice, Credit Note, Debit Note) live in the ONE
 // `records` table as category='billing_doc'; the whole document sits in `meta`,
@@ -69,4 +69,22 @@ export function invoiceBalance(inv: StoredDoc, docs: StoredDoc[]) {
   const total = totals(inv).total
   const paid = paidSum(inv)
   return { total, cn, dn, paid, balance: Math.round((total + dn - cn - paid) * 100) / 100 }
+}
+
+// ── Contacts: saved customers & suppliers ─────────────────────────────────
+// category='billing_contact'; the contact sits in `meta`, `title` is the name.
+// Removing a contact sets status 'archived' — old documents keep their copy.
+export const CONTACT_CATEGORY = 'billing_contact'
+
+export async function listContacts(): Promise<Contact[]> {
+  if (!supabaseConfigured) return []
+  const { data, error } = await supabase.from('records').select('*').eq('category', CONTACT_CATEGORY)
+    .neq('status', 'archived').order('title', { ascending: true }).limit(2000)
+  if (error) { console.warn('[CFO] contacts read failed:', error.message); return [] }
+  return (data ?? []).map(r => ({ ...emptyContact(), ...(r.meta ?? {}), id: r.id }))
+}
+
+export function contactRow(c: Contact) {
+  const { id, ...meta } = c
+  return { title: c.name, status: 'active', amount: 0, category: CONTACT_CATEGORY, notes: c.notes || null, meta }
 }

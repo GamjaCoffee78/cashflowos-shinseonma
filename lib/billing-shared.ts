@@ -115,3 +115,10 @@ export function amountInWords(n: number) {
 
 // Today in Malaysia, YYYY-MM-DD (browser-safe twin of todayISO in lib/records.ts).
 export const todayMY = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date())
+
+// A saved customer or supplier (the Contacts list on the Billing tab).
+export type ContactKind = 'customer' | 'supplier' | 'both'
+export type Contact = Party & { id?: number; kind: ContactKind; terms: number; notes: string }
+export const emptyContact = (kind: ContactKind = 'customer'): Contact => ({ ...emptyParty(), kind, terms: 30, notes: '' })
+// Which contacts suit a document: POs go to suppliers, everything else to customers.
+export const contactFits = (c: Contact, type: DocType) => c.kind === 'both' || c.kind === (type === 'PO' ? 'supplier' : 'customer')
