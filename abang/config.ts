@@ -223,7 +223,7 @@ export const ABANG = {
   productionSheet: {
     spreadsheetId: '1SF6K8txY-fgY1c8pO_GGTGNjyZE6h7qmQDjkxxa2H6U',
     tab: 'App updates',
-    composioAccount: '',
+    composioAccount: 'ca_kw8p5M9618Ko',   // Google Sheets connection (Hui Yee), edit access
   },
 }
 
