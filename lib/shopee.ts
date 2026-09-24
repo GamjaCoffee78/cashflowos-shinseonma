@@ -88,12 +88,31 @@ export async function shopInfo(shopId: number, accessToken: string): Promise<{ s
 // ---- 3) Tokens: exchange the one-time code, then keep them fresh. ----
 type Auth = { shop_id: number; access_token: string; refresh_token: string; expires_at: string }
 
+// Shopee has renamed these endpoints across versions and the old name answers
+// `error_not_found`, which reads like a bad code rather than a bad path. Try
+// each in turn so we work whichever one this partner is served.
+async function authCall(paths: string[], payload: Record<string, unknown>): Promise<any> {
+  let last: unknown
+  for (const path of paths) {
+    try {
+      return await call(publicUrl(path), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    } catch (e) {
+      last = e
+      if (!/error_not_found/.test(String((e as Error)?.message || ''))) throw e // a real refusal
+    }
+  }
+  throw last
+}
+
+const TOKEN_PATHS = ['/api/v2/auth/token/get', '/api/v2/auth/token/get_access_token']
+const REFRESH_PATHS = ['/api/v2/auth/access_token/get', '/api/v2/auth/token/refresh']
+
 export async function exchangeCode(code: string, shopId: number): Promise<Auth> {
-  const body = await call(publicUrl('/api/v2/auth/token/get_access_token'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, shop_id: shopId, partner_id: Number(PARTNER_ID) }),
-  })
+  const body = await authCall(TOKEN_PATHS, { code, shop_id: shopId, partner_id: Number(PARTNER_ID) })
   return {
     shop_id: shopId,
     access_token: String(body.access_token),
@@ -103,11 +122,7 @@ export async function exchangeCode(code: string, shopId: number): Promise<Auth> 
 }
 
 async function refresh(a: Auth): Promise<Auth> {
-  const body = await call(publicUrl('/api/v2/auth/access_token/get'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: a.refresh_token, shop_id: a.shop_id, partner_id: Number(PARTNER_ID) }),
-  })
+  const body = await authCall(REFRESH_PATHS, { refresh_token: a.refresh_token, shop_id: a.shop_id, partner_id: Number(PARTNER_ID) })
   return {
     shop_id: a.shop_id,
     access_token: String(body.access_token),
