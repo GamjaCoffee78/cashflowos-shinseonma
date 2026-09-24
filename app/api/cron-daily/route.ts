@@ -8,6 +8,7 @@ import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar } from '@/lib/calendar'
+import { syncShopee, fetchShopeeOrders, shopeeOrders, shopeeTotals, money as shopeeMoney, currencyOf } from '@/lib/shopee'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // THE ONE daily cron (Vercel Hobby allows 2; we ship 1, reserve the other).
@@ -86,6 +87,16 @@ export async function GET(req: Request) {
     calendar = { error: String((e as Error)?.message || e).slice(0, 200) }
   }
 
+  // And the live Shopee MY + SG orders, so the brief quotes yesterday in full.
+  // Small payout budget: the whole cron has to fit in 60s.
+  let shopee: any = null
+  try {
+    shopee = await syncShopee({ days: 3, netBudgetMs: 4_000 })
+  } catch (e) {
+    console.error('[CFO] shopee sync failed:', e)
+    shopee = { error: String((e as Error)?.message || e).slice(0, 200) }
+  }
+
   const rows = await getRecords()
 
   // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
@@ -108,7 +119,7 @@ export async function GET(req: Request) {
     proposed = (data ?? []) as any[]
   }
 
-  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeSummary(rows), tiktokLine(rows))
+  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, (await shopeeLive()) ?? shopeeSummary(rows), tiktokLine(rows))
 
   // ② Optional Abang narrative — a warm chief-of-staff paragraph. Only when a
   //    key is set; its absence NEVER blocks the mandated brief above.
@@ -179,6 +190,7 @@ export async function GET(req: Request) {
     tiktok,
     meta,
     calendar,
+    shopee,
   })
 }
 
@@ -247,6 +259,29 @@ function tiktokLine(rows: Rec[]): string | null {
     ? `Yesterday <b>${rm(y.spend)}</b> · ${compact(y.impressions)} impressions · ${compact(y.clicks)} clicks · CTR ${y.ctr.toFixed(2)}%`
     : `Yesterday: not in yet`
   return `${yLine}\n7 days: <b>${rm(t7.spend)}</b> · ${compact(t7.impressions)} impressions · ${compact(t7.clicks)} clicks`
+}
+
+// Yesterday and the last 7 days for each live shop (MY, SG), from the API sync.
+// Each shop in its own currency — MYR and SGD are never added up. "You receive"
+// only appears once Shopee's payouts are synced; ≈ when some are estimated.
+async function shopeeLive(): Promise<string | null> {
+  const out: string[] = []
+  for (const region of ['MY', 'SG'] as const) {
+    let orders
+    try {
+      orders = shopeeOrders(await fetchShopeeOrders(region, 10), region)
+    } catch {
+      continue
+    }
+    if (!orders.length) continue
+    const cur = currencyOf(orders, region === 'SG' ? 'SGD' : 'MYR')
+    const m = (n: number) => shopeeMoney(n, cur)
+    const line = (label: string, t: ReturnType<typeof shopeeTotals>) =>
+      `${label}: <b>${m(t.revenue)}</b> sales · ${t.orders} order${t.orders === 1 ? '' : 's'}` +
+      (t.net != null ? ` · you receive ${t.netExact ? '' : '≈'}${m(t.net)}` : '')
+    out.push(`🛍️ <b>Shopee ${region}</b>\n${line('Yesterday', shopeeTotals(orders, 1, 1))}\n${line('7 days', shopeeTotals(orders, 7, 1))}`)
+  }
+  return out.length ? out.join('\n') : null
 }
 
 // Shopee orders imported by scripts/import-shopee.mjs carry meta.source = 'shopee'.
