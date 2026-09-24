@@ -72,7 +72,7 @@ export function ItemActions({ id, done, date, title }: { id: number; done: boole
       >
         {done ? '✓ Done' : '✓ Mark done'}
       </button>
-      {!done && !moving ? (
+      {!moving ? (
         <button type="button" className="pt-btn" disabled={pending} onClick={() => setMoving(true)}>
           📅 Move
         </button>
