@@ -1,5 +1,5 @@
-import { listContacts, listItems, listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
-import { DOC_TYPES, TYPE_KEYS, emptyContact, emptyLine, emptyParty, type BillingDoc, type Contact, type DocType } from '@/lib/billing-shared'
+import { listContacts, listItems, suggestItems, listDocs, invoiceBalance, type StoredDoc } from '@/lib/billing'
+import { DOC_TYPES, TYPE_KEYS, emptyContact, emptyItem, emptyLine, emptyParty, type BillingDoc, type Contact, type DocType } from '@/lib/billing-shared'
 import { todayISO } from '@/lib/records'
 import BillingForm from '@/app/_components/BillingForm'
 
@@ -11,7 +11,15 @@ export const dynamic = 'force-dynamic'
 //   ?edit=12             — edit draft 12
 export default async function NewDoc({ searchParams }: { searchParams: Promise<{ type?: string; from?: string; edit?: string; contact?: string }> }) {
   const sp = await searchParams
-  const [docs, saved, items] = await Promise.all([listDocs(), listContacts(), listItems()])
+  const [docs, saved, savedItems, sold] = await Promise.all([listDocs(), listContacts(), listItems(), suggestItems(5000)])
+  // Saved items first, then every product from the latest Shopee / TikTok
+  // orders that isn't saved yet — so the list is never empty.
+  const itemNames = new Set(savedItems.map(i => i.name.toLowerCase()))
+  const items = [
+    ...savedItems,
+    ...sold.filter(s => !itemNames.has(s.name.toLowerCase()))
+      .map(s => ({ ...emptyItem(), name: s.name, price: s.currency === 'MYR' ? s.price : 0, notes: `From ${s.from}` })),
+  ]
   const today = todayISO()
 
   let initial: BillingDoc & { id?: number }

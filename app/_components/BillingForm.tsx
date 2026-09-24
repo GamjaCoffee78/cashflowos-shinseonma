@@ -146,7 +146,7 @@ export default function BillingForm({
           </div>
           {d.lines.map((l, i) => (
             <div className={`bf-line${cfg.priced ? '' : ' nop'}`} key={i}>
-              <input aria-label="Description" list="bf-items" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="Item / service" />
+              <input aria-label="Description" list="bf-items" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder={items.length ? "Type to search your products…" : "Item / service"} />
               <input aria-label="Qty" type="number" step="any" value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} />
               <input aria-label="UOM" value={l.uom} onChange={e => setLine(i, 'uom', e.target.value)} />
               {cfg.priced ? (
@@ -164,7 +164,7 @@ export default function BillingForm({
         <datalist id="bf-items">{items.map(it => <option key={it.id ?? it.name} value={it.name}>{it.code ? `${it.code} · ` : ''}{money(it.price)}</option>)}</datalist>
         <div className="btnrow">
           <button type="button" className="btn ghost" onClick={() => set('lines', [...d.lines, emptyLine()])}>+ Add item</button>
-          <a className="bf-hint" style={{ alignSelf: 'center' }} href="/billing/items" target="_blank">{items.length ? `${items.length} saved items — ` : ''}Manage items</a>
+          <a className="bf-hint" style={{ alignSelf: 'center' }} href="/billing/items" target="_blank">{items.length ? `${items.length} products to pick from — ` : ''}Manage items</a>
         </div>
 
         {cfg.priced ? (

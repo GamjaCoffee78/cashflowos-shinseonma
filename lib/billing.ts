@@ -110,11 +110,11 @@ export function itemRow(i: Item) {
 // Every product that appears in the Shopee / TikTok orders already synced,
 // with how many sold and the latest price. Reads only the order summaries
 // ("2× Bulgogi Sauce (500g) @ RM18.90; …") — nothing is written.
-export async function suggestItems(): Promise<ItemSuggestion[]> {
+export async function suggestItems(maxOrders = 100_000): Promise<ItemSuggestion[]> {
   if (!supabaseConfigured) return []
   const tally = new Map<string, ItemSuggestion & { date: string }>()
   for (const [category, from] of [['shopee_order', 'Shopee'], ['tiktok_order', 'TikTok Shop']] as const) {
-    for (let at = 0; at < 100_000; at += 1000) {
+    for (let at = 0; at < maxOrders; at += 1000) {
       const { data, error } = await supabase.from('records').select('due_date, meta->>items, meta->>currency')
         .eq('category', category).order('due_date', { ascending: false }).range(at, at + 999)
       if (error) { console.warn('[CFO] item suggestions read failed:', error.message); break }
