@@ -62,6 +62,7 @@ function describe(r: any): string {
   const inserted = Number(r?.inserted || 0)
   const updated = Number(r?.updated || 0)
   const cancelled = Number(r?.cancelled || 0)
+  const archived = Number(r?.archived || 0)
   const span = r?.from && r?.to ? `${r.from} → ${r.to}: ` : ''
   let tail = Number(r?.missing || 0)
     ? ` ${r.missing} stored row(s) are no longer in the sheet — left alone, nothing is ever deleted.`
@@ -69,9 +70,10 @@ function describe(r: any): string {
   if (r?.netAdded) tail += ` Payout (after fees) found for ${r.netAdded} order(s).`
   if (r?.netTried && !r?.netAdded && !r?.netError) tail += ` Shopee returned no payout for ${r.netTried} order(s) checked.`
   if (r?.netError) tail += ` Shopee refused the payout lookup: ${r.netError}`
-  if (!inserted && !updated && !cancelled) return `${span}nothing new, already up to date.${tail}`
+  if (!inserted && !updated && !cancelled && !archived) return `${span}nothing new, already up to date.${tail}`
   const bits = [`${inserted} added`, `${updated} refreshed`]
   if (cancelled) bits.push(`${cancelled} cancelled`)
+  if (archived) bits.push(`${archived} old item(s) archived (no longer in the sheet)`)
   return `${span}${bits.join(', ')}.${tail}`
 }
 
