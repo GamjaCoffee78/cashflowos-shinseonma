@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { writeProductionSheet, productionSheetConfigured, EDITABLE } from '@/lib/production-sheet'
+import { writeProductionSheet, productionSheetConfigured, applyToGrid, EDITABLE } from '@/lib/production-sheet'
 
 // The Production Timeline's buttons: mark an item done (or undo), move it to
 // another date, or add a new one. POST { action, … } → plain JSON.
@@ -18,6 +18,7 @@ import { writeProductionSheet, productionSheetConfigured, EDITABLE } from '@/lib
 // the answer just says the sheet wasn't updated.
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // a change is saved, then written into the sheet
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const bad = (message: string) => NextResponse.json({ ok: false, message }, { status: 400 })
@@ -55,25 +56,27 @@ export async function POST(req: Request) {
     const category = CALENDARS.includes(String(body?.category)) ? String(body.category) : 'production'
     if (!title) return bad('Give the task a name.')
     if (!ISO.test(date)) return bad('Pick a date.')
-    const { error } = await supabase.from('records').insert({
+    const meta = { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString() }
+    const { data: made, error } = await supabase.from('records').insert({
       title,
       status: 'planned',
       amount: 0,
       category,
       due_date: date,
       notes: 'Added in the app',
-      meta: { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString() },
-    })
+      meta,
+    }).select('id').single()
     if (error) return bad(`Couldn't save: ${error.message}`)
+    const grid = await gridNote({ action: 'add', category, title, date }, made?.id, meta)
     refresh()
-    return NextResponse.json({ ok: true, message: `Added.${await sheetNote()}` })
+    return NextResponse.json({ ok: true, message: `Added.${grid}${await sheetNote()}` })
   }
 
   const id = Number(body?.id)
   if (!Number.isInteger(id) || id <= 0) return bad('Which item?')
   const { data: row, error: readErr } = await supabase
     .from('records')
-    .select('id, status, due_date, category, meta')
+    .select('id, title, status, due_date, category, meta')
     .eq('id', id)
     .in('category', Object.keys(EDITABLE))
     .maybeSingle()
@@ -112,8 +115,31 @@ export async function POST(req: Request) {
 
   const { error } = await supabase.from('records').update(patch).eq('id', id).eq('category', row.category)
   if (error) return bad(`Couldn't save: ${error.message}`)
+
+  // The same change in the sheet's month calendar.
+  const title = String((row as any).title || '')
+  const newMeta = (patch.meta as Record<string, unknown>) ?? meta
+  let grid = ''
+  if (action === 'idea_schedule') grid = await gridNote({ action: 'add', category: 'social_plan', title, date: String(patch.due_date) }, id, newMeta)
+  else if (action === 'move') grid = await gridNote({ action: 'move', category: row.category, title, date: String(patch.due_date), from: row.due_date }, id, newMeta)
+  else if (action === 'done' || action === 'undo') grid = await gridNote({ action, category: row.category, title, date: row.due_date }, null, newMeta)
   refresh()
-  return NextResponse.json({ ok: true, message: `Saved.${await sheetNote()}` })
+  return NextResponse.json({ ok: true, message: `Saved.${grid}${await sheetNote()}` })
+}
+
+// Write the change into the month calendar; remember where it now sits
+// (meta.sheet_key) so the next Sync now recognises it instead of adding it twice.
+async function gridNote(
+  change: Parameters<typeof applyToGrid>[0],
+  id: number | null | undefined,
+  meta: Record<string, unknown>,
+): Promise<string> {
+  const r = await applyToGrid(change)
+  if (!r.message) return ''
+  if (r.ok && r.sheetKey && id) {
+    await supabase.from('records').update({ meta: { ...meta, sheet_key: r.sheetKey } }).eq('id', id)
+  }
+  return r.ok ? ` ✓ ${r.message}` : ` ⚠️ calendar: ${r.message}`
 }
 
 async function sheetNote(): Promise<string> {

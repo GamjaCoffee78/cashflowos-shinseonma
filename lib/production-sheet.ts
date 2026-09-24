@@ -200,6 +200,10 @@ const KINDS = [
 
 // Same task, whatever the spacing, punctuation or case.
 const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '')
+// The key an item is matched on: its day + its text. For social posts the
+// channel tag is left out, so "[IGR/REELS] x" and "[REELS/IGR] x" are one post.
+const keyOf = (category: string, date: string, title: string) =>
+  `${date}|${norm(category === 'social_plan' ? title.replace(/^\s*\[[^\]]*\]\s*/, '') : title)}`
 
 export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}) {
   // Default: every month tab, so the tidy-up covers the whole sheet.
@@ -246,14 +250,14 @@ async function reconcile(category: string, source: string, items: { date: string
   const have = new Set<string>()
   for (const r of (data ?? []) as any[]) {
     const orig = r.meta?.moved_from?.[0]?.date ?? r.due_date
-    have.add(`${orig}|${norm(r.title || '')}`)
+    have.add(keyOf(category, orig, r.title || ''))
     if (r.meta?.sheet_key) have.add(r.meta.sheet_key)
   }
 
   const seen = new Set<string>()
   const toInsert = []
   for (const it of items) {
-    const key = `${it.date}|${norm(it.title)}`
+    const key = keyOf(category, it.date, it.title)
     if (!norm(it.title) || have.has(key) || seen.has(key)) continue
     seen.add(key)
     toInsert.push({
@@ -271,13 +275,13 @@ async function reconcile(category: string, source: string, items: { date: string
     if (error) throw new Error(`insert failed: ${error.message}`)
   }
 
-  const sheetKeys = new Set(items.map(it => `${it.date}|${norm(it.title)}`))
+  const sheetKeys = new Set(items.map(it => keyOf(category, it.date, it.title)))
   const readMonths = new Set(items.map(it => it.date.slice(0, 7)))
   const stale = ((data ?? []) as any[]).filter(r => {
     if (r.meta?.source === 'app') return false
     const orig: string = r.meta?.moved_from?.[0]?.date ?? r.due_date ?? ''
     if (!readMonths.has(orig.slice(0, 7))) return false
-    return !sheetKeys.has(`${orig}|${norm(r.title || '')}`) && !(r.meta?.sheet_key && sheetKeys.has(r.meta.sheet_key))
+    return !sheetKeys.has(keyOf(category, orig, r.title || '')) && !(r.meta?.sheet_key && sheetKeys.has(r.meta.sheet_key))
   })
   // By explicit id, 100 at a time, never deleted: '<category>_archived'.
   const ids = stale.map(r => r.id as number)
@@ -372,5 +376,156 @@ export async function ensureNextMonthTab(today: string, opts: { fromDay?: number
     created: title,
     copiedFrom: src.title,
     ...(short ? { warning: `${title} needs ${short} more week row(s) than ${src.title} has — add them by hand` } : {}),
+  }
+}
+
+// ---- ④ App → the month calendars themselves ----------------------------------
+//
+// So the sheet and the app say the same thing, every change made in the app is
+// also made in the right month tab's calendar block:
+//   • add      → the task text goes into the first empty cell under its day
+//                (social: into the rows of its channels, e.g. [IGR/REELS])
+//   • move     → the cell at the old day is emptied, the text goes under the new day
+//   • done     → the cell gets a strikethrough; undo removes it
+// Only the one cell is written. If the month tab or a free cell can't be found,
+// nothing is written and the answer says so (the app keeps the change either way).
+const BLOCKS: Record<string, { label: RegExp; cont?: RegExp; channel?: boolean }> = {
+  production: { label: /production\s+timeline/i },
+  social_plan: { label: /social\s+content\s+calendar/i, cont: /^social\b/i, channel: true },
+  events_other: { label: /events\s*\/\s*others/i },
+}
+
+type Found = { tab: string; sheetId: number; grid: string[][]; start: number; end: number }
+
+async function monthBlock(category: string, month: string): Promise<Found | string> {
+  const spec = BLOCKS[category]
+  if (!spec) return 'no calendar for this item'
+  const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
+  const info = await proxy('GET', base, undefined, { fields: 'sheets.properties(sheetId,title)' })
+  const tab = ((info?.sheets ?? []) as any[]).map(s => s.properties).find((p: any) => tabMonth(String(p.title)) === month)
+  if (!tab) return `no month tab for ${month} in the sheet`
+  const g = await proxy('GET', `${base}/values/${encodeURIComponent(`'${tab.title}'!A1:J600`)}`, undefined, { valueRenderOption: 'FORMATTED_VALUE' })
+  const grid = ((g?.values ?? []) as any[][]).map(row => (row ?? []).map(c => String(c ?? '').trim()))
+  const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
+  const isHeader = (r: number) => DOW.every((d, i) => cell(r, COL0 + i).toUpperCase() === d)
+  const at = grid.findIndex(row => row.slice(0, COL0).some(v => spec.label.test(v)))
+  if (at < 0) return `no ${category.replace('_', ' ')} block in ${tab.title}`
+  let start = -1
+  for (let r = at; r >= 0; r--) if (isHeader(r)) { start = r; break }
+  if (start < 0) return `can't read the calendar in ${tab.title}`
+  let end = grid.length
+  for (let r = start + 1; r < grid.length; r++) {
+    const a = cell(r, 0)
+    if (isHeader(r) || (r > at && a && !spec.label.test(a) && !spec.cont?.test(a))) { end = r; break }
+  }
+  return { tab: String(tab.title), sheetId: Number(tab.sheetId), grid, start, end }
+}
+
+// The task rows under one day: [row numbers], plus the column for that day.
+export function dayCells(f: Found, date: string, channels: string[] | null): { col: number; rows: number[] } | null {
+  const day = Number(date.slice(8, 10))
+  const cell = (r: number, c: number) => f.grid[r]?.[c] ?? ''
+  const isDateRow = (r: number) => {
+    const v = DOW.map((_, i) => cell(r, COL0 + i))
+    return v.some(x => /^\d{1,2}$/.test(x)) && v.every(x => x === '' || /^\d{1,2}$/.test(x))
+  }
+  for (let r = f.start + 1; r < f.end; r++) {
+    if (!isDateRow(r)) continue
+    const i = DOW.findIndex((_, k) => cell(r, COL0 + k) === String(day))
+    if (i < 0) continue
+    const rows: number[] = []
+    for (let q = r + 1; q < f.end && !isDateRow(q); q++) {
+      if (channels && channels.length && !channels.includes(cell(q, 2).toUpperCase())) continue
+      rows.push(q)
+    }
+    return { col: COL0 + i, rows }
+  }
+  return null
+}
+
+// "[IGR/REELS] Sundubu video" → { channels: ['IGR','REELS'], text: 'Sundubu video' }
+function splitChannels(category: string, title: string): { channels: string[] | null; text: string } {
+  if (category !== 'social_plan') return { channels: null, text: title }
+  const m = /^\s*\[([^\]]+)\]\s*(.*)$/.exec(title)
+  if (!m) return { channels: ['IGR'], text: title }
+  return { channels: m[1].split(/[\/,\s]+/).map(c => c.trim().toUpperCase()).filter(Boolean), text: m[2] }
+}
+
+async function writeCells(f: Found, cells: { row: number; col: number; value: string }[]) {
+  if (!cells.length) return
+  const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
+  await proxy('POST', `${base}/values:batchUpdate`, {
+    valueInputOption: 'RAW',
+    data: cells.map(c => ({ range: `'${f.tab}'!${String.fromCharCode(65 + c.col)}${c.row + 1}`, values: [[c.value]] })),
+  })
+}
+
+async function strike(f: Found, cells: { row: number; col: number }[], on: boolean) {
+  if (!cells.length) return
+  const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
+  await proxy('POST', `${base}:batchUpdate`, {
+    requests: cells.map(c => ({
+      repeatCell: {
+        range: { sheetId: f.sheetId, startRowIndex: c.row, endRowIndex: c.row + 1, startColumnIndex: c.col, endColumnIndex: c.col + 1 },
+        cell: { userEnteredFormat: { textFormat: { strikethrough: on } } },
+        fields: 'userEnteredFormat.textFormat.strikethrough',
+      },
+    })),
+  })
+}
+
+// Where a task already sits under its day (matched the same way the sync matches).
+export function findTask(f: Found, date: string, category: string, title: string) {
+  const { channels, text } = splitChannels(category, title)
+  const d = dayCells(f, date, channels)
+  if (!d) return []
+  return d.rows.filter(r => norm(f.grid[r]?.[d.col] ?? '').length && norm(f.grid[r][d.col]) === norm(text)).map(row => ({ row, col: d.col }))
+}
+
+async function place(category: string, date: string, title: string): Promise<string> {
+  const f = await monthBlock(category, date.slice(0, 7))
+  if (typeof f === 'string') return f
+  const { channels, text } = splitChannels(category, title)
+  if (findTask(f, date, category, title).length) return 'already in the sheet'
+  const d = dayCells(f, date, channels)
+  if (!d) return `no ${date} in ${f.tab}`
+  // One cell per channel row for social; the first free cell otherwise.
+  const free = d.rows.filter(r => !(f.grid[r]?.[d.col] ?? ''))
+  const pick = channels ? free : free.slice(0, 1)
+  if (!pick.length) return `no free cell under ${date} in ${f.tab} — add a row there`
+  await writeCells(f, pick.map(row => ({ row, col: d.col, value: text })))
+  return `written to ${f.tab}`
+}
+
+// The one entry point the API calls after it has saved the change in the app.
+export async function applyToGrid(
+  change: { action: 'add' | 'move' | 'done' | 'undo'; category: string; title: string; date: string; from?: string },
+): Promise<{ ok: boolean; message: string; sheetKey?: string }> {
+  if (!productionSheetConfigured() || !BLOCKS[change.category]) return { ok: true, message: '' }
+  try {
+    const key = keyOf(change.category, change.date, change.title)
+    if (change.action === 'add') {
+      const m = await place(change.category, change.date, change.title)
+      return { ok: !/^no /.test(m), message: m, sheetKey: key }
+    }
+    if (change.action === 'move' && change.from) {
+      const old = await monthBlock(change.category, change.from.slice(0, 7))
+      if (typeof old !== 'string') {
+        const cells = findTask(old, change.from, change.category, change.title)
+        await writeCells(old, cells.map(c => ({ ...c, value: '' })))
+        await strike(old, cells, false)
+      }
+      const m = await place(change.category, change.date, change.title)
+      return { ok: !/^no /.test(m), message: m, sheetKey: key }
+    }
+    const f = await monthBlock(change.category, change.date.slice(0, 7))
+    if (typeof f === 'string') return { ok: false, message: f }
+    const cells = findTask(f, change.date, change.category, change.title)
+    if (!cells.length) return { ok: false, message: `couldn't find it under ${change.date} in ${f.tab}` }
+    await strike(f, cells, change.action === 'done')
+    return { ok: true, message: change.action === 'done' ? `crossed out in ${f.tab}` : `un-crossed in ${f.tab}` }
+  } catch (e) {
+    const msg = String((e as Error)?.message || e)
+    return { ok: false, message: /insufficient|scope|permission|forbidden|403/i.test(msg) ? 'Google refused — the sheet connection needs edit access' : msg.slice(0, 120) }
   }
 }

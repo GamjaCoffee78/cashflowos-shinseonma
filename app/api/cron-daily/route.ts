@@ -8,7 +8,7 @@ import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar } from '@/lib/calendar'
-import { ensureNextMonthTab } from '@/lib/production-sheet'
+import { ensureNextMonthTab, syncProductionFromSheet } from '@/lib/production-sheet'
 import { syncShopee, fetchShopeeOrders, shopeeOrders, shopeeTotals, money as shopeeMoney, currencyOf } from '@/lib/shopee'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       console.error(`[CFO] ${label} sync failed:`, e)
       return { error: String((e as Error)?.message || e).slice(0, 200) }
     })
-  const [tiktok, meta, calendar, shopee, productionTab] = await Promise.all([
+  const [tiktok, meta, calendar, shopee, productionTab, workSheet] = await Promise.all([
     capped('tiktok', () => syncTikTokAds()),
     capped('meta', () => syncMetaAds()),     // tab only — no line in the brief
     capped('calendar', () => syncCalendar()),
@@ -83,6 +83,9 @@ export async function GET(req: Request) {
     capped('shopee', () => syncShopee({ days: 2, netBudgetMs: 0 })),
     // From the 20th: make next month's Brand Timeline tab in the team sheet.
     capped('production tab', () => ensureNextMonthTab(today)),
+    // Sheet → app every morning too, so Production / Social / Events are fresh
+    // even if nobody pressed Sync now.
+    capped('work sheet', () => syncProductionFromSheet()),
   ])
 
   const rows = await getRecords()
@@ -196,6 +199,7 @@ export async function GET(req: Request) {
     calendar,
     shopee,
     productionTab,
+    workSheet,
     whatsapp,
   })
 }
