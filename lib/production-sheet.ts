@@ -48,7 +48,14 @@ async function proxy(method: 'GET' | 'POST' | 'PUT', endpoint: string, body?: un
   return g
 }
 
-const HEADER = ['Date', 'Task', 'Status', 'Done on', 'Moved from', 'Added in app', 'Last change']
+const HEADER = ['Calendar', 'Date', 'Task', 'Status', 'Done on', 'Moved from', 'Added in app', 'Last change']
+// The categories the app can edit, and what the App updates tab calls them.
+export const EDITABLE: Record<string, string> = {
+  production: 'Production',
+  social_plan: 'Social',
+  events_other: 'Events / Others',
+  content_idea: 'Content idea',
+}
 const day = (iso?: string) => (iso ? iso.slice(0, 10) : '')
 
 // Rewrite the tab from the database. Returns a one-line result for the button.
@@ -61,8 +68,8 @@ export async function writeProductionSheet(): Promise<{ ok: boolean; message: st
     // Only items the app has touched: added here, ticked, or moved.
     const { data, error } = await supabase
       .from('records')
-      .select('title, status, due_date, meta')
-      .eq('category', 'production')
+      .select('title, status, due_date, category, meta')
+      .in('category', Object.keys(EDITABLE))
       .order('due_date', { ascending: true })
       .limit(5000)
     if (error) throw new Error(error.message)
@@ -72,9 +79,10 @@ export async function writeProductionSheet(): Promise<{ ok: boolean; message: st
         const moved = (r.meta?.moved_from ?? []) as { date: string; at: string }[]
         const last = [r.meta?.done_at, moved[moved.length - 1]?.at, r.meta?.created_at].filter(Boolean).sort().pop()
         return [
+          EDITABLE[r.category] ?? r.category,
           day(r.due_date),
           r.title,
-          r.status === 'done' ? 'Done' : 'Planned',
+          r.status === 'done' ? 'Done' : r.status === 'dropped' ? 'Dropped' : r.category === 'content_idea' ? 'Idea' : 'Planned',
           day(r.meta?.done_at),
           moved.map(m => m.date).join(' → '),
           r.meta?.source === 'app' ? 'Yes' : '',
@@ -88,7 +96,7 @@ export async function writeProductionSheet(): Promise<{ ok: boolean; message: st
     } catch (e) {
       if (!/already exists/i.test(String((e as Error).message))) throw e
     }
-    const range = encodeURIComponent(`'${tab}'!A:G`)
+    const range = encodeURIComponent(`'${tab}'!A:H`)
     await proxy('POST', `${base}/values/${range}:clear`, {})
     await proxy('PUT', `${base}/values/${encodeURIComponent(`'${tab}'!A1`)}`, { values: [HEADER, ...rows] }, { valueInputOption: 'RAW' })
     return { ok: true, message: `sheet updated (${rows.length} item${rows.length === 1 ? '' : 's'})` }

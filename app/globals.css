@@ -904,3 +904,13 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-add input[type=text] { flex: 1; min-width: 220px; }
 .pt-days li.done .pt-title { text-decoration: line-through; color: var(--ink-faint); }
 .pt-chip.done { opacity: .45; text-decoration: line-through; }
+
+/* Social Calendar — content ideas notebook */
+.ideas { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px 16px; margin: 0 0 18px; }
+.ideas-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.ideas-head h2 { margin: 0; font-size: 17px; }
+.ideas-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+.ideas-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ideas-list li:last-child { border-bottom: none; }
+.ideas-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 200px; }
+.ideas-list.dropped b { color: var(--ink-faint); text-decoration: line-through; font-weight: 500; }
