@@ -30,7 +30,8 @@ export function ItemActions({ id, done, date }: { id: number; done: boolean; dat
     start(async () => {
       const r = await post(body)
       if (!r.ok) return setErr(r.message)
-      setErr('')
+      // Saved — but say so if the Google Sheet couldn't be updated.
+      setErr(r.message.includes('⚠️') ? r.message.replace('⚠️', '').trim() : '')
       setMoving(false)
       router.refresh()
     })
@@ -88,6 +89,7 @@ export function AddTask({ defaultDate }: { defaultDate: string }) {
         start(async () => {
           const r = await post({ action: 'add', title, date })
           if (!r.ok) return setMsg(r.message)
+          if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
           setTitle('')
           setOpen(false)

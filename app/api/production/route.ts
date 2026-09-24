@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
+import { writeProductionSheet, productionSheetConfigured } from '@/lib/production-sheet'
 
 // The Production Timeline's buttons: mark an item done (or undo), move it to
 // another date, or add a new one. POST { action, … } → plain JSON.
@@ -9,9 +10,9 @@ import { supabase, supabaseConfigured } from '@/lib/supabase'
 // is given by id — never a blanket update (CLAUDE.md). Gated by the
 // APP_PASSCODE cookie like every tab (proxy.ts does not exclude it).
 //
-// The Drive sheet ("Okmaya Project WIP.xlsx") is NOT written yet: it is an
-// Excel file, which the Sheets API can't edit. Every change keeps its history
-// in meta (done_at, moved_from) so an 'App updates' tab can be filled later.
+// After every save the "App updates" tab of the team's Google Sheet is
+// rewritten (lib/production-sheet.ts). A sheet failure never undoes the save —
+// the answer just says the sheet wasn't updated.
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
     })
     if (error) return bad(`Couldn't save: ${error.message}`)
     revalidatePath('/production')
-    return NextResponse.json({ ok: true, message: 'Added.' })
+    return NextResponse.json({ ok: true, message: `Added.${await sheetNote()}` })
   }
 
   const id = Number(body?.id)
@@ -77,5 +78,11 @@ export async function POST(req: Request) {
   const { error } = await supabase.from('records').update(patch).eq('id', id).eq('category', 'production')
   if (error) return bad(`Couldn't save: ${error.message}`)
   revalidatePath('/production')
-  return NextResponse.json({ ok: true, message: 'Saved.' })
+  return NextResponse.json({ ok: true, message: `Saved.${await sheetNote()}` })
+}
+
+async function sheetNote(): Promise<string> {
+  if (!productionSheetConfigured()) return ''
+  const r = await writeProductionSheet()
+  return r.ok ? ` ✓ ${r.message}` : ` ⚠️ ${r.message}`
 }

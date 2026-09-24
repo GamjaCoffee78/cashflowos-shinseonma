@@ -208,6 +208,23 @@ export const ABANG = {
     source: 'okmaya_owner_v5_fix',
     composioAccount: '',
   },
+
+  // ── 👉 PRODUCTION SHEET (write-back) ──────────────────────────────────────
+  /**
+   * Every Done / Move / New task on the Production Timeline is mirrored into
+   * ONE tab of the team's Google Sheet ("Okmaya Project WIP", the Google Sheets
+   * copy — not the old .xlsx). The app owns that tab and rewrites it on every
+   * change; it never touches any other tab, so the calendar grid is safe.
+   *
+   * composioAccount: the Google Sheets connection in the Composio project
+   * (ca_…). It needs EDIT access to Sheets. Empty = the sheet isn't written,
+   * and the app still saves every change.
+   */
+  productionSheet: {
+    spreadsheetId: '1SF6K8txY-fgY1c8pO_GGTGNjyZE6h7qmQDjkxxa2H6U',
+    tab: 'App updates',
+    composioAccount: '',
+  },
 }
 
 /**
