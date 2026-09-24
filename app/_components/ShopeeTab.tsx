@@ -177,6 +177,9 @@ export default async function ShopeeTab({
           <p className="cap">
             Live from your Shopee {region} shop · all figures in {cur} · synced every morning
           </p>
+          <p className="cap" style={{ marginTop: 4 }}>
+            Revenue = what buyers paid (Shopee order total), <b>before</b> Shopee commission and fees · cancelled and unpaid orders are left out
+          </p>
         </div>
         {orders.length > 0 && (
           <div className="sp-today">
