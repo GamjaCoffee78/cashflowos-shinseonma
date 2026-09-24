@@ -144,6 +144,10 @@ create table if not exists shopee_auth (
   updated_at    timestamptz not null default now()
 );
 
+-- RLS on, no policies: the public anon key must never read these tokens. The
+-- app reaches this table only with the service-role key, which bypasses RLS.
+alter table shopee_auth enable row level security;
+
 -- ============================================================
 -- NO SEED ROWS. This shop runs on real data — the database starts EMPTY and
 -- every number in the app is your own. (The template's demo rows — Acme,
