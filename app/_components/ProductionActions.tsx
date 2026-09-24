@@ -68,7 +68,9 @@ export function ItemActions({ id, done, date }: { id: number; done: boolean; dat
 }
 
 // ＋ New task — a name and a date.
-export function AddTask({ defaultDate }: { defaultDate: string }) {
+export function AddTask({
+  defaultDate, category = 'production', basePath = '/production', placeholder = 'e.g. [FM Order] Pack 200 tofu paste', label = '＋ New task',
+}: { defaultDate: string; category?: string; basePath?: string; placeholder?: string; label?: string }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [open, setOpen] = useState(false)
@@ -78,7 +80,7 @@ export function AddTask({ defaultDate }: { defaultDate: string }) {
 
   if (!open) {
     return (
-      <button type="button" className="btn sync" onClick={() => setOpen(true)}>＋ New task</button>
+      <button type="button" className="btn sync" onClick={() => setOpen(true)}>{label}</button>
     )
   }
   return (
@@ -87,20 +89,20 @@ export function AddTask({ defaultDate }: { defaultDate: string }) {
       onSubmit={e => {
         e.preventDefault()
         start(async () => {
-          const r = await post({ action: 'add', title, date })
+          const r = await post({ action: 'add', title, date, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
           setTitle('')
           setOpen(false)
-          router.push(`/production?m=${date.slice(0, 7)}`)
+          router.push(`${basePath}?m=${date.slice(0, 7)}`)
           router.refresh()
         })
       }}
     >
       <input
         type="text"
-        placeholder="e.g. [FM Order] Pack 200 tofu paste"
+        placeholder={placeholder}
         value={title}
         onChange={e => setTitle(e.target.value)}
         aria-label="Task"
@@ -112,5 +114,96 @@ export function AddTask({ defaultDate }: { defaultDate: string }) {
       <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
       {msg ? <span className="cap" role="alert">⚠️ {msg}</span> : null}
     </form>
+  )
+}
+
+// 💡 Content ideas — the Social Calendar's notebook. Write an idea now, give it
+// a date later (📅 Schedule turns it into a post on the calendar), or drop it.
+export type Idea = { id: number; title: string; notes: string | null; status: string; created: string }
+
+export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [title, setTitle] = useState('')
+  const [notes, setNotes] = useState('')
+  const [msg, setMsg] = useState('')
+  const [scheduling, setScheduling] = useState<number | null>(null)
+  const [date, setDate] = useState(today)
+  const [showDropped, setShowDropped] = useState(false)
+
+  const run = (body: object, after?: () => void) =>
+    start(async () => {
+      const r = await post(body)
+      if (!r.ok) return setMsg(r.message)
+      setMsg(r.message.includes('⚠️') ? r.message : '')
+      after?.()
+      router.refresh()
+    })
+
+  const open = ideas.filter(i => i.status !== 'dropped')
+  const dropped = ideas.filter(i => i.status === 'dropped')
+
+  return (
+    <section className="ideas">
+      <div className="ideas-head">
+        <h2>💡 Content ideas</h2>
+        <span className="cap" style={{ margin: 0 }}>{open.length} waiting · give one a date to put it on the calendar</span>
+      </div>
+      <form
+        className="pt-add"
+        onSubmit={e => {
+          e.preventDefault()
+          run({ action: 'idea_add', title, notes }, () => { setTitle(''); setNotes('') })
+        }}
+      >
+        <input type="text" placeholder="The idea — e.g. Sundubu in 5 minutes, office lunch hack" value={title} onChange={e => setTitle(e.target.value)} aria-label="Idea" required />
+        <input type="text" placeholder="Notes (optional): hook, channel, product…" value={notes} onChange={e => setNotes(e.target.value)} aria-label="Notes" />
+        <button type="submit" className="btn sync" disabled={pending}>{pending ? 'Saving…' : '＋ Add idea'}</button>
+      </form>
+      {msg ? <p className="cap" role="alert">⚠️ {msg.replace('⚠️', '').trim()}</p> : null}
+      {open.length === 0 ? (
+        <p className="cap">No ideas yet — write the first one above.</p>
+      ) : (
+        <ul className="ideas-list">
+          {open.map(i => (
+            <li key={i.id}>
+              <div className="ideas-text">
+                <b>{i.title}</b>
+                {i.notes ? <span className="cap" style={{ margin: 0 }}>{i.notes}</span> : null}
+              </div>
+              <span className="pt-act">
+                {scheduling === i.id ? (
+                  <span className="pt-move">
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Post date" />
+                    <button type="button" className="pt-btn on" disabled={pending || !date} onClick={() => run({ action: 'idea_schedule', id: i.id, date }, () => setScheduling(null))}>Save</button>
+                    <button type="button" className="pt-btn" onClick={() => setScheduling(null)}>Cancel</button>
+                  </span>
+                ) : (
+                  <>
+                    <button type="button" className="pt-btn" disabled={pending} onClick={() => { setDate(today); setScheduling(i.id) }}>📅 Schedule</button>
+                    <button type="button" className="pt-btn" disabled={pending} onClick={() => run({ action: 'idea_drop', id: i.id })}>✕ Drop</button>
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {dropped.length ? (
+        <p className="cap">
+          <button type="button" className="pt-btn" onClick={() => setShowDropped(v => !v)}>{showDropped ? 'Hide' : 'Show'} {dropped.length} dropped</button>
+        </p>
+      ) : null}
+      {showDropped ? (
+        <ul className="ideas-list dropped">
+          {dropped.map(i => (
+            <li key={i.id}>
+              <div className="ideas-text"><b>{i.title}</b></div>
+              <button type="button" className="pt-btn" disabled={pending} onClick={() => run({ action: 'idea_restore', id: i.id })}>↩ Bring back</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   )
 }

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { writeProductionSheet, productionSheetConfigured } from '@/lib/production-sheet'
+import { writeProductionSheet, productionSheetConfigured, EDITABLE } from '@/lib/production-sheet'
 
 // The Production Timeline's buttons: mark an item done (or undo), move it to
 // another date, or add a new one. POST { action, … } → plain JSON.
 //
-// Only ever touches rows with category='production', and only the one row it
-// is given by id — never a blanket update (CLAUDE.md). Gated by the
+// Serves the three Work calendars (Production, Social Calendar, Events / Others)
+// and the Social Calendar's content ideas. Only ever touches rows in those
+// categories (EDITABLE), and only the one row it is given by id — never a
+// blanket update (CLAUDE.md). Nothing is deleted: a dropped idea is status
+// 'dropped'. Gated by the
 // APP_PASSCODE cookie like every tab (proxy.ts does not exclude it).
 //
 // After every save the "App updates" tab of the team's Google Sheet is
@@ -24,22 +27,45 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
   const action = String(body?.action || '')
 
+  const PAGES: Record<string, string> = { production: '/production', social_plan: '/social-calendar', events_other: '/events-others', content_idea: '/social-calendar' }
+  const refresh = () => Object.values(PAGES).forEach(p => revalidatePath(p))
+  const CALENDARS = ['production', 'social_plan', 'events_other']
+
+  // A content idea: no date yet. Lives on the Social Calendar until scheduled.
+  if (action === 'idea_add') {
+    const title = String(body?.title || '').trim().slice(0, 300)
+    const notes = String(body?.notes || '').trim().slice(0, 1000)
+    if (!title) return bad('Write the idea first.')
+    const { error } = await supabase.from('records').insert({
+      title,
+      status: 'idea',
+      amount: 0,
+      category: 'content_idea',
+      notes: notes || null,
+      meta: { source: 'app', created_at: new Date().toISOString() },
+    })
+    if (error) return bad(`Couldn't save: ${error.message}`)
+    refresh()
+    return NextResponse.json({ ok: true, message: `Idea saved.${await sheetNote()}` })
+  }
+
   if (action === 'add') {
     const title = String(body?.title || '').trim().slice(0, 200)
     const date = String(body?.date || '')
+    const category = CALENDARS.includes(String(body?.category)) ? String(body.category) : 'production'
     if (!title) return bad('Give the task a name.')
     if (!ISO.test(date)) return bad('Pick a date.')
     const { error } = await supabase.from('records').insert({
       title,
       status: 'planned',
       amount: 0,
-      category: 'production',
+      category,
       due_date: date,
       notes: 'Added in the app',
       meta: { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString() },
     })
     if (error) return bad(`Couldn't save: ${error.message}`)
-    revalidatePath('/production')
+    refresh()
     return NextResponse.json({ ok: true, message: `Added.${await sheetNote()}` })
   }
 
@@ -47,9 +73,9 @@ export async function POST(req: Request) {
   if (!Number.isInteger(id) || id <= 0) return bad('Which item?')
   const { data: row, error: readErr } = await supabase
     .from('records')
-    .select('id, status, due_date, meta')
+    .select('id, status, due_date, category, meta')
     .eq('id', id)
-    .eq('category', 'production')
+    .in('category', Object.keys(EDITABLE))
     .maybeSingle()
   if (readErr) return bad(`Couldn't read the item: ${readErr.message}`)
   if (!row) return bad('That item is not on the timeline any more.')
@@ -57,7 +83,16 @@ export async function POST(req: Request) {
   const now = new Date().toISOString()
 
   let patch: Record<string, unknown>
-  if (action === 'done') {
+  if (action === 'idea_schedule') {
+    // Idea → a dated post on the Social Calendar.
+    const date = String(body?.date || '')
+    if (row.category !== 'content_idea') return bad('That is not an idea.')
+    if (!ISO.test(date)) return bad('Pick a date to post it.')
+    patch = { category: 'social_plan', status: 'planned', due_date: date, meta: { ...meta, month: date.slice(0, 7), scheduled_at: now } }
+  } else if (action === 'idea_drop' || action === 'idea_restore') {
+    if (row.category !== 'content_idea') return bad('That is not an idea.')
+    patch = { status: action === 'idea_drop' ? 'dropped' : 'idea' }
+  } else if (action === 'done') {
     patch = { status: 'done', meta: { ...meta, done_at: now } }
   } else if (action === 'undo') {
     const { done_at, ...rest } = meta
@@ -75,9 +110,9 @@ export async function POST(req: Request) {
     return bad('Unknown action.')
   }
 
-  const { error } = await supabase.from('records').update(patch).eq('id', id).eq('category', 'production')
+  const { error } = await supabase.from('records').update(patch).eq('id', id).eq('category', row.category)
   if (error) return bad(`Couldn't save: ${error.message}`)
-  revalidatePath('/production')
+  refresh()
   return NextResponse.json({ ok: true, message: `Saved.${await sheetNote()}` })
 }
 

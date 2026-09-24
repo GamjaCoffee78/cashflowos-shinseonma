@@ -61,7 +61,15 @@ export default function ProductionView({
   caption = "What has to happen, and when — from the Okmaya project sheet. Tick what's done, move what slipped.",
   basePath = '/production',
   editable = true,
+  category = 'production',
+  addLabel = '＋ New task',
+  addPlaceholder,
+  children,
 }: {
+  category?: string    // which category ＋ New task adds to
+  addLabel?: string
+  addPlaceholder?: string
+  children?: React.ReactNode  // extra section under the header (the Social Calendar's ideas)
   title?: string       // the same month view also serves Social Calendar and Events
   caption?: string
   basePath?: string
@@ -125,7 +133,12 @@ export default function ProductionView({
     <>
       <h1 className="ph">{title}</h1>
       <p className="cap">{caption}</p>
-      {editable ? <div style={{ margin: '10px 0 16px' }}><AddTask defaultDate={today} /></div> : null}
+      {editable ? (
+        <div style={{ margin: '10px 0 16px' }}>
+          <AddTask defaultDate={today} category={category} basePath={basePath} label={addLabel} {...(addPlaceholder ? { placeholder: addPlaceholder } : {})} />
+        </div>
+      ) : null}
+      {children}
 
       {/* 1 ─ What needs me now. The single most useful thing on the page, so
              it goes first and reads as a sentence, not a number. */}
