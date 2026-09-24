@@ -162,7 +162,7 @@ export const ABANG = {
    * second shop only needs authorising — no setting here changes.
    * `fetchNet` asks Shopee for the escrow (after-fees) amount per order, so the
    * tabs can show sales before AND after Shopee's cut. One call per order, but
-   * only for orders without a net yet, inside a 20s budget per sync.
+   * only for orders without a net yet, inside a small time budget per sync.
    */
   shopee: {
     syncDays: 7,          // the daily top-up
