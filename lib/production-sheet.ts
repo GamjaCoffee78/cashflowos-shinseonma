@@ -13,7 +13,8 @@ import { supabase, supabaseConfigured } from '@/lib/supabase'
 //    longer has (the old .xlsx import, or a task since reworded or removed) is
 //    ARCHIVED — moved to category 'production_archived' by explicit id, never
 //    deleted, so it can be put back. Items added in the app are never archived,
-//    and a month whose tab parsed to nothing is left alone.
+//    and a month whose tab parsed to nothing is left alone. An item deleted in
+//    the app becomes '<category>_deleted' and is never re-added from the sheet.
 //
 // ② WRITE (writeProductionSheet), below:
 // WRITES to exactly one tab (ABANG.productionSheet.tab), which the app owns: it
@@ -245,10 +246,13 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
 // sheet no longer has (months that parsed only; app-added items never).
 async function reconcile(category: string, source: string, items: { date: string; title: string; tab: string }[]) {
   // What the app already has, keyed by task + ORIGINAL date.
-  const { data, error } = await supabase.from('records').select('id, title, due_date, meta').eq('category', category).limit(10000)
+  const { data: all, error } = await supabase.from('records').select('id, title, due_date, meta, category')
+    .in('category', [category, `${category}_deleted`]).limit(10000)
   if (error) throw new Error(error.message)
+  // Items deleted in the app still count as "have", so Sync never re-adds them.
+  const data = ((all ?? []) as any[]).filter(r => r.category === category)
   const have = new Set<string>()
-  for (const r of (data ?? []) as any[]) {
+  for (const r of (all ?? []) as any[]) {
     const orig = r.meta?.moved_from?.[0]?.date ?? r.due_date
     have.add(keyOf(category, orig, r.title || ''))
     if (r.meta?.sheet_key) have.add(r.meta.sheet_key)
@@ -499,7 +503,7 @@ async function place(category: string, date: string, title: string): Promise<str
 
 // The one entry point the API calls after it has saved the change in the app.
 export async function applyToGrid(
-  change: { action: 'add' | 'move' | 'done' | 'undo' | 'edit'; category: string; title: string; date: string; from?: string; oldTitle?: string },
+  change: { action: 'add' | 'move' | 'done' | 'undo' | 'edit' | 'delete'; category: string; title: string; date: string; from?: string; oldTitle?: string },
 ): Promise<{ ok: boolean; message: string; sheetKey?: string }> {
   if (!productionSheetConfigured() || !BLOCKS[change.category]) return { ok: true, message: '' }
   try {
@@ -538,6 +542,11 @@ export async function applyToGrid(
     if (typeof f === 'string') return { ok: false, message: f }
     const cells = findTask(f, change.date, change.category, change.title)
     if (!cells.length) return { ok: false, message: `couldn't find it under ${change.date} in ${f.tab}` }
+    if (change.action === 'delete') {
+      await writeCells(f, cells.map(c => ({ ...c, value: '' })))
+      await strike(f, cells, false)
+      return { ok: true, message: `removed from ${f.tab}` }
+    }
     await strike(f, cells, change.action === 'done')
     return { ok: true, message: change.action === 'done' ? `crossed out in ${f.tab}` : `un-crossed in ${f.tab}` }
   } catch (e) {
