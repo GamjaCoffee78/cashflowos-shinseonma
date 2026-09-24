@@ -216,6 +216,11 @@ export default function ShopOrdersView({
         <div>
           <h1 className="ph">{title}</h1>
           <p className="cap">{caption}</p>
+          {cutBy && (
+            <p className="cap" style={{ marginTop: 4 }}>
+              <b>Sales</b> = what buyers paid · <b>You receive</b> = {cutBy}&apos;s payout after commission, service and transaction fees · cancelled and unpaid orders are left out
+            </p>
+          )}
         </div>
         {rows.length > 0 && (
           <div className="sp-today">
