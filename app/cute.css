@@ -1,0 +1,109 @@
+/* ============================================================
+   🍡 CUTE MODE — a playful skin on top of globals.css.
+   Same Okmaya colours (hanbok navy · badge red · hanbok sky), turned
+   pastel and bouncy: rounded font, candy buttons, soft pastel cards,
+   wiggles on hover, a bobbing Abang. Delete the import in app/layout.tsx
+   (or this file) and the app is exactly as before.
+   ============================================================ */
+:root {
+  --paper:   #FFF7F2;            /* peach-cream ground */
+  --paper-2: #FDEBE4;
+  --card:    #FFFFFF;
+  --sky:     #BFDDF7;
+  --pink:    #FFD3DC;
+  --mint:    #CFF1E2;
+  --lemon:   #FFF1B8;
+  --lilac:   #E4DAFB;
+  --peach:   #FFDCC6;
+  --r-8:  12px;
+  --r-13: 20px;
+  --r-20: 26px;
+  --line: rgba(30,76,150,.10);
+  --shadow: 0 6px 0 rgba(30,76,150,.06), 0 12px 28px rgba(30,76,150,.08);
+}
+
+body {
+  font-family: 'Nunito', 'Quicksand', ui-rounded, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,211,220,.55) 0 120px, transparent 121px),
+    radial-gradient(circle at 88% 8%, rgba(191,221,247,.55) 0 150px, transparent 151px),
+    radial-gradient(circle at 80% 92%, rgba(207,241,226,.6) 0 130px, transparent 131px),
+    radial-gradient(rgba(30,76,150,.07) 1.2px, transparent 1.3px) 0 0 / 22px 22px,
+    var(--paper);
+  background-attachment: fixed;
+}
+
+/* ---- Sidebar: navy stays (it's the logo), links become little pills ---- */
+.side { border-radius: 0 28px 28px 0; box-shadow: 6px 0 24px rgba(20,51,107,.18); }
+.nav a { border-radius: 999px; transition: transform .15s ease, background .15s ease; }
+.nav a:hover { transform: translateX(4px) scale(1.02); }
+.nav a.active { background: linear-gradient(90deg, #FF8FA3, #FFB38A); color: #fff; box-shadow: 0 4px 12px rgba(255,120,140,.35); }
+.nav a.active::after { content: '✨'; font-size: 12px; animation: twinkle 1.6s ease-in-out infinite; }
+.nav-label::before { content: '• '; color: #FFB38A; }
+
+/* ---- Page titles: big, round, with a squiggle underline ---- */
+.ph {
+  font-size: 28px; font-weight: 900; letter-spacing: -.01em;
+  display: inline-block; position: relative; padding-bottom: 8px;
+}
+.ph::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='8' viewBox='0 0 24 8'%3E%3Cpath d='M0 4 Q6 0 12 4 T24 4' fill='none' stroke='%23FF8FA3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x;
+}
+
+/* ---- Cards: pastel, puffy, bouncy ---- */
+.stat, .tbl, .sp-card, .sp-period, .pt-day, .cal, .ideas, .pt-now, .sp-today, .banner {
+  border-radius: var(--r-20) !important;
+  border: 2px solid var(--line) !important;
+  box-shadow: var(--shadow);
+}
+.stat { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+.stat:hover { transform: translateY(-4px) rotate(-.6deg); box-shadow: 0 10px 0 rgba(30,76,150,.06), 0 18px 34px rgba(30,76,150,.14); }
+.grid > .stat:nth-child(5n+1), .sp-periods > *:nth-child(4n+1) { background: linear-gradient(160deg, #fff, var(--sky)); }
+.grid > .stat:nth-child(5n+2), .sp-periods > *:nth-child(4n+2) { background: linear-gradient(160deg, #fff, var(--pink)); }
+.grid > .stat:nth-child(5n+3) { background: linear-gradient(160deg, #fff, var(--mint)); }
+.grid > .stat:nth-child(5n+4) { background: linear-gradient(160deg, #fff, var(--lemon)); }
+.grid > .stat:nth-child(5n+5) { background: linear-gradient(160deg, #fff, var(--lilac)); }
+.stat .v { font-weight: 900; }
+.rowlabel::before { content: '🍡 '; }
+
+/* ---- Buttons: candy pills that squish ---- */
+.btn {
+  border-radius: 999px !important; font-weight: 800;
+  box-shadow: 0 4px 0 rgba(0,0,0,.14);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.05); }
+.btn:active:not(:disabled) { transform: translateY(2px) scale(.97); box-shadow: 0 1px 0 rgba(0,0,0,.14); }
+.btn.sync { background: linear-gradient(90deg, #F2555A, #FF8FA3) !important; }
+.pt-btn { border-width: 2px; transition: transform .12s; }
+.pt-btn:hover:not(:disabled) { transform: scale(1.06) rotate(-1deg); }
+.pill { border-radius: 999px; font-weight: 800; }
+
+/* ---- Tables: soft stripes ---- */
+.tbl tr:nth-child(even) td { background: rgba(255,211,220,.16); }
+.tbl tr:hover td { background: rgba(191,221,247,.28); }
+
+/* ---- Calendars: rounder chips, sunny "today" ---- */
+.pt-chip { border-radius: 8px; border-left-width: 4px; }
+.cal-cell.today { background: linear-gradient(160deg, #fff, var(--lemon)) !important; }
+.pt-pop { border-radius: 18px; border-width: 2px; }
+
+/* ---- Abang, the mascot: bobs in the corner and says hi ---- */
+.mascot {
+  position: fixed; right: 18px; bottom: 18px; z-index: 40;
+  display: flex; align-items: flex-end; gap: 8px; pointer-events: none;
+}
+.mascot .bubble {
+  background: #fff; border: 2px solid var(--line); border-radius: 18px 18px 4px 18px;
+  padding: 8px 12px; font-size: 13px; font-weight: 800; color: var(--clay-deep);
+  box-shadow: var(--shadow); max-width: 220px;
+  animation: pop-in .5s cubic-bezier(.34,1.56,.64,1) both .6s;
+}
+.mascot .cat { font-size: 44px; line-height: 1; animation: bob 2.4s ease-in-out infinite; filter: drop-shadow(0 6px 6px rgba(0,0,0,.12)); }
+@media (max-width: 768px) { .mascot { bottom: 84px; right: 10px; } .mascot .bubble { display: none; } .mascot .cat { font-size: 34px; } }
+
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+@keyframes twinkle { 0%,100% { opacity: .4; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.6) translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mascot .cat, .nav a.active::after, .mascot .bubble { animation: none; } }
