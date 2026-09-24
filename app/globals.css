@@ -1006,3 +1006,4 @@ a.pg-card:hover { border-color: var(--line-2); }
 .cal-addform .btn { font-size: 13px; padding: 7px 14px; }
 .cal-cell:has(.cal-addform) { opacity: 1; }
 @media (max-width: 768px) { .cal-add { width: 16px; height: 16px; font-size: 10px; top: 1px; right: 1px; } }
+.pt-btn.pt-del { color: var(--rust); }

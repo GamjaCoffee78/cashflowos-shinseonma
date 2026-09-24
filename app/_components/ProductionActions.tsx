@@ -86,6 +86,14 @@ export function ItemActions({ id, done, date, title }: { id: number; done: boole
           <button type="button" className="pt-btn" onClick={() => setMoving(false)}>Cancel</button>
         </span>
       ) : null}
+      <button
+        type="button"
+        className="pt-btn pt-del"
+        disabled={pending}
+        onClick={() => confirm(`Delete "${title}"?\n\nIt is also removed from the Google Sheet calendar.`) && run({ action: 'delete', id })}
+      >
+        🗑 Delete
+      </button>
       {pending ? <span className="cap"> saving…</span> : null}
       {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
     </span>
