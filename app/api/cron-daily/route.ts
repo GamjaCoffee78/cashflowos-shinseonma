@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { sendMessage } from '@/lib/telegram'
+import { sendMessage, sendWithButtons } from '@/lib/telegram'
 import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
@@ -98,6 +98,7 @@ export async function GET(req: Request) {
   }
 
   const rows = await getRecords()
+  const shopeeText = await shopeeLive()
 
   // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
   //    brief and the app can never quote different totals).
@@ -119,7 +120,7 @@ export async function GET(req: Request) {
     proposed = (data ?? []) as any[]
   }
 
-  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, (await shopeeLive()) ?? shopeeSummary(rows), tiktokLine(rows))
+  const brief = buildBrief(f, { cashIn, cashOut, owed }, proposed, shopeeText ?? shopeeSummary(rows), tiktokLine(rows))
 
   // ② Optional Abang narrative — a warm chief-of-staff paragraph. Only when a
   //    key is set; its absence NEVER blocks the mandated brief above.
@@ -132,6 +133,21 @@ export async function GET(req: Request) {
   const to = recipients()
   const sends = await Promise.allSettled(to.map((id) => sendMessage(id, message)))
   const sent = sends.filter((r) => r.status === 'fulfilled').length
+
+  // ②b WhatsApp can't be posted to by a bot, so the Shopee numbers go to ONE
+  //    person with a "Send to WhatsApp" button: tap, pick the team group, send.
+  //    WHATSAPP_FORWARD_CHAT_ID picks who; else the owner's chat.
+  const forwardTo = process.env.WHATSAPP_FORWARD_CHAT_ID?.trim() || process.env.OWNER_CHAT_ID?.trim()
+  let whatsapp = false
+  if (shopeeText && forwardTo) {
+    const d = daysAgoISO(1)
+    const wa = `Okmaya Shopee sales (${d})\n\n` + shopeeText.replace(/<\/?b>/g, '*').replace(/<[^>]+>/g, '')
+    whatsapp = (await sendWithButtons(
+      forwardTo,
+      `📲 <b>For the team WhatsApp</b>\n\n${shopeeText}\n\nTap the button, pick the group, press send.`,
+      [[{ text: '📲 Send to WhatsApp', url: `https://wa.me/?text=${encodeURIComponent(wa)}` }]],
+    )) != null
+  }
 
   // ③ SWEEP the scheduled agents — CREATE proposals only (they pass through ASK).
   const owner = process.env.OWNER_CHAT_ID?.trim()
@@ -191,6 +207,7 @@ export async function GET(req: Request) {
     meta,
     calendar,
     shopee,
+    whatsapp,
   })
 }
 

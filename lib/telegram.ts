@@ -61,7 +61,7 @@ export async function downloadFileBytes(filePath: string): Promise<Buffer | null
 
 // A single inline-keyboard button. `callback_data` is what the webhook receives
 // when the user taps it — e.g. "apr:42" (approve action 42) / "rej:42".
-export type InlineButton = { text: string; callback_data: string }
+export type InlineButton = { text: string; callback_data: string } | { text: string; url: string }
 export type InlineKeyboard = InlineButton[][]
 
 export async function sendMessage(chatId: string | number, text: string) {
