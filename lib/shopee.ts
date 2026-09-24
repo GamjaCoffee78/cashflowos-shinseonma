@@ -246,7 +246,9 @@ async function escrowNet(shopId: number, token: string, sns: string[]): Promise<
   return out
 }
 
-const SYMBOL: Record<string, string> = { MYR: 'RM', SGD: 'S$', THB: '฿', IDR: 'Rp', PHP: '₱', VND: '₫', TWD: 'NT$', BRL: 'R$' }
+// Each tab shows ONE shop, and says which currency it is in, so a plain '$'
+// is unambiguous there and reads more cleanly than 'S$'.
+const SYMBOL: Record<string, string> = { MYR: 'RM', SGD: '$', THB: '฿', IDR: 'Rp', PHP: '₱', VND: '₫', TWD: 'NT$', BRL: 'R$' }
 
 // Same title/meta shape as scripts/import-shopee.mjs, so both sources agree.
 function shortName(n: string): string {
@@ -388,12 +390,32 @@ export function shopeeOrders(rows: Rec[], region: string): ShopeeRow[] {
     .sort((a, b) => b.date.localeCompare(a.date))
 }
 
-// Totals for the last n days (ending today — Shopee orders land the same day).
-export function shopeeTotals(orders: ShopeeRow[], n: number) {
-  const from = daysAgoISO(n - 1)
-  const w = orders.filter(o => o.date >= from)
+// Totals for a window, inclusive. `back` = days ago the window starts,
+// `until` = days ago it ends (0 = today), so the period before the last 7 days
+// is shopeeTotals(orders, 13, 7).
+export function shopeeTotals(orders: ShopeeRow[], back: number, until = 0) {
+  const from = daysAgoISO(back)
+  const to = daysAgoISO(until)
+  const w = orders.filter(o => o.date >= from && o.date <= to)
   const revenue = w.reduce((s, o) => s + o.amount, 0)
   return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0 }
+}
+
+// What sold, from the summary we wrote ("2× Bulgogi Sauce @ $8.61; …").
+export function topProducts(orders: ShopeeRow[], limit = 5) {
+  const tally = new Map<string, number>()
+  for (const o of orders) {
+    for (const part of o.items.split(';')) {
+      const m = part.trim().match(/^(\d+)×\s*(.+?)\s*@/)
+      if (!m) continue
+      const name = m[2].replace(/\s*\([^)]*\)\s*$/, '').trim()
+      if (name) tally.set(name, (tally.get(name) ?? 0) + Number(m[1]))
+    }
+  }
+  return [...tally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, qty]) => ({ name, qty }))
 }
 
 // Money, in the shop's own currency. Falls back to the plain code for anything

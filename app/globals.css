@@ -199,6 +199,62 @@ code {
 .dlt.bad { color: #8A3E2D; }
 .dlt.flat { color: var(--ink-faint); }
 
+/* Shopee tabs (Shopee MY / Shopee SG) ------------------------------------- */
+.sp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sp-today { text-align: right; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 10px 16px; min-width: 130px; }
+.sp-today .l { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); }
+.sp-today .v { display: block; font-size: 20px; font-weight: 700; color: var(--clay-deep); line-height: 1.25; }
+.sp-today .s { font-size: 12px; color: var(--ink-soft); }
+
+.sp-periods { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 4px 0 18px; }
+.sp-period { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px 16px; }
+.sp-period .nav-label { margin: 0 0 10px; }
+.sp-figs { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 20px; align-items: baseline; }
+.sp-figs > div { display: flex; flex-direction: column; gap: 2px; }
+.sp-figs .l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.sp-figs .v { font-size: 16px; font-weight: 600; white-space: nowrap; }
+.sp-figs .v.big { font-size: 22px; font-weight: 700; }
+
+.sp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 14px 16px; margin-bottom: 14px; }
+.sp-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sp-chart { display: flex; align-items: flex-end; gap: 3px; height: 116px; }
+.sp-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.sp-bar { width: 100%; background: var(--clay); border-radius: 3px 3px 0 0; transition: opacity .15s; }
+.sp-bar.peak { background: var(--clay-deep); }
+.sp-bar.today { background: var(--clay-deep); box-shadow: 0 0 0 2px var(--clay-tint); }
+.sp-axis { display: flex; justify-content: space-between; padding-top: 6px; font-size: 11px; color: var(--ink-faint); }
+
+.sp-best { list-style: none; margin: 0; padding: 0; }
+.sp-best li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.sp-best li:last-child { border-bottom: none; }
+.sp-best .n { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--clay-tint); color: var(--clay-deep); font-size: 11px; font-weight: 700; }
+.sp-best .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-best .q { flex: none; font-weight: 600; color: var(--ink-soft); font-size: 13px; }
+
+.sp-day { margin-bottom: 14px; }
+.sp-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 12px; background: var(--paper-2); border-radius: var(--r-8); font-size: 13px; }
+.sp-day-head .d { font-weight: 700; }
+.sp-day-head .t { color: var(--ink-soft); }
+.sp-orders { list-style: none; margin: 0; padding: 0; }
+.sp-orders li { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 11px 12px; border-bottom: 1px solid var(--line); }
+.sp-orders li:last-child { border-bottom: none; }
+.sp-o-main { min-width: 0; }
+.sp-o-items { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.45; }
+.sp-o-meta { display: block; margin-top: 3px; font-size: 12px; color: var(--ink-faint); }
+.sp-sn { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.sp-o-right { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.sp-o-amt { font-size: 15px; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .sp-head { flex-direction: column; }
+  .sp-today { align-self: stretch; text-align: left; }
+  .sp-figs { grid-template-columns: repeat(3, 1fr); gap: 4px 10px; }
+  .sp-figs .v.big { font-size: 18px; }
+  .sp-figs .v { font-size: 14px; }
+  .sp-orders li { flex-direction: column; gap: 6px; }
+  .sp-o-right { flex-direction: row; align-items: center; gap: 10px; }
+}
+
 /* Ads leaderboard (TikTok Ads + Meta Ads tabs) */
 .lb { margin-top: 32px; }
 .lb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
