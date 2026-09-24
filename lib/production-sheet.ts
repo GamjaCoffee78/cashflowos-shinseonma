@@ -206,3 +206,83 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
   }
   return { from: `${from}-01`, to: tabs.map(t => t.month).sort().pop() ?? from, tabs: tabs.length, fetched: items.length, inserted: toInsert.length, updated: 0 }
 }
+
+// ---- ③ Next month's tab ------------------------------------------------------
+//
+// From the 20th, if next month's "Brand Timeline Mmm YY" tab doesn't exist yet,
+// copy the latest month tab (so it keeps the team's layout and colours), put
+// the new month's day numbers into every Mon–Sun block and blank the task
+// cells. Runs from the 08:15 cron; does nothing on the other days or when the
+// tab is already there, so it is safe to run daily.
+const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// Monday-first weeks of a month: [[null,null,null,1,2,3,4], …]
+function weeksOf(month: string): (number | null)[][] {
+  const [y, m] = month.split('-').map(Number)
+  const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7
+  const n = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const cells = [...Array(lead).fill(null), ...Array.from({ length: n }, (_, i) => i + 1)]
+  while (cells.length % 7) cells.push(null)
+  const out = []
+  for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7))
+  return out
+}
+
+const colL = (c: number) => String.fromCharCode(65 + c)
+
+export async function ensureNextMonthTab(today: string, opts: { fromDay?: number } = {}) {
+  if (!productionSheetConfigured()) return { skipped: 'production sheet not connected' }
+  if (Number(today.slice(8, 10)) < (opts.fromDay ?? 20)) return { skipped: 'not yet — runs from the 20th' }
+  const [y, m] = today.split('-').map(Number)
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`
+  const title = `Brand Timeline ${SHORT[Number(next.slice(5)) - 1]} ${next.slice(2, 4)}`
+  const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
+
+  const info = await proxy('GET', base, undefined, { fields: 'sheets.properties(sheetId,title,index)' })
+  const tabs = ((info?.sheets ?? []) as any[]).map(s => s.properties).map((p: any) => ({ id: p.sheetId, title: String(p.title), index: p.index, month: tabMonth(String(p.title)) }))
+  if (tabs.some(t => t.month === next)) return { skipped: `${title} already exists` }
+  const src = tabs.filter(t => t.month && t.month < next).sort((a, b) => (a.month! < b.month! ? 1 : -1))[0]
+  if (!src) return { skipped: 'no Brand Timeline tab to copy' }
+
+  const dup = await proxy('POST', `${base}:batchUpdate`, {
+    requests: [{ duplicateSheet: { sourceSheetId: src.id, insertSheetIndex: src.index + 1, newSheetName: title } }],
+  })
+  if (!dup) throw new Error('copy failed')
+
+  const g = await proxy('GET', `${base}/values/${encodeURIComponent(`'${title}'!A1:J400`)}`, undefined, { valueRenderOption: 'FORMATTED_VALUE' })
+  const grid = ((g?.values ?? []) as any[][]).map(row => (row ?? []).map(c => String(c ?? '').trim()))
+  const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
+  const isHeader = (r: number) => DOW.every((d, i) => cell(r, COL0 + i).toUpperCase() === d)
+  const isDateRow = (r: number) => {
+    const v = DOW.map((_, i) => cell(r, COL0 + i))
+    return v.some(x => /^\d{1,2}$/.test(x)) && v.every(x => x === '' || /^\d{1,2}$/.test(x))
+  }
+
+  // Every block: from a Mon–Sun header to the next one. The first block may sit
+  // above the first header (its date rows start the tab), so start at row 0.
+  const heads = grid.map((_, r) => r).filter(isHeader)
+  const bounds = [0, ...heads, grid.length]
+  const weeks = weeksOf(next)
+  const data: { range: string; values: string[][] }[] = []
+  let short = 0
+  for (let b = 0; b < bounds.length - 1; b++) {
+    const dateRows = [] as number[]
+    for (let r = bounds[b]; r < bounds[b + 1]; r++) if (isDateRow(r)) dateRows.push(r)
+    if (!dateRows.length) continue
+    if (dateRows.length < weeks.length) short = Math.max(short, weeks.length - dateRows.length)
+    for (let r = dateRows[0]; r < bounds[b + 1]; r++) {
+      if (isHeader(r)) continue
+      const k = dateRows.indexOf(r)
+      const row = k >= 0
+        ? (weeks[k] ?? Array(7).fill(null)).map(d => (d ? String(d) : ''))
+        : Array(7).fill('')
+      data.push({ range: `'${title}'!${colL(COL0)}${r + 1}:${colL(COL0 + 6)}${r + 1}`, values: [row] })
+    }
+  }
+  if (data.length) await proxy('POST', `${base}/values:batchUpdate`, { valueInputOption: 'RAW', data })
+  return {
+    created: title,
+    copiedFrom: src.title,
+    ...(short ? { warning: `${title} needs ${short} more week row(s) than ${src.title} has — add them by hand` } : {}),
+  }
+}
