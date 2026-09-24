@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { CATEGORY, CONTACT_CATEGORY, contactRow, getDoc, listContacts, listDocs, nextNumber, toRow, invoiceBalance, type StoredDoc } from '@/lib/billing'
-import { DOC_TYPES, TYPE_KEYS, addDays, emptyParty, type BillingDoc, type Contact, type ContactKind, type DocType } from '@/lib/billing-shared'
+import { CATEGORY, CONTACT_CATEGORY, ITEM_CATEGORY, contactRow, itemRow, listItems, getDoc, listContacts, listDocs, nextNumber, toRow, invoiceBalance, type StoredDoc } from '@/lib/billing'
+import { DOC_TYPES, TYPE_KEYS, addDays, emptyParty, type BillingDoc, type Contact, type ContactKind, type DocType, type Item } from '@/lib/billing-shared'
 
 // The Billing tab's writes. POST { action, … } → { ok, message, id? }.
 //   save    — create a document, or update one that is still a DRAFT
@@ -76,9 +76,16 @@ async function rememberParty(doc: BillingDoc) {
   else await supabase.from('records').insert(contactRow(merged))
 }
 
+function cleanItem(body: any): Item | string {
+  const name = s(body?.name, 300)
+  if (!name) return 'Give the item a name.'
+  return { code: s(body?.code, 40), name, uom: s(body?.uom, 12) || 'UNIT', price: Math.max(0, n(body?.price)), cost: Math.max(0, n(body?.cost)), notes: s(body?.notes, 500) }
+}
+
 async function refresh(id?: number) {
   revalidatePath('/billing')
   revalidatePath('/billing/contacts')
+  revalidatePath('/billing/items')
   revalidatePath('/billing/new')
   if (id) revalidatePath(`/billing/${id}`)
 }
@@ -133,11 +140,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, message: `${c.name} saved.` })
   }
 
+  // Documents keep their own copy of the party, so deleting a contact changes no document.
   if (action === 'contact_remove') {
-    const { error } = await supabase.from('records').update({ status: 'archived' }).eq('id', Number(body?.id)).eq('category', CONTACT_CATEGORY)
-    if (error) return bad(`Couldn't remove: ${error.message}`)
+    const { error } = await supabase.from('records').delete().eq('id', Number(body?.id)).eq('category', CONTACT_CATEGORY)
+    if (error) return bad(`Couldn't delete: ${error.message}`)
     await refresh()
-    return NextResponse.json({ ok: true, message: 'Removed from Contacts.' })
+    return NextResponse.json({ ok: true, message: 'Contact deleted.' })
+  }
+
+  if (action === 'item_save') {
+    const it = cleanItem(body)
+    if (typeof it === 'string') return bad(it)
+    const iid = Number(body?.id) || 0
+    const all = await listItems()
+    if (all.some(x => x.id !== iid && x.name.toLowerCase() === it.name.toLowerCase())) return bad(`${it.name} is already in Items.`)
+    const { error } = iid
+      ? await supabase.from('records').update(itemRow(it)).eq('id', iid).eq('category', ITEM_CATEGORY)
+      : await supabase.from('records').insert(itemRow(it))
+    if (error) return bad(`Couldn't save: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: `${it.name} saved.` })
+  }
+
+  // Add many at once (the "from your sales" suggestions). Names already saved are skipped.
+  if (action === 'items_import') {
+    const list = (Array.isArray(body?.items) ? body.items : []).slice(0, 1000).map(cleanItem).filter((x: Item | string): x is Item => typeof x !== 'string')
+    const have = new Set((await listItems()).map(x => x.name.toLowerCase()))
+    const fresh = list.filter((x: Item) => !have.has(x.name.toLowerCase()) && have.add(x.name.toLowerCase()))
+    if (!fresh.length) return bad('Those are all in Items already.')
+    const { error } = await supabase.from('records').insert(fresh.map(itemRow))
+    if (error) return bad(`Couldn't save: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: `${fresh.length} item${fresh.length === 1 ? '' : 's'} added.` })
+  }
+
+  if (action === 'item_delete') {
+    const { error } = await supabase.from('records').delete().eq('id', Number(body?.id)).eq('category', ITEM_CATEGORY)
+    if (error) return bad(`Couldn't delete: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: 'Item deleted.' })
   }
 
   const id = Number(body?.id)
@@ -164,6 +205,20 @@ export async function POST(req: Request) {
       return write({ ...doc, status: 'cancelled', notes: [doc.notes, `Cancelled: ${s(body?.reason, 300) || 'no reason given'}`].filter(Boolean).join('\n') }, `${doc.number} cancelled.`)
     }
     return bad('That change is not allowed.')
+  }
+
+  // Delete for good — one document, by id. Drafts go straight away; an issued
+  // document asks the user to type its number (the button does that). A
+  // document other notes point at must lose those notes first, so no credit
+  // note is ever left pointing at nothing.
+  if (action === 'delete') {
+    const docs = await listDocs()
+    const children = docs.filter(d => d.id !== doc.id && d.refNo === doc.number && DOC_TYPES[d.type].needsRef)
+    if (children.length) return bad(`Delete ${children.map(c => c.number).join(', ')} first — they adjust this document.`)
+    const { error } = await supabase.from('records').delete().eq('id', id).eq('category', CATEGORY)
+    if (error) return bad(`Couldn't delete: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: `${doc.number} deleted.` })
   }
 
   if (action === 'payment') {

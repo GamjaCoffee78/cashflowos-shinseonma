@@ -992,3 +992,5 @@ a.pg-card:hover { border-color: var(--line-2); }
 .bl-wa { background: #1FA855; }
 .bl-wa:hover { background: #178a45 !important; }
 .btn.off { opacity: .45; pointer-events: none; }
+.bl-del { border: none; background: none; cursor: pointer; font-size: 16px; opacity: .55; padding: 4px; }
+.bl-del:hover:not(:disabled) { opacity: 1; }

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { listDocs, invoiceBalance } from '@/lib/billing'
 import { DOC_TYPES, TYPE_KEYS, fmtDate, money, totals, type DocType } from '@/lib/billing-shared'
 import { todayISO } from '@/lib/records'
+import DeleteDoc from '@/app/_components/DeleteDoc'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
   const statusOf = (d: (typeof docs)[number]) => {
     if (d.type !== 'INV' || d.status === 'draft' || d.status === 'cancelled') return d.status
     const b = invoiceBalance(d, docs).balance
-    if (b <= 0.005) return 'paid'
+    if (b <= 0.005 && totals(d).total > 0) return 'paid'
     if (d.dueDate && d.dueDate < today) return 'overdue'
     return d.status
   }
@@ -65,6 +66,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
           <Link key={k} className="btn" href={`/billing/new?type=${k}`}>+ {DOC_TYPES[k].label}</Link>
         ))}
         <Link className="btn ghost" href="/billing/contacts">📇 Contacts</Link>
+        <Link className="btn ghost" href="/billing/items">📦 Items</Link>
       </div>
 
       <div className="bl-stats">
@@ -96,7 +98,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
         <p className="cap">No documents yet — start with one of the buttons above.</p>
       ) : (
         <table className="tbl">
-          <thead><tr><th>No.</th><th>Date</th><th>Party</th><th>Ref</th><th>Amount</th><th>Balance</th><th>Status</th></tr></thead>
+          <thead><tr><th>No.</th><th>Date</th><th>Party</th><th>Ref</th><th>Amount</th><th>Balance</th><th>Status</th><th /></tr></thead>
           <tbody>
             {shown.map(d => {
               const st = statusOf(d)
@@ -110,6 +112,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
                   <td data-label="Amount">{DOC_TYPES[d.type].priced ? money(totals(d).total) : '—'}</td>
                   <td data-label="Balance">{bal === null ? '—' : money(bal)}</td>
                   <td data-label="Status"><span className={`pill ${st}`}>{st}</span></td>
+                  <td data-label=""><DeleteDoc id={d.id} number={d.number} draft={d.status === 'draft'} /></td>
                 </tr>
               )
             })}

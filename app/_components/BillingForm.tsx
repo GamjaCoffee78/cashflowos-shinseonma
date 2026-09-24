@@ -4,15 +4,16 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DOC_TYPES, TYPE_KEYS, addDays, contactFits, emptyLine, lineAmount, money, totals,
-  type BillingDoc, type Contact, type DocType, type Line, type Party,
+  type BillingDoc, type Contact, type DocType, type Item, type Line, type Party,
 } from '@/lib/billing-shared'
 import DocSheet from './DocSheet'
 
 // The create/edit form for a billing document. Totals update as you type;
 // the server re-checks everything and assigns the running number on save.
 export default function BillingForm({
-  initial, contacts, invoices,
+  initial, contacts, invoices, items = [],
 }: {
+  items?: Item[]
   initial: BillingDoc & { id?: number }
   contacts: Contact[]
   invoices: { number: string; name: string; balance: number }[]
@@ -29,7 +30,13 @@ export default function BillingForm({
   const set = <K extends keyof BillingDoc>(k: K, v: BillingDoc[K]) => setD(p => ({ ...p, [k]: v }))
   const setParty = (k: keyof Party, v: string) => setD(p => ({ ...p, party: { ...p.party, [k]: v } }))
   const setLine = (i: number, k: keyof Line, v: string) =>
-    setD(p => ({ ...p, lines: p.lines.map((l, j) => (j === i ? { ...l, [k]: k === 'desc' || k === 'uom' ? v : Number(v) } : l)) }))
+    setD(p => ({ ...p, lines: p.lines.map((l, j) => {
+      if (j !== i) return l
+      // Typing / picking a saved item's name fills its unit and price.
+      const it = k === 'desc' ? items.find(x => x.name === v) : undefined
+      if (it) return { ...l, desc: it.name, uom: it.uom || l.uom, price: p.type === 'PO' ? (it.cost || l.price) : it.price }
+      return { ...l, [k]: k === 'desc' || k === 'uom' ? v : Number(v) }
+    }) }))
 
   // Contacts that suit this document first (suppliers for a PO, customers otherwise).
   const fits = contacts.filter(c => contactFits(c, d.type))
@@ -139,7 +146,7 @@ export default function BillingForm({
           </div>
           {d.lines.map((l, i) => (
             <div className={`bf-line${cfg.priced ? '' : ' nop'}`} key={i}>
-              <input aria-label="Description" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="Item / service" />
+              <input aria-label="Description" list="bf-items" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="Item / service" />
               <input aria-label="Qty" type="number" step="any" value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} />
               <input aria-label="UOM" value={l.uom} onChange={e => setLine(i, 'uom', e.target.value)} />
               {cfg.priced ? (
@@ -154,7 +161,11 @@ export default function BillingForm({
             </div>
           ))}
         </div>
-        <button type="button" className="btn ghost" onClick={() => set('lines', [...d.lines, emptyLine()])}>+ Add item</button>
+        <datalist id="bf-items">{items.map(it => <option key={it.id ?? it.name} value={it.name}>{it.code ? `${it.code} · ` : ''}{money(it.price)}</option>)}</datalist>
+        <div className="btnrow">
+          <button type="button" className="btn ghost" onClick={() => set('lines', [...d.lines, emptyLine()])}>+ Add item</button>
+          <a className="bf-hint" style={{ alignSelf: 'center' }} href="/billing/items" target="_blank">{items.length ? `${items.length} saved items — ` : ''}Manage items</a>
+        </div>
 
         {cfg.priced ? (
           <div className="bf-tot">

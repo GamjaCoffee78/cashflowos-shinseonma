@@ -93,7 +93,7 @@ export default function ContactsManager({ contacts, stats }: { contacts: Contact
                     <span className="bc-acts">
                       <Link className="btn ghost" href={`/billing/new?type=${c.kind === 'supplier' ? 'PO' : 'INV'}&contact=${c.id}`}>{c.kind === 'supplier' ? '+ PO' : '+ Invoice'}</Link>
                       <button type="button" className="btn ghost" onClick={() => { setMsg(''); setEdit({ ...c }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
-                      <button type="button" className="btn ghost bl-cancel" disabled={pending} onClick={() => confirm(`Remove ${c.name} from Contacts? Documents already made are not affected.`) && run({ action: 'contact_remove', id: c.id })}>Remove</button>
+                      <button type="button" className="btn ghost bl-cancel" disabled={pending} onClick={() => confirm(`Delete ${c.name}? Documents already made are not affected.`) && run({ action: 'contact_remove', id: c.id })}>🗑 Delete</button>
                     </span>
                   </td>
                 </tr>

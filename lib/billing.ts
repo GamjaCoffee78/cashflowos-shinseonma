@@ -1,6 +1,6 @@
 import 'server-only'
 import { supabase, supabaseConfigured } from './supabase'
-import { DOC_TYPES, emptyContact, paidSum, totals, type BillingDoc, type Contact, type DocType } from './billing-shared'
+import { DOC_TYPES, emptyContact, emptyItem, paidSum, totals, type BillingDoc, type Contact, type DocType, type Item, type ItemSuggestion } from './billing-shared'
 
 // Billing documents (PO, DO, Invoice, Credit Note, Debit Note) live in the ONE
 // `records` table as category='billing_doc'; the whole document sits in `meta`,
@@ -87,4 +87,57 @@ export async function listContacts(): Promise<Contact[]> {
 export function contactRow(c: Contact) {
   const { id, ...meta } = c
   return { title: c.name, status: 'active', amount: 0, category: CONTACT_CATEGORY, notes: c.notes || null, meta }
+}
+
+// ── Items: saved products & services ─────────────────────────────────────
+// category='billing_item'; the item sits in `meta`, `title` is its name,
+// `amount` its selling price.
+export const ITEM_CATEGORY = 'billing_item'
+
+export async function listItems(): Promise<Item[]> {
+  if (!supabaseConfigured) return []
+  const { data, error } = await supabase.from('records').select('*').eq('category', ITEM_CATEGORY)
+    .order('title', { ascending: true }).limit(5000)
+  if (error) { console.warn('[CFO] items read failed:', error.message); return [] }
+  return (data ?? []).map(r => ({ ...emptyItem(), ...(r.meta ?? {}), id: r.id }))
+}
+
+export function itemRow(i: Item) {
+  const { id, ...meta } = i
+  return { title: i.name, status: 'active', amount: i.price, category: ITEM_CATEGORY, notes: i.notes || null, meta }
+}
+
+// Every product that appears in the Shopee / TikTok orders already synced,
+// with how many sold and the latest price. Reads only the order summaries
+// ("2× Bulgogi Sauce (500g) @ RM18.90; …") — nothing is written.
+export async function suggestItems(): Promise<ItemSuggestion[]> {
+  if (!supabaseConfigured) return []
+  const tally = new Map<string, ItemSuggestion & { date: string }>()
+  for (const [category, from] of [['shopee_order', 'Shopee'], ['tiktok_order', 'TikTok Shop']] as const) {
+    for (let at = 0; at < 100_000; at += 1000) {
+      const { data, error } = await supabase.from('records').select('due_date, meta->>items, meta->>currency')
+        .eq('category', category).order('due_date', { ascending: false }).range(at, at + 999)
+      if (error) { console.warn('[CFO] item suggestions read failed:', error.message); break }
+      for (const r of (data ?? []) as any[]) {
+        const currency = String(r.currency || 'MYR').toUpperCase()
+        for (const part of String(r.items || '').split(';')) {
+          const m = part.trim().match(/^(\d+)×\s*(.+?)\s*@\s*([^\d\s]*)\s*([\d.]+)\s*$/)
+          if (!m) continue
+          const name = m[2].trim()
+          const key = name.toLowerCase()
+          const price = Number(m[4]) || 0
+          const was = tally.get(key)
+          if (!was) tally.set(key, { name, price, currency, sold: Number(m[1]), from, date: r.due_date ?? '' })
+          else {
+            was.sold += Number(m[1])
+            if (!was.from.includes(from)) was.from += ` · ${from}`
+            // Prefer the latest Ringgit price over a Singapore-dollar one.
+            if (was.currency !== 'MYR' && currency === 'MYR') Object.assign(was, { price, currency })
+          }
+        }
+      }
+      if (!data || data.length < 1000) break
+    }
+  }
+  return [...tally.values()].sort((a, b) => b.sold - a.sold).map(({ date, ...s }) => s)
 }
