@@ -204,6 +204,8 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
                   <button type="button" className="pt-btn on" disabled={pending || !eTitle.trim()}
                     onClick={() => run({ action: 'edit', id: i.id, title: eTitle, notes: eNotes }, () => setEditing(null))}>Save</button>
                   <button type="button" className="pt-btn" onClick={() => setEditing(null)}>Cancel</button>
+                  <button type="button" className="pt-btn" disabled={pending}
+                    onClick={() => { if (confirm(`Delete "${i.title}"?`)) run({ action: 'idea_drop', id: i.id }, () => setEditing(null)) }}>🗑 Delete</button>
                 </span>
               ) : (
               <>
