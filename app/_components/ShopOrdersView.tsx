@@ -67,6 +67,34 @@ function topProducts(rows: ShopRow[], limit = 5) {
   return [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([name, qty]) => ({ name, qty }))
 }
 
+// Pie slice colours: the five best sellers, then a neutral for "everything else".
+const PIE = ['#1E4C96', '#6E96C4', '#B6802A', '#4B7A5A', '#8A6BB0', '#C9BFAF']
+
+// Donut of units sold per product. Plain SVG — no chart library in this app.
+function SalesPie({ slices, total }: { slices: { name: string; qty: number }[]; total: number }) {
+  const r = 70, c = 2 * Math.PI * r
+  let offset = 0
+  return (
+    <svg className="sp-pie" viewBox="0 0 180 180" role="img" aria-label="Share of units sold by product">
+      <g transform="rotate(-90 90 90)">
+        {slices.map((p, i) => {
+          const len = (p.qty / total) * c
+          const el = (
+            <circle key={p.name} cx="90" cy="90" r={r} fill="none" stroke={PIE[i]} strokeWidth="32"
+              strokeDasharray={`${Math.max(0, len - 1.5)} ${c}`} strokeDashoffset={-offset}>
+              <title>{`${p.name}: ${p.qty} sold (${Math.round((p.qty / total) * 100)}%)`}</title>
+            </circle>
+          )
+          offset += len
+          return el
+        })}
+      </g>
+      <text x="90" y="88" textAnchor="middle" fontSize="24" fontWeight="700" fill="var(--ink)">{total.toLocaleString('en-MY')}</text>
+      <text x="90" y="108" textAnchor="middle" fontSize="11" fill="var(--ink-faint)">units sold</text>
+    </svg>
+  )
+}
+
 // Change against the period before, coloured only where the direction has a
 // clear meaning. "new" when there is nothing to compare with.
 function Delta({ now, before }: { now: number; before: number }) {
@@ -175,7 +203,11 @@ export default function ShopOrdersView({
     if (last && last.date === o.date) last.list.push(o)
     else days.push({ date: o.date, list: [o] })
   }
-  const best = topProducts(rows.filter(o => o.date >= daysAgoISO(29)))
+  const allSold = topProducts(rows.filter(o => o.date >= daysAgoISO(29)), Infinity)
+  const best = allSold.slice(0, 5)
+  const soldTotal = allSold.reduce((s, p) => s + p.qty, 0)
+  const otherQty = soldTotal - best.reduce((s, p) => s + p.qty, 0)
+  const slices = [...best, ...(otherQty > 0 ? [{ name: 'Everything else', qty: otherQty }] : [])]
   const monthMax = Math.max(1, ...months.map(x => x.revenue))
 
   return (
@@ -229,15 +261,18 @@ export default function ShopOrdersView({
           {best.length > 0 && (
             <section className="sp-card">
               <p className="nav-label" style={{ margin: '0 0 10px' }}>Best sellers · last 30 days</p>
-              <ol className="sp-best">
-                {best.map((p, i) => (
-                  <li key={p.name}>
-                    <span className="n">{i + 1}</span>
-                    <span className="t" title={p.name}>{p.name}</span>
-                    <span className="q">{p.qty} sold</span>
-                  </li>
-                ))}
-              </ol>
+              <div className="sp-pie-wrap">
+                <SalesPie slices={slices} total={soldTotal} />
+                <ol className="sp-best">
+                  {slices.map((p, i) => (
+                    <li key={p.name}>
+                      <span className="n" style={{ background: PIE[i], color: '#fff' }}>{i < best.length ? i + 1 : '·'}</span>
+                      <span className="t" title={p.name}>{p.name}</span>
+                      <span className="q">{p.qty} sold · {Math.round((p.qty / soldTotal) * 100)}%</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </section>
           )}
 
@@ -263,11 +298,12 @@ export default function ShopOrdersView({
           {days.map(d => {
             const dayTotal = d.list.reduce((s, o) => s + o.amount, 0)
             return (
-              <section className="sp-day" key={d.date}>
-                <div className="sp-day-head">
-                  <span className="d">{d.date === today ? 'Today' : `${weekday(d.date)} ${dayLabel(d.date)}`}</span>
+              // Each day folds shut; only today starts open. Tap a date to see its orders.
+              <details className="sp-day" key={d.date} open={d.date === today}>
+                <summary className="sp-day-head">
+                  <span className="d"><span className="sp-caret">▸</span>{d.date === today ? 'Today' : `${weekday(d.date)} ${dayLabel(d.date)}`}</span>
                   <span className="t">{d.list.length} order{d.list.length === 1 ? '' : 's'} · {m(dayTotal)}</span>
-                </div>
+                </summary>
                 <ul className="sp-orders">
                   {d.list.map(o => {
                     const st = statusOf(o.status)
@@ -288,7 +324,7 @@ export default function ShopOrdersView({
                     )
                   })}
                 </ul>
-              </section>
+              </details>
             )
           })}
           {rows.length > recent.length ? (
