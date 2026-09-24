@@ -6,6 +6,15 @@ import BillingActions from '@/app/_components/BillingActions'
 
 export const dynamic = 'force-dynamic'
 
+// The warm note at the foot of every document — Okmaya's voice, per document type.
+const THANKS = {
+  INV: { title: 'Thank you for choosing Okmaya! 🤍', body: 'Every order helps our little kitchen keep cooking with heart. We truly appreciate your support.' },
+  DO:  { title: 'Made with love, delivered with care 🍱', body: 'Please check your items on arrival — if anything is not right, just let us know and we will make it right.' },
+  PO:  { title: 'Thank you, partner 🤝', body: 'We are grateful to grow together with you. Kindly confirm this order and the delivery date at your convenience.' },
+  CN:  { title: 'We are sorry for the trouble 🙏', body: 'This credit has been applied to your account. Thank you for your patience and for staying with Okmaya.' },
+  DN:  { title: 'Thank you for your understanding 🤍', body: 'This note covers the adjustment described above. Please reach out if you have any questions at all.' },
+} as const
+
 // One billing document, laid out as the printed page. "Print / Save PDF" uses
 // the browser's print dialog; the print stylesheet hides the app around it.
 export default async function DocView({ params }: { params: Promise<{ id: string }> }) {
@@ -33,9 +42,10 @@ export default async function DocView({ params }: { params: Promise<{ id: string
       <article className={`bdoc${doc.status === 'cancelled' ? ' void' : ''}`}>
         {doc.status === 'draft' ? <div className="bdoc-stamp">DRAFT</div> : null}
         {doc.status === 'cancelled' ? <div className="bdoc-stamp">CANCELLED</div> : null}
+        <div className="bdoc-band" aria-hidden="true" />
         <header className="bdoc-head">
           <div className="bdoc-co">
-            <img src="/icons/icon-192.png" alt="" width={44} height={44} />
+            <img className="bdoc-logo" src="/icons/okmaya-secondary.png" alt="Okmaya" width={230} height={66} />
             <div>
               <b>{COMPANY.name}</b> <small>({COMPANY.regNo})</small><br />
               {COMPANY.address.map(a => <span key={a}>{a}<br /></span>)}
@@ -122,6 +132,14 @@ export default async function DocView({ params }: { params: Promise<{ id: string
           <div>{doc.type === 'DO' ? 'Issued by' : 'Prepared by'}{doc.createdBy ? `: ${doc.createdBy}` : ''}</div>
           <div>{doc.type === 'DO' ? 'Received in good order & condition (name, IC, chop, date)' : doc.type === 'PO' ? 'Approved by' : 'Authorised signature'}</div>
         </footer>
+        <div className="bdoc-thanks">
+          <img src="/icons/icon-192.png" alt="" width={64} height={64} />
+          <div>
+            <b>{THANKS[doc.type].title}</b>
+            <p>{THANKS[doc.type].body}</p>
+            <small>감사합니다 · Terima kasih · Thank you</small>
+          </div>
+        </div>
         <p className="bdoc-fine">This is a computer-generated document.</p>
       </article>
 
