@@ -164,7 +164,8 @@ export const ABANG = {
    * one API call per order, so leave it off unless you need the net figure.
    */
   shopee: {
-    syncDays: 7,
+    syncDays: 7,          // the daily top-up
+    backfillDays: 45,     // a shop's FIRST sync, so the 30-day figures are real
     fetchNet: false,
   },
 

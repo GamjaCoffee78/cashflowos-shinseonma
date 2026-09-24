@@ -5,7 +5,7 @@
 // against the periods before them → the shape of the month → what's selling →
 // the orders themselves, grouped by day so a date is read once, not forty times.
 import { getRecords, todayISO } from '@/lib/records'
-import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, type ShopeeRow } from '@/lib/shopee'
+import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, earliestDay, type ShopeeRow } from '@/lib/shopee'
 import { daysAgoISO } from '@/lib/ads-daily'
 import SyncNow from '@/app/_components/SyncNow'
 
@@ -52,14 +52,19 @@ function Period({
   days,
   orders,
   m,
+  since,
 }: {
   label: string
   days: number
   orders: ShopeeRow[]
   m: (n: number) => string
+  since: string          // the oldest day synced; older windows can't be compared
 }) {
   const now = shopeeTotals(orders, days - 1)
   const before = shopeeTotals(orders, days * 2 - 1, days)
+  // Only compare against a period we actually hold. Without this, a shop synced
+  // a week ago shows "+612%" against a fortnight that was never fetched.
+  const comparable = !!since && daysAgoISO(days * 2 - 1) >= since
   return (
     <div className="sp-period">
       <p className="nav-label">{label}</p>
@@ -67,17 +72,17 @@ function Period({
         <div>
           <span className="l">Revenue</span>
           <span className="v big">{m(now.revenue)}</span>
-          <Delta now={now.revenue} before={before.revenue} />
+          {comparable && <Delta now={now.revenue} before={before.revenue} />}
         </div>
         <div>
           <span className="l">Orders</span>
           <span className="v">{now.orders.toLocaleString('en-MY')}</span>
-          <Delta now={now.orders} before={before.orders} />
+          {comparable && <Delta now={now.orders} before={before.orders} />}
         </div>
         <div>
           <span className="l">Average order</span>
           <span className="v">{m(now.avg)}</span>
-          <Delta now={now.avg} before={before.avg} />
+          {comparable && <Delta now={now.avg} before={before.avg} />}
         </div>
       </div>
     </div>
@@ -121,6 +126,7 @@ export default async function ShopeeTab({
     else days.push({ date: o.date, rows: [o] })
   }
   const best = topProducts(orders.filter(o => o.date >= daysAgoISO(29)))
+  const since = earliestDay(orders)
 
   return (
     <>
@@ -162,8 +168,8 @@ export default async function ShopeeTab({
       ) : (
         <>
           <div className="sp-periods">
-            <Period label="Last 7 days" days={7} orders={orders} m={m} />
-            <Period label="Last 30 days" days={30} orders={orders} m={m} />
+            <Period label="Last 7 days" days={7} orders={orders} m={m} since={since} />
+            <Period label="Last 30 days" days={30} orders={orders} m={m} since={since} />
           </div>
 
           <section className="sp-card">

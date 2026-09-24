@@ -303,7 +303,18 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
   if (!all.length) return { skipped: 'no Shopee shop authorised yet — open /api/shopee/authorize once' as const }
   if (!shops.length) return { skipped: `no Shopee ${want} shop authorised yet — open /api/shopee/authorize while signed in to it` as const }
 
-  const days = opts.days ?? ABANG.shopee.syncDays
+  // A shop we have never synced needs history, or the 30-day figures on its tab
+  // would be a 7-day window wearing a 30-day label.
+  let days = opts.days ?? ABANG.shopee.syncDays
+  if (!opts.days && supabaseConfigured && want) {
+    const { data } = await supabase
+      .from('records')
+      .select('id')
+      .eq('category', CATEGORY)
+      .filter('meta->>shop_region', 'eq', want)
+      .limit(1)
+    if (!data?.length) days = ABANG.shopee.backfillDays
+  }
   const from = daysAgoISO(days)
   const to = todayISO()
 
@@ -389,6 +400,11 @@ export function shopeeOrders(rows: Rec[], region: string): ShopeeRow[] {
     }))
     .sort((a, b) => b.date.localeCompare(a.date))
 }
+
+// The oldest day we hold for a shop. A period that starts before this was never
+// synced, so comparing against it would invent a rise out of missing data.
+export const earliestDay = (orders: ShopeeRow[]) =>
+  orders.reduce((min, o) => (!min || o.date < min ? o.date : min), '')
 
 // Totals for a window, inclusive. `back` = days ago the window starts,
 // `until` = days ago it ends (0 = today), so the period before the last 7 days
