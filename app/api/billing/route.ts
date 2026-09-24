@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
@@ -212,6 +213,14 @@ export async function POST(req: Request) {
   // document other notes point at must lose those notes first, so no credit
   // note is ever left pointing at nothing.
   if (action === 'delete') {
+    // Issued / cancelled documents need the owner's PIN (BILLING_DELETE_PIN in
+    // Vercel). No PIN set = nobody can delete them. Drafts need no PIN.
+    if (doc.status !== 'draft') {
+      const pin = (process.env.BILLING_DELETE_PIN ?? '').trim()
+      if (!pin) return bad('Deleting issued documents is switched off. The owner can switch it on by setting BILLING_DELETE_PIN in Vercel. Use Cancel instead.')
+      const given = Buffer.from(s(body?.pin, 100)), want = Buffer.from(pin)
+      if (given.length !== want.length || !timingSafeEqual(given, want)) return bad('Wrong PIN.')
+    }
     const docs = await listDocs()
     const children = docs.filter(d => d.id !== doc.id && d.refNo === doc.number && DOC_TYPES[d.type].needsRef)
     if (children.length) return bad(`Delete ${children.map(c => c.number).join(', ')} first — they adjust this document.`)

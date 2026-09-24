@@ -90,12 +90,16 @@ export default function BillingActions({ doc, balance, sharePath, contacts, open
         }}>Cancel</button>
       ) : null}
       <button type="button" className="btn danger" disabled={pending} onClick={() => {
-        const ok = doc.status === 'draft'
-          ? confirm(`Delete draft ${doc.number}? This can't be undone.`)
-          : prompt(`Delete ${doc.number} for good? This can't be undone, and anyone you sent the link to will no longer see it.\n\nTip: "Cancel" keeps a record instead.\n\nType ${doc.number} to confirm:`)?.trim().toUpperCase() === doc.number
-        if (!ok) return
+        let pin = ''
+        if (doc.status === 'draft') {
+          if (!confirm(`Delete draft ${doc.number}? This can't be undone.`)) return
+        } else {
+          const p = prompt(`Delete ${doc.number} for good? This can't be undone, and anyone you sent the link to will no longer see it.\n\nTip: "Cancel" keeps a record instead.\n\nEnter the owner's delete PIN:`)
+          if (!p) return
+          pin = p.trim()
+        }
         start(async () => {
-          const r = await post({ id: doc.id, action: 'delete' })
+          const r = await post({ id: doc.id, action: 'delete', pin })
           setMsg(r.message)
           if (r.ok) { router.push('/billing'); router.refresh() }
         })
