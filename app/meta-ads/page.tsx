@@ -7,6 +7,7 @@ import AdsLeaderboard from '@/app/_components/AdsLeaderboard'
 import { leaderboardParams } from '@/lib/ads-leaderboard'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
+import MetaAudience from '@/app/_components/MetaAudience'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -33,6 +34,7 @@ export default async function MetaAds({ searchParams }: { searchParams: Promise<
       }
     >
       <AdsLeaderboard rows={metaAdRows(all)} basePath="/meta-ads" {...lb} />
+      {metaConfigured && <MetaAudience />}
     </AdsTab>
   )
 }

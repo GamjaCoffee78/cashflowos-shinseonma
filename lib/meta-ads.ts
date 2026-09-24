@@ -194,3 +194,35 @@ function syncMetaDaily(opts: { days?: number; dryRun?: boolean }) {
 // ---- 3) Read helpers (shared). ----
 export const metaDays = (rows: Rec[]) => adDays(rows, CATEGORY)
 export const metaTotals = adTotals
+
+// ---- 5) Who the ads reach, by age and gender (live, last N days). ----
+// Meta's own breakdown of the account's delivery. It describes the people the
+// ads reached and who clicked or bought through them, not every Shopee buyer.
+// Read live on the tab (cached an hour) rather than stored: it is a small,
+// aggregate table with no per-person data, so nothing needs to be kept.
+export type AudienceRow = { age: string; spend: number; impressions: number; clicks: number; purchases: number; female: number; male: number }
+export async function fetchMetaAudience(days = 30): Promise<AudienceRow[]> {
+  const token = process.env.META_ADS_TOKEN?.trim()
+  if (!token) return []
+  const params = new URLSearchParams({
+    level: 'account',
+    breakdowns: 'age,gender',
+    date_preset: days <= 7 ? 'last_7d' : days <= 14 ? 'last_14d' : days <= 30 ? 'last_30d' : 'last_90d',
+    fields: 'spend,impressions,clicks,actions',
+    limit: '500',
+    access_token: token,
+  })
+  const res = await fetch(`${GRAPH}/${account()}/insights?${params}`, { signal: AbortSignal.timeout(20_000), next: { revalidate: 3600 } })
+  const body: any = await res.json().catch(() => ({}))
+  if (!res.ok || body?.error) throw new Error(`Meta said no: ${String(body?.error?.message || `HTTP ${res.status}`).slice(0, 200)}`)
+  const byAge = new Map<string, AudienceRow>()
+  for (const r of body.data ?? []) {
+    const age = String(r.age || 'Unknown')
+    const a = byAge.get(age) ?? { age, spend: 0, impressions: 0, clicks: 0, purchases: 0, female: 0, male: 0 }
+    a.spend += num(r.spend); a.impressions += num(r.impressions); a.clicks += num(r.clicks); a.purchases += purchases(r.actions)
+    if (r.gender === 'female') a.female += num(r.clicks)
+    else if (r.gender === 'male') a.male += num(r.clicks)
+    byAge.set(age, a)
+  }
+  return [...byAge.values()].filter(a => a.impressions > 0).sort((a, b) => a.age.localeCompare(b.age))
+}
