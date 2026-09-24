@@ -47,7 +47,7 @@ const STEPS: Source[] = [
   { key: 'calendar', label: 'Calendar', configured: calendarConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncCalendar() },
   { key: 'shopee', label: 'Shopee orders', configured: shopeeConfigured, missing: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY', run: () => syncShopee({ netBudgetMs: 8_000 }) },
   { key: 'tiktok_shop', label: 'TikTok Shop orders', configured: tiktokShopConfigured, missing: 'TIKTOK_APP_KEY / TIKTOK_APP_SECRET', run: () => syncTikTokShop() },
-  { key: 'production_sheet', label: 'Production sheet', configured: productionSheetConfigured(), missing: 'productionSheet.composioAccount (abang/config.ts)', run: () => syncProductionFromSheet() },
+  { key: 'production_sheet', label: 'Work sheet (production · social · events)', configured: productionSheetConfigured(), missing: 'productionSheet.composioAccount (abang/config.ts)', run: () => syncProductionFromSheet() },
   { key: 'owner_sheet', label: 'Owner sheet', configured: ownerSheetConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncOwnerSheet() },
 ]
 

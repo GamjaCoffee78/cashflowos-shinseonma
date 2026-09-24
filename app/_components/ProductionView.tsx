@@ -57,7 +57,15 @@ function whenLabel(iso: string, today: string): string {
 
 export default function ProductionView({
   rows, months, current, today,
+  title = 'Production Timeline 🏭',
+  caption = "What has to happen, and when — from the Okmaya project sheet. Tick what's done, move what slipped.",
+  basePath = '/production',
+  editable = true,
 }: {
+  title?: string       // the same month view also serves Social Calendar and Events
+  caption?: string
+  basePath?: string
+  editable?: boolean   // Done / Move / New task (production only, for now)
   rows: Rec[]          // every production row, each with a due_date
   months: string[]     // every month that has items, ascending
   current: string      // the month being shown
@@ -115,9 +123,9 @@ export default function ProductionView({
 
   return (
     <>
-      <h1 className="ph">Production Timeline 🏭</h1>
-      <p className="cap">What has to happen, and when — from the Okmaya project sheet. Tick what's done, move what slipped.</p>
-      <div style={{ margin: '10px 0 16px' }}><AddTask defaultDate={today} /></div>
+      <h1 className="ph">{title}</h1>
+      <p className="cap">{caption}</p>
+      {editable ? <div style={{ margin: '10px 0 16px' }}><AddTask defaultDate={today} /></div> : null}
 
       {/* 1 ─ What needs me now. The single most useful thing on the page, so
              it goes first and reads as a sentence, not a number. */}
@@ -156,7 +164,7 @@ export default function ProductionView({
           return (
             <Link
               key={k}
-              href={`/production?m=${k}`}
+              href={`${basePath}?m=${k}`}
               className={`pt-month${k === current ? ' active' : ''}`}
               aria-current={k === current ? 'page' : undefined}
             >
@@ -172,7 +180,7 @@ export default function ProductionView({
         <h2>{monthLabel(current)}</h2>
         <span className="cap" style={{ margin: 0 }}>
           {mine.length} item{mine.length === 1 ? '' : 's'}
-          {passed > 0 ? ` · ${passed} passed and not done` : ''}
+          {editable && passed > 0 ? ` · ${passed} passed and not done` : ''}
         </span>
       </div>
 
@@ -254,11 +262,11 @@ export default function ProductionView({
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`}>{tag}</span>
                         ) : null}
                         <span className="pt-title">{rest}</span>
-                        {!done && day < today ? <span className="pill overdue">not done</span> : null}
+                        {editable && !done && day < today ? <span className="pill overdue">not done</span> : null}
                         {moved.length ? (
                           <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
                         ) : null}
-                        <ItemActions id={r.id} done={done} date={day} />
+                        {editable ? <ItemActions id={r.id} done={done} date={day} /> : null}
                       </li>
                     )
                   })}
