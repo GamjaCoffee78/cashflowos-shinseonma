@@ -1,7 +1,22 @@
 import Link from 'next/link'
 import type { Rec } from '@/lib/records'
-import { ItemActions, AddTask } from '@/app/_components/ProductionActions'
+import { ItemActions, AddTask, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
+
+// Months to show: every month with items, plus this month and the next five —
+// so any date can be picked and filled with the ＋ on its day.
+export function calendarMonths(rows: { due_date: string | null }[], today: string, asked?: string) {
+  const set = new Set(rows.map(r => (r.due_date as string).slice(0, 7)))
+  const [y, mo] = today.slice(0, 7).split('-').map(Number)
+  for (let k = 0; k < 6; k++) {
+    const d = new Date(Date.UTC(y, mo - 1 + k, 1))
+    set.add(d.toISOString().slice(0, 7))
+  }
+  if (asked && /^\d{4}-\d{2}$/.test(asked)) set.add(asked)
+  const months = [...set].sort()
+  const current = asked && months.includes(asked) ? asked : today.slice(0, 7)
+  return { months, current }
+}
 
 // The Production Timeline, as a presentational component: it takes rows and
 // renders them. The page fetches; this decides what the month LOOKS like.
@@ -218,8 +233,9 @@ export default function ProductionView({
       ) : null}
 
       {mine.length === 0 ? (
-        <div className="empty">Nothing scheduled in {monthLabel(current)}.</div>
-      ) : (
+        <div className="empty">Nothing scheduled in {monthLabel(current)}{editable ? ' — tap ＋ on any day to add something.' : '.'}</div>
+      ) : null}
+      {mine.length === 0 && !editable ? null : (
         <>
           <div className="cal" role="table" aria-label={`Production calendar, ${monthLabel(current)}`}>
             <div className="cal-head" role="row">
@@ -248,6 +264,7 @@ export default function ProductionView({
                       ].filter(Boolean).join(' ')}
                     >
                       <span className="cal-num">{d}</span>
+                      {editable ? <DayAdd date={key} category={category} label={fullDay(key)} /> : null}
                       <div className="cal-items">
                         {items.map(r => <Chip key={r.id} r={r} />)}
                       </div>

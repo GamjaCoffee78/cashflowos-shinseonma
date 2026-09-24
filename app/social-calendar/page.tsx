@@ -5,7 +5,7 @@
 //    category='content_idea' (no date until scheduled). Tick, move and add work
 //    exactly like the Production Timeline (same component, /api/production).
 import { getRecords, todayISO } from '@/lib/records'
-import ProductionView from '@/app/_components/ProductionView'
+import ProductionView, { calendarMonths } from '@/app/_components/ProductionView'
 import { IdeasBoard, AddTask, type Idea } from '@/app/_components/ProductionActions'
 
 export const dynamic = 'force-dynamic'
@@ -25,23 +25,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ m
     .sort((a, b) => (a.created < b.created ? 1 : -1))
   const board = <IdeasBoard ideas={ideas} today={today} />
 
-  if (rows.length === 0) {
-    return (
-      <>
-        <h1 className="ph">{TITLE}</h1>
-        <p className="cap">{CAPTION}</p>
-        <div style={{ margin: '10px 0 16px' }}>
-          <AddTask defaultDate={today} category="social_plan" basePath="/social-calendar" label="＋ New post" placeholder={PLACEHOLDER} />
-        </div>
-        {board}
-        <p className="cap">No posts on the calendar yet — press Sync now to read the sheet.</p>
-      </>
-    )
-  }
-  const months = [...new Set(rows.map(r => (r.due_date as string).slice(0, 7)))].sort()
-  const thisMonth = today.slice(0, 7)
-  const fallback = months.find(k => k >= thisMonth) ?? months[months.length - 1]
-  const current = m && months.includes(m) ? m : fallback
+  const { months, current } = calendarMonths(rows, today, m)
   return (
     <ProductionView
       rows={rows} months={months} current={current} today={today}

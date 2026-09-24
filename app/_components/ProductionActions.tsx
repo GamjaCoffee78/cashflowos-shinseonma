@@ -142,6 +142,41 @@ export function AddTask({
   )
 }
 
+// ＋ on a calendar day: add an item on THAT date without picking it again.
+export function DayAdd({ date, category = 'production', label }: { date: string; category?: string; label: string }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState('')
+  const [msg, setMsg] = useState('')
+  if (!open) {
+    return <button type="button" className="cal-add" title={`Add on ${label}`} aria-label={`Add on ${label}`} onClick={() => setOpen(true)}>＋</button>
+  }
+  return (
+    <form
+      className="cal-addform"
+      onSubmit={e => {
+        e.preventDefault()
+        start(async () => {
+          const r = await post({ action: 'add', title, date, category })
+          if (!r.ok) return setMsg(r.message)
+          if (r.message.includes('⚠️')) alert(r.message)
+          setTitle(''); setMsg(''); setOpen(false)
+          router.refresh()
+        })
+      }}
+    >
+      <b>{label}</b>
+      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="What's happening?" aria-label="Title" autoFocus required />
+      <span className="btnrow">
+        <button type="submit" className="btn sync" disabled={pending}>{pending ? 'Saving…' : 'Add'}</button>
+        <button type="button" className="btn ghost" onClick={() => setOpen(false)}>Cancel</button>
+      </span>
+      {msg ? <span className="cap" role="alert">⚠️ {msg}</span> : null}
+    </form>
+  )
+}
+
 // 💡 Content ideas — the Social Calendar's notebook. Write an idea now, give it
 // a date later (📅 Schedule turns it into a post on the calendar), or drop it.
 export type Idea = { id: number; title: string; notes: string | null; status: string; created: string }

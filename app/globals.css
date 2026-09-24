@@ -994,3 +994,15 @@ a.pg-card:hover { border-color: var(--line-2); }
 .btn.off { opacity: .45; pointer-events: none; }
 .bl-del { border: none; background: none; cursor: pointer; font-size: 16px; opacity: .55; padding: 4px; }
 .bl-del:hover:not(:disabled) { opacity: 1; }
+
+/* ＋ on each calendar day (Production / Social Calendar / Events). */
+.cal-cell { position: relative; }
+.cal-add { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--card); color: var(--ink-soft); font-size: 13px; line-height: 1; cursor: pointer; opacity: .35; padding: 0; }
+.cal-cell:hover .cal-add, .cal-add:focus { opacity: 1; }
+.cal-add:hover { background: var(--clay); color: #fff; border-color: var(--clay); }
+@media (hover: none) { .cal-add { opacity: .8; } }
+.cal-addform { position: fixed; z-index: 70; top: 30vh; left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 32px)); box-sizing: border-box; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-13); box-shadow: 0 16px 40px rgba(0,0,0,.25); padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.cal-addform input { border: 1px solid var(--line-2); border-radius: var(--r-8); padding: 9px 10px; font: inherit; background: var(--paper); color: var(--ink); }
+.cal-addform .btn { font-size: 13px; padding: 7px 14px; }
+.cal-cell:has(.cal-addform) { opacity: 1; }
+@media (max-width: 768px) { .cal-add { width: 16px; height: 16px; font-size: 10px; top: 1px; right: 1px; } }
