@@ -298,8 +298,8 @@ export default function ShopOrdersView({
           {days.map(d => {
             const dayTotal = d.list.reduce((s, o) => s + o.amount, 0)
             return (
-              // Each day folds shut; only today starts open. Tap a date to see its orders.
-              <details className="sp-day" key={d.date} open={d.date === today}>
+              // Every day starts folded shut, today included. Tap a date to see its orders.
+              <details className="sp-day" key={d.date}>
                 <summary className="sp-day-head">
                   <span className="d"><span className="sp-caret">▸</span>{d.date === today ? 'Today' : `${weekday(d.date)} ${dayLabel(d.date)}`}</span>
                   <span className="t">{d.list.length} order{d.list.length === 1 ? '' : 's'} · {m(dayTotal)}</span>
