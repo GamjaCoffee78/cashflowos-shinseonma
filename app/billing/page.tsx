@@ -64,6 +64,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
         {TYPE_KEYS.map(k => (
           <Link key={k} className="btn" href={`/billing/new?type=${k}`}>+ {DOC_TYPES[k].label}</Link>
         ))}
+        <Link className="btn ghost" href="/billing/contacts">📇 Contacts</Link>
       </div>
 
       <div className="bl-stats">
