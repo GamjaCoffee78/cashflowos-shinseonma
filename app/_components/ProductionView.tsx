@@ -144,6 +144,7 @@ export default function ProductionView({
         tag={/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null}
         when={fullDay(r.due_date as string)}
         status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
+        {...(editable ? { id: r.id, done: isDone(r) } : {})}
       >
         <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}`}>
           {tag ? <b>{tag}</b> : null}{rest}
