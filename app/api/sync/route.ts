@@ -46,7 +46,8 @@ export async function POST(req: Request) {
     // rows after a formatting fix). Bounded, so nobody can ask for a year and
     // time the function out.
     const days = Number.isFinite(Number(body?.days)) ? Math.min(Math.max(Number(body.days), 1), 90) : undefined
-    const opts = { ...(region ? { region } : {}), ...(days ? { days } : {}) }
+    const until = Number.isFinite(Number(body?.until)) ? Math.min(Math.max(Number(body.until), 0), 89) : undefined
+    const opts = { ...(region ? { region } : {}), ...(days ? { days } : {}), ...(until ? { until } : {}) }
     const r: any = await (source.run as (o?: any) => Promise<any>)(Object.keys(opts).length ? opts : undefined)
     if (typeof r.skipped === 'string') {
       return NextResponse.json({ ok: false, message: `${r.skipped} — add it in Vercel → Settings → Environment Variables, then redeploy.` })

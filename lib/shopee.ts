@@ -291,7 +291,7 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
 }
 
 // ---- 5) The sync the cron and the Sync now button call. ----
-export async function syncShopee(opts: { days?: number; dryRun?: boolean; region?: string } = {}) {
+export async function syncShopee(opts: { days?: number; until?: number; dryRun?: boolean; region?: string } = {}) {
   if (!shopeeConfigured) return { skipped: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' as const }
   if (!supabaseConfigured && !opts.dryRun) return { skipped: 'Supabase not configured' as const }
 
@@ -316,7 +316,9 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
     if (!data?.length) days = ABANG.shopee.backfillDays
   }
   const from = daysAgoISO(days)
-  const to = todayISO()
+  // `until` ends the window early (days ago), so a long backfill can be walked
+  // in chunks that each finish inside the function's 60s.
+  const to = opts.until ? daysAgoISO(opts.until) : todayISO()
 
   let fetched = 0, inserted = 0, updated = 0, cancelled = 0, unchanged = 0
   const sample: string[] = []
@@ -344,6 +346,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
       .select('id, amount, status, meta')
       .eq('category', CATEGORY)
       .gte('due_date', from)
+      .lte('due_date', to)
       .limit(5000)
     if (error) throw new Error(`could not read existing Shopee rows: ${error.message}`)
     const existing = new Map<string, { id: number; amount: number; status: string; items: string }>()
