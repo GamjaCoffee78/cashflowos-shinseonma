@@ -914,3 +914,12 @@ a.pg-card:hover { border-color: var(--line-2); }
 .ideas-list li:last-child { border-bottom: none; }
 .ideas-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 200px; }
 .ideas-list.dropped b { color: var(--ink-faint); text-decoration: line-through; font-weight: 500; }
+
+/* Calendar chips — the hover / tap card with the full item */
+.pt-pop-anchor { display: block; min-width: 0; cursor: pointer; outline: none; }
+.pt-pop-anchor:focus-visible .pt-chip { box-shadow: 0 0 0 2px var(--clay); }
+.pt-pop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: var(--card); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r-13); box-shadow: 0 8px 28px rgba(33,28,22,.18); font-size: 14px; line-height: 1.45; white-space: normal; pointer-events: none; }
+.pt-pop-tag { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--clay-deep); background: var(--clay-tint); border-radius: var(--r-pill); padding: 2px 8px; }
+.pt-pop-title { font-weight: 600; }
+.pt-pop-meta { font-size: 12px; color: var(--ink-faint); }
+.pt-next .pt-pop-anchor { flex: 1 1 auto; min-width: 0; }

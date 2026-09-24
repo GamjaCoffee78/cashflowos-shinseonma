@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Rec } from '@/lib/records'
 import { ItemActions, AddTask } from '@/app/_components/ProductionActions'
+import ChipPop from '@/app/_components/ChipPop'
 
 // The Production Timeline, as a presentational component: it takes rows and
 // renders them. The page fetches; this decides what the month LOOKS like.
@@ -123,9 +124,16 @@ export default function ProductionView({
   const Chip = ({ r }: { r: Rec }) => {
     const { tag, rest } = splitTag(r.title)
     return (
-      <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}`} title={r.title}>
-        {tag ? <b>{tag}</b> : null}{rest}
-      </span>
+      <ChipPop
+        title={rest}
+        tag={/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null}
+        when={fullDay(r.due_date as string)}
+        status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
+      >
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}`}>
+          {tag ? <b>{tag}</b> : null}{rest}
+        </span>
+      </ChipPop>
     )
   }
 
