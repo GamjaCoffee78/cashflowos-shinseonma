@@ -18,6 +18,7 @@ export type ShopRow = {
   amount: number
   currency: string
   status: string
+  net?: number           // payout after the marketplace's cut, when the sync fetched it
 }
 export type MonthRow = { month: string; orders: number; revenue: number }
 export type StatusLook = { label: string; pill: string }
@@ -42,7 +43,14 @@ function totals(rows: ShopRow[], back: number, until = 0) {
   const to = daysAgoISO(until)
   const w = rows.filter(o => o.date >= from && o.date <= to)
   const revenue = w.reduce((s, o) => s + o.amount, 0)
-  return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0 }
+  // After the marketplace's cut. Orders without a payout yet are estimated at the
+  // fee rate of those that have one; `netExact` says whether any estimating happened.
+  const known = w.filter(o => o.net != null)
+  const knownGross = known.reduce((s, o) => s + o.amount, 0)
+  const knownNet = known.reduce((s, o) => s + (o.net as number), 0)
+  const keep = knownGross > 0 ? knownNet / knownGross : 0
+  const net = known.length ? knownNet + (revenue - knownGross) * keep : undefined
+  return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0, net, netExact: known.length === w.length }
 }
 
 // What sold, from the summary the sync wrote ("2× Bulgogi Sauce @ RM8.61; …").
@@ -73,7 +81,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   )
 }
 
-function Period({ label, days, rows, m, since }: { label: string; days: number; rows: ShopRow[]; m: (n: number) => string; since: string }) {
+function Period({ label, days, rows, m, since, cutBy }: { label: string; days: number; rows: ShopRow[]; m: (n: number) => string; since: string; cutBy?: string }) {
   const now = totals(rows, days - 1)
   const before = totals(rows, days * 2 - 1, days)
   // Only compare against a period we actually hold, or a shop synced a week ago
@@ -84,10 +92,26 @@ function Period({ label, days, rows, m, since }: { label: string; days: number; 
       <p className="nav-label">{label}</p>
       <div className="sp-figs">
         <div>
-          <span className="l">Revenue</span>
+          <span className="l">{cutBy ? `Sales · before ${cutBy} cut` : 'Revenue'}</span>
           <span className="v big">{m(now.revenue)}</span>
           {comparable && <Delta now={now.revenue} before={before.revenue} />}
         </div>
+        {cutBy && (
+          <div>
+            <span className="l">You receive · after fees</span>
+            {now.net != null ? (
+              <>
+                <span className="v big" style={{ color: 'var(--sage)' }}>{now.netExact ? '' : '≈ '}{m(now.net)}</span>
+                <span className="sp-cut">
+                  {cutBy} took {m(now.revenue - now.net)} ({now.revenue ? Math.round(((now.revenue - now.net) / now.revenue) * 100) : 0}%)
+                  {!now.netExact && ' · est.'}
+                </span>
+              </>
+            ) : (
+              <span className="sp-cut">Not synced yet — press Sync now</span>
+            )}
+          </div>
+        )}
         <div>
           <span className="l">Orders</span>
           <span className="v">{now.orders.toLocaleString('en-MY')}</span>
@@ -114,6 +138,7 @@ export default function ShopOrdersView({
   today,
   toolbar,
   empty,
+  cutBy,
 }: {
   title: string
   caption: string
@@ -125,6 +150,7 @@ export default function ShopOrdersView({
   today: string
   toolbar?: React.ReactNode      // the Sync now button
   empty: React.ReactNode         // shown when there are no orders yet
+  cutBy?: string                 // e.g. "Shopee": adds the after-fees figure, from rows' net
 }) {
   const m = (n: number) => money(n, currency)
   const todays = rows.filter(o => o.date === today)
@@ -175,8 +201,8 @@ export default function ShopOrdersView({
       ) : (
         <>
           <div className="sp-periods">
-            <Period label="Last 7 days" days={7} rows={rows} m={m} since={since} />
-            <Period label="Last 30 days" days={30} rows={rows} m={m} since={since} />
+            <Period label="Last 7 days" days={7} rows={rows} m={m} since={since} cutBy={cutBy} />
+            <Period label="Last 30 days" days={30} rows={rows} m={m} since={since} cutBy={cutBy} />
           </div>
 
           <section className="sp-card">

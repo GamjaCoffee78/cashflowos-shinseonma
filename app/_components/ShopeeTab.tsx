@@ -44,7 +44,7 @@ export default async function ShopeeTab({
 
   const rows: ShopRow[] = orders.map(o => ({
     id: o.id, ref: o.order_sn, date: o.date, buyer: o.buyer,
-    items: o.items, amount: o.amount, currency: o.currency, status: o.status,
+    items: o.items, amount: o.amount, currency: o.currency, status: o.status, net: o.net,
   }))
 
   return (
@@ -57,6 +57,7 @@ export default async function ShopeeTab({
       money={money}
       statusOf={statusOf}
       today={todayISO()}
+      cutBy="Shopee"
       toolbar={shopeeConfigured && <SyncNow source="shopee" region={region} label="🛍️ Sync now" hint={`Asking Shopee ${region} for the latest orders…`} />}
       empty={
         !shopeeConfigured ? (
