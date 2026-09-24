@@ -25,6 +25,12 @@ export type Category = (typeof CATEGORIES)[number]
 // ('new' and 'contacted' are both "top of funnel" and count together as Leads.)
 export const LEAD_STAGES = ['new', 'contacted', 'appointment', 'closed', 'nurture'] as const
 
+// Rows that belong to ONE tab and would otherwise be carried by every page.
+// The Shopee tabs hold a year of individual orders — tens of thousands of rows
+// nobody else reads — so they are fetched by lib/shopee.ts directly instead of
+// riding along in the whole-app read below.
+export const HEAVY_CATEGORIES = ['shopee_order']
+
 // Every tab calls this, then filters in its own way.
 export async function getRecords(): Promise<Rec[]> {
   // Before Supabase is wired (placeholder env), skip the fetch entirely — a bad
@@ -39,6 +45,7 @@ export async function getRecords(): Promise<Rec[]> {
     const { data, error } = await supabase
       .from('records')
       .select('*')
+      .not('category', 'in', `(${HEAVY_CATEGORIES.join(',')})`)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(from, from + PAGE - 1)

@@ -4,8 +4,8 @@
 // Reading order, top to bottom: how today is going → the last 7 and 30 days
 // against the periods before them → the shape of the month → what's selling →
 // the orders themselves, grouped by day so a date is read once, not forty times.
-import { getRecords, todayISO } from '@/lib/records'
-import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, earliestDay, type ShopeeRow } from '@/lib/shopee'
+import { todayISO } from '@/lib/records'
+import { shopeeOrders, shopeeTotals, topProducts, shopeeConfigured, money, currencyOf, linkedRegions, earliestDay, fetchShopeeOrders, type ShopeeRow } from '@/lib/shopee'
 import { daysAgoISO } from '@/lib/ads-daily'
 import SyncNow from '@/app/_components/SyncNow'
 
@@ -98,7 +98,8 @@ export default async function ShopeeTab({
   title: string
   fallbackCurrency: string   // shown before the first order arrives
 }) {
-  const orders = shopeeOrders(await getRecords(), region)
+  // 60 days: enough for the 30-day figures and their comparison period.
+  const orders = shopeeOrders(await fetchShopeeOrders(region, 60), region)
   const cur = currencyOf(orders, fallbackCurrency)
   const m = (n: number) => money(n, cur)
   const today = todayISO()

@@ -381,6 +381,30 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
   return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, ...(opts.dryRun ? { sample } : {}) }
 }
 
+// Just this shop's recent orders, straight from the table. Deliberately NOT
+// getRecords(): the tab needs a few hundred rows, not the whole business, and
+// a year of order history must never be loaded by every other page.
+export async function fetchShopeeOrders(region: string, days = 60): Promise<Rec[]> {
+  if (!supabaseConfigured) return []
+  const from = daysAgoISO(days)
+  const PAGE = 1000
+  const all: any[] = []
+  for (let start = 0; ; start += PAGE) {
+    const { data, error } = await supabase
+      .from('records')
+      .select('*')
+      .eq('category', CATEGORY)
+      .filter('meta->>shop_region', 'eq', region.toUpperCase())
+      .gte('due_date', from)
+      .order('due_date', { ascending: false })
+      .range(start, start + PAGE - 1)
+    if (error) { console.warn('[CFO] could not read Shopee orders:', error.message); break }
+    all.push(...(data ?? []))
+    if (!data || data.length < PAGE) break
+  }
+  return all.map(r => ({ ...r, meta: r.meta ?? {} })) as Rec[]
+}
+
 // ---- 6) Read helpers for the Shopee MY tab. ----
 export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string }
 
