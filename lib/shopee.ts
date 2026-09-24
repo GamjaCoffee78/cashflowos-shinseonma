@@ -246,6 +246,8 @@ async function escrowNet(shopId: number, token: string, sns: string[]): Promise<
   return out
 }
 
+const SYMBOL: Record<string, string> = { MYR: 'RM', SGD: 'S$', THB: '฿', IDR: 'Rp', PHP: '₱', VND: '₫', TWD: 'NT$', BRL: 'R$' }
+
 // Same title/meta shape as scripts/import-shopee.mjs, so both sources agree.
 function shortName(n: string): string {
   const clean = n.replace(/[\u{1D400}-\u{1D7FF}]+/gu, '').replace(/\bokmaya\b/gi, '').replace(/\s+/g, ' ').trim()
@@ -278,7 +280,9 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
       shopee_status: o.status,
       net: net ?? undefined,
       via: 'api',
-      items: o.items.map(i => `${i.qty}× ${shortName(i.name)}${i.variation ? ` (${i.variation})` : ''} @ RM${i.price}`).join('; '),
+      items: o.items
+        .map(i => `${i.qty}× ${shortName(i.name)}${i.variation ? ` (${i.variation})` : ''} @ ${SYMBOL[o.currency] || o.currency}${i.price}`)
+        .join('; '),
       synced_at: new Date().toISOString(),
     },
   }
@@ -329,10 +333,15 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
       .gte('due_date', from)
       .limit(5000)
     if (error) throw new Error(`could not read existing Shopee rows: ${error.message}`)
-    const existing = new Map<string, { id: number; amount: number; status: string }>()
+    const existing = new Map<string, { id: number; amount: number; status: string; items: string }>()
     for (const r of data ?? []) {
       if (!r.meta?.shopee_order_id) continue
-      existing.set(String(r.meta.shopee_order_id), { id: r.id, amount: num(r.amount), status: String(r.meta.shopee_status || '') })
+      existing.set(String(r.meta.shopee_order_id), {
+        id: r.id,
+        amount: num(r.amount),
+        status: String(r.meta.shopee_status || ''),
+        items: String(r.meta.items || ''),
+      })
     }
 
     const toInsert: any[] = []
@@ -342,7 +351,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
       if (!was) { toInsert.push(row); continue }
       // Nothing moved? Don't spend a write on it — a daily sync mostly re-reads
       // orders it already has, and one UPDATE each is what times the run out.
-      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005) { unchanged++; continue }
+      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005 && was.items === row.meta.items) { unchanged++; continue }
       const { error } = await supabase.from('records').update(row).eq('id', was.id)
       if (error) throw new Error(`update order ${o.order_sn} failed: ${error.message}`)
       updated++
@@ -389,7 +398,6 @@ export function shopeeTotals(orders: ShopeeRow[], n: number) {
 
 // Money, in the shop's own currency. Falls back to the plain code for anything
 // we have not met, rather than pretending it is Ringgit.
-const SYMBOL: Record<string, string> = { MYR: 'RM', SGD: 'S$', THB: '฿', IDR: 'Rp', PHP: '₱', VND: '₫', TWD: 'NT$', BRL: 'R$' }
 export function money(n: number, currency: string): string {
   const s = SYMBOL[currency.toUpperCase()] || currency.toUpperCase() || ''
   return `${s} ${n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
