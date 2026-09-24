@@ -234,10 +234,11 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
 // just without meta.net. Only orders that don't have a net yet are asked, a few
 // at a time and inside a time budget, so a backlog fills in over a few syncs
 // instead of timing one out.
-const NET_BUDGET_MS = 20_000
-async function escrowNet(shopId: number, token: string, sns: string[]): Promise<Map<string, number>> {
+// The budget is ONE deadline for the whole sync (all shops), not per shop —
+// per-shop budgets added up past Vercel's 60s and the Sync now button got a 504.
+let netError = ''  // the first refusal, so the sync can say WHY no net came back
+async function escrowNet(shopId: number, token: string, sns: string[], stopAt: number): Promise<Map<string, number>> {
   const out = new Map<string, number>()
-  const stopAt = Date.now() + NET_BUDGET_MS
   let blocked = false
   for (let i = 0; i < sns.length && !blocked && Date.now() < stopAt; i += 5) {
     await Promise.all(sns.slice(i, i + 5).map(async sn => {
@@ -245,7 +246,8 @@ async function escrowNet(shopId: number, token: string, sns: string[]): Promise<
         const body = await call(shopUrl('/api/v2/payment/get_escrow_detail', shopId, token, { order_sn: sn }))
         const amount = num(body.response?.order_income?.escrow_amount ?? body.response?.escrow_amount)
         if (amount) out.set(sn, amount)
-      } catch {
+      } catch (e: any) {
+        netError ||= String(e?.message || e).slice(0, 200)
         blocked = true // rate limited or not permitted — stop asking
       }
     }))
@@ -298,7 +300,10 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
 }
 
 // ---- 5) The sync the cron and the Sync now button call. ----
-export async function syncShopee(opts: { days?: number; until?: number; dryRun?: boolean; region?: string } = {}) {
+export async function syncShopee(opts: { days?: number; until?: number; dryRun?: boolean; region?: string; netBudgetMs?: number } = {}) {
+  const netStopAt = Date.now() + (opts.netBudgetMs ?? 15_000)
+  netError = ''
+  let netAdded = 0
   if (!shopeeConfigured) return { skipped: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' as const }
   if (!supabaseConfigured && !opts.dryRun) return { skipped: 'Supabase not configured' as const }
 
@@ -368,8 +373,9 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
 
     // After-fees amount, only for orders that don't have one yet.
     const net = ABANG.shopee.fetchNet
-      ? await escrowNet(shop.shop_id, shop.access_token, orders.filter(o => existing.get(o.order_sn)?.net == null).map(o => o.order_sn))
+      ? await escrowNet(shop.shop_id, shop.access_token, orders.filter(o => existing.get(o.order_sn)?.net == null).map(o => o.order_sn), netStopAt)
       : new Map<string, number>()
+    netAdded += net.size
 
     const toInsert: any[] = []
     for (const o of orders) {
@@ -389,7 +395,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       inserted += toInsert.slice(i, i + 500).length
     }
   }
-  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, ...(opts.dryRun ? { sample } : {}) }
+  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, netAdded, ...(netError ? { netError } : {}), ...(opts.dryRun ? { sample } : {}) }
 }
 
 // Just this shop's recent orders, straight from the table. Deliberately NOT
