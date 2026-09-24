@@ -5,6 +5,7 @@ import BottomNav from './_components/BottomNav'
 import ConnStatus from './_components/ConnStatus'
 import SyncAll from './_components/SyncAll'
 import { getPendingCount } from '@/lib/records'
+import { lockMode } from '@/lib/session'
 
 export const metadata: Metadata = {
   title: 'Okmaya',
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="dancheong" aria-hidden="true" />
             <Nav pendingCount={pending} />
             <p className="hint">One <code>records</code> table behind every tab. Your robots live in <code>agents/</code>.</p>
+            {lockMode() !== 'open' ? <p className="hint"><a href="/api/auth/logout">Sign out</a></p> : null}
           </aside>
           <main className="main">
             {/* The secondary logo — 옥마야 in brush hangul with the OKMAYA badge.

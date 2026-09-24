@@ -1,28 +1,41 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { SESSION_COOKIE, googleConfig, passcode, readGoogleSession, checkPasscodeSession } from '@/lib/session'
 
 // 🔒 Don't edit — this keeps your robot safe.
-// The passcode gate. In Next 16 this file is called `proxy.ts` (the old name
+// The login gate. In Next 16 this file is called `proxy.ts` (the old name
 // `middleware.ts` is deprecated and would print scary warnings for beginners).
 //
-// It's "a lock on the door, not bank-grade auth": if APP_PASSCODE is set and the
-// visitor has no session cookie, we bounce them to /login. If APP_PASSCODE is NOT
-// set, we DON'T gate anything — the app shows a calm setup banner instead, so a
-// half-configured clone never locks you out of your own HQ.
-export function proxy(req: NextRequest) {
-  const passcode = (process.env.APP_PASSCODE ?? '').trim()
-  if (!passcode) return NextResponse.next()          // no lock installed → open door
+// Which lock is on depends on env (see lib/session.ts):
+//   • Google sign-in (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET set) — only the
+//     emails in ALLOWED_EMAILS get in. The passcode is ignored in this mode.
+//   • Passcode (only APP_PASSCODE set) — the shared-code lock.
+//   • Neither — we DON'T gate anything, so a half-configured clone never locks
+//     you out of your own HQ.
+// Either way the cookie's signature is checked on every request; a made-up
+// cookie value is bounced to /login.
+export async function proxy(req: NextRequest) {
+  const token = req.cookies.get(SESSION_COOKIE)?.value
+  const google = googleConfig()
 
-  const session = req.cookies.get('cfo_session')?.value
-  if (session) return NextResponse.next()            // has the opaque session cookie → allow
+  let ok: boolean
+  if (google) ok = !!(await readGoogleSession(token, google.secret))
+  else if (passcode()) ok = await checkPasscodeSession(token, passcode())
+  else return NextResponse.next()                     // no lock installed → open door
+
+  if (ok) return NextResponse.next()
 
   const url = req.nextUrl.clone()
   url.pathname = '/login'
-  return NextResponse.redirect(url)
+  url.search = ''
+  const res = NextResponse.redirect(url)
+  if (token) res.cookies.delete(SESSION_COOKIE)       // stale / forged / revoked → clear it
+  return res
 }
 
 // The matcher protects every page EXCEPT the ones below, which must stay reachable
 // without the cookie:
 //   • /login, /api/login      — you can't log in through a locked login page
+//   • /api/auth/*             — the Google sign-in redirect + callback, and sign-out
 //   • /api/telegram           — Telegram's webhook (has its own secret-header guard)
 //   • /api/cron-daily         — the daily cron (has its own fail-closed Bearer guard)
 //   • /manifest.webmanifest   — the REAL PWA manifest (app/manifest.ts serves HERE);
@@ -31,6 +44,6 @@ export function proxy(req: NextRequest) {
 // A single missed exclusion here = a locked webhook on class day, so this list is tested.
 export const config = {
   matcher: [
-    '/((?!login|api/login|api/telegram|api/cron-daily|manifest\\.webmanifest|manifest\\.json|icons|_next|favicon\\.ico).*)',
+    '/((?!login|api/login|api/auth|api/telegram|api/cron-daily|manifest\\.webmanifest|manifest\\.json|icons|_next|favicon\\.ico).*)',
   ],
 }

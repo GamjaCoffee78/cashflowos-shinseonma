@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { SESSION_COOKIE, googleConfig, mintPasscodeSession, cookieOptions } from '@/lib/session'
 
 // 🔒 Don't edit — this keeps your robot safe.
 // Checks the passcode and, on success, hands back an opaque session cookie.
@@ -16,6 +17,11 @@ import crypto from 'crypto'
 export const runtime = 'nodejs'   // needs Node crypto, not the edge runtime
 
 export async function POST(req: Request) {
+  // Google sign-in is on → the shared passcode no longer opens anything.
+  if (googleConfig()) {
+    return NextResponse.json({ ok: false, reason: 'google_only' }, { status: 403 })
+  }
+
   const passcode = (process.env.APP_PASSCODE ?? '').trim()
 
   // No passcode configured → nothing to check. Tell the client calmly; the app
@@ -49,17 +55,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, reason: 'wrong_passcode' }, { status: 401 })
   }
 
-  // Mint the opaque cookie: nonce + HMAC(nonce, passcode).
-  const nonce = crypto.randomUUID()
-  const sig = crypto.createHmac('sha256', passcode).update(nonce).digest('hex')
-  const token = `${nonce}.${sig}`
-
+  // Mint the opaque cookie: nonce + HMAC(nonce, passcode). proxy.ts re-checks
+  // the signature on every request (lib/session.ts).
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('cfo_session', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
+  res.cookies.set(SESSION_COOKIE, await mintPasscodeSession(passcode), {
+    ...cookieOptions,
     maxAge: 60 * 60 * 24 * 30, // 30 days
   })
   return res
