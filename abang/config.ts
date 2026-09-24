@@ -160,13 +160,14 @@ export const ABANG = {
    *
    * Each shop's region and currency come from Shopee itself (MY, SG, …), so a
    * second shop only needs authorising — no setting here changes.
-   * `fetchNet` asks Shopee for the escrow (after-fees) amount per order — it is
-   * one API call per order, so leave it off unless you need the net figure.
+   * `fetchNet` asks Shopee for the escrow (after-fees) amount per order, so the
+   * tabs can show sales before AND after Shopee's cut. One call per order, but
+   * only for orders without a net yet, inside a 20s budget per sync.
    */
   shopee: {
     syncDays: 7,          // the daily top-up
     backfillDays: 45,     // a shop's FIRST sync, so the 30-day figures are real
-    fetchNet: false,
+    fetchNet: true,
   },
 
   // ── 👉 CALENDAR ───────────────────────────────────────────────────────────
