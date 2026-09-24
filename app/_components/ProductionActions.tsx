@@ -155,6 +155,9 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
   const [scheduling, setScheduling] = useState<number | null>(null)
   const [date, setDate] = useState(today)
   const [showDropped, setShowDropped] = useState(false)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [eTitle, setETitle] = useState('')
+  const [eNotes, setENotes] = useState('')
 
   const run = (body: object, after?: () => void) =>
     start(async () => {
@@ -192,6 +195,18 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
         <ul className="ideas-list">
           {open.map(i => (
             <li key={i.id}>
+              {editing === i.id ? (
+                <span className="pt-act pt-edit">
+                  <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} aria-label="Idea" autoFocus
+                    onKeyDown={e => { if (e.key === 'Escape') setEditing(null) }} />
+                  <input type="text" value={eNotes} onChange={e => setENotes(e.target.value)} aria-label="Notes" placeholder="Notes (optional)"
+                    onKeyDown={e => { if (e.key === 'Escape') setEditing(null) }} />
+                  <button type="button" className="pt-btn on" disabled={pending || !eTitle.trim()}
+                    onClick={() => run({ action: 'edit', id: i.id, title: eTitle, notes: eNotes }, () => setEditing(null))}>Save</button>
+                  <button type="button" className="pt-btn" onClick={() => setEditing(null)}>Cancel</button>
+                </span>
+              ) : (
+              <>
               <div className="ideas-text">
                 <b>{i.title}</b>
                 {i.notes ? <span className="cap" style={{ margin: 0 }}>{i.notes}</span> : null}
@@ -205,11 +220,14 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
                   </span>
                 ) : (
                   <>
+                    <button type="button" className="pt-btn" disabled={pending} onClick={() => { setETitle(i.title); setENotes(i.notes ?? ''); setEditing(i.id) }}>✏️ Edit</button>
                     <button type="button" className="pt-btn" disabled={pending} onClick={() => { setDate(today); setScheduling(i.id) }}>📅 Schedule</button>
                     <button type="button" className="pt-btn" disabled={pending} onClick={() => run({ action: 'idea_drop', id: i.id })}>✕ Drop</button>
                   </>
                 )}
               </span>
+              </>
+              )}
             </li>
           ))}
         </ul>
