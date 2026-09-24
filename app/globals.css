@@ -224,6 +224,10 @@ code {
 .sp-bar.today { background: var(--clay-deep); box-shadow: 0 0 0 2px var(--clay-tint); }
 .sp-axis { display: flex; justify-content: space-between; padding-top: 6px; font-size: 11px; color: var(--ink-faint); }
 
+.sp-pie-wrap { display: flex; align-items: center; gap: 24px; }
+.sp-pie-wrap .sp-best { flex: 1; min-width: 0; }
+.sp-pie { flex: none; width: 170px; height: 170px; }
+@media (max-width: 640px) { .sp-pie-wrap { flex-direction: column; align-items: stretch; } .sp-pie { align-self: center; } }
 .sp-best { list-style: none; margin: 0; padding: 0; }
 .sp-best li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .sp-best li:last-child { border-bottom: none; }
