@@ -221,7 +221,7 @@ export const ABANG = {
    * and the app still saves every change.
    */
   productionSheet: {
-    spreadsheetId: '1SF6K8txY-fgY1c8pO_GGTGNjyZE6h7qmQDjkxxa2H6U',
+    spreadsheetId: '1J2r65t2fm_1msjlW6Wi7jAAdVz9tiMWaNCSNyYexumE',  // [NEW] Okmaya Project WIP (Hui Yee's, from 2026-09-24)
     tab: 'App updates',
     composioAccount: 'ca_kw8p5M9618Ko',   // Google Sheets connection (Hui Yee), edit access
   },
