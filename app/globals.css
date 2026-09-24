@@ -923,3 +923,5 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-pop-title { font-weight: 600; }
 .pt-pop-meta { font-size: 12px; color: var(--ink-faint); }
 .pt-next .pt-pop-anchor { flex: 1 1 auto; min-width: 0; }
+.pt-edit { flex: 1 1 100%; }
+.pt-edit input { flex: 1; min-width: 200px; border: 1px solid var(--line-2); border-radius: var(--r-8); padding: 6px 8px; font: inherit; font-size: 13px; background: var(--card); color: var(--ink); }

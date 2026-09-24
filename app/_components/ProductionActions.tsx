@@ -19,12 +19,14 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 }
 
 // ✓ Done / Undo, and 📅 Move to another date — one row's controls.
-export function ItemActions({ id, done, date }: { id: number; done: boolean; date: string }) {
+export function ItemActions({ id, done, date, title }: { id: number; done: boolean; date: string; title: string }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [moving, setMoving] = useState(false)
   const [newDate, setNewDate] = useState(date)
   const [err, setErr] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(title)
 
   const run = (body: object) =>
     start(async () => {
@@ -33,11 +35,34 @@ export function ItemActions({ id, done, date }: { id: number; done: boolean; dat
       // Saved — but say so if the Google Sheet couldn't be updated.
       setErr(r.message.includes('⚠️') ? r.message.replace('⚠️', '').trim() : '')
       setMoving(false)
+      setEditing(false)
       router.refresh()
     })
 
+  if (editing) {
+    return (
+      <span className="pt-act pt-edit">
+        <input
+          type="text"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') run({ action: 'edit', id, title: text }); if (e.key === 'Escape') setEditing(false) }}
+          aria-label="Edit text"
+          autoFocus
+        />
+        <button type="button" className="pt-btn on" disabled={pending || !text.trim()} onClick={() => run({ action: 'edit', id, title: text })}>Save</button>
+        <button type="button" className="pt-btn" onClick={() => { setText(title); setEditing(false) }}>Cancel</button>
+        {pending ? <span className="cap"> saving…</span> : null}
+        {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
+      </span>
+    )
+  }
+
   return (
     <span className="pt-act">
+      <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(title); setEditing(true) }}>
+        ✏️ Edit
+      </button>
       <button
         type="button"
         className={`pt-btn${done ? ' on' : ''}`}
