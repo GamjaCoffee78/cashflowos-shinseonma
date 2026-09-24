@@ -499,7 +499,7 @@ async function place(category: string, date: string, title: string): Promise<str
 
 // The one entry point the API calls after it has saved the change in the app.
 export async function applyToGrid(
-  change: { action: 'add' | 'move' | 'done' | 'undo' | 'edit'; category: string; title: string; date: string; from?: string; oldTitle?: string },
+  change: { action: 'add' | 'move' | 'done' | 'undo' | 'edit' | 'delete'; category: string; title: string; date: string; from?: string; oldTitle?: string },
 ): Promise<{ ok: boolean; message: string; sheetKey?: string }> {
   if (!productionSheetConfigured() || !BLOCKS[change.category]) return { ok: true, message: '' }
   try {
@@ -538,6 +538,12 @@ export async function applyToGrid(
     if (typeof f === 'string') return { ok: false, message: f }
     const cells = findTask(f, change.date, change.category, change.title)
     if (!cells.length) return { ok: false, message: `couldn't find it under ${change.date} in ${f.tab}` }
+    if (change.action === 'delete') {
+      // Clear the cells so the next Sync now doesn't bring it back.
+      await writeCells(f, cells.map(c => ({ ...c, value: '' })))
+      await strike(f, cells, false)
+      return { ok: true, message: `removed from ${f.tab}` }
+    }
     await strike(f, cells, change.action === 'done')
     return { ok: true, message: change.action === 'done' ? `crossed out in ${f.tab}` : `un-crossed in ${f.tab}` }
   } catch (e) {

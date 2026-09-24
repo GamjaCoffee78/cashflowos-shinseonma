@@ -85,6 +85,17 @@ export async function POST(req: Request) {
   const meta = row.meta || {}
   const now = new Date().toISOString()
 
+  if (action === 'delete') {
+    // One row, by its id — never a blanket delete. Cleared from the sheet's
+    // month calendar first so Sync now doesn't re-add it.
+    if (row.category === 'content_idea') return bad('Use Drop for ideas.')
+    const grid = await gridNote({ action: 'delete', category: row.category, title: String((row as any).title || ''), date: row.due_date }, null, meta)
+    const { error } = await supabase.from('records').delete().eq('id', id).eq('category', row.category)
+    if (error) return bad(`Couldn't delete: ${error.message}`)
+    refresh()
+    return NextResponse.json({ ok: true, message: `Deleted.${grid}${await sheetNote()}` })
+  }
+
   let patch: Record<string, unknown>
   if (action === 'idea_schedule') {
     // Idea → a dated post on the Social Calendar.

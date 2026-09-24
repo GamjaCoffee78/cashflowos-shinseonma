@@ -52,6 +52,8 @@ export function ItemActions({ id, done, date, title }: { id: number; done: boole
         />
         <button type="button" className="pt-btn on" disabled={pending || !text.trim()} onClick={() => run({ action: 'edit', id, title: text })}>Save</button>
         <button type="button" className="pt-btn" onClick={() => { setText(title); setEditing(false) }}>Cancel</button>
+        <button type="button" className="pt-btn" disabled={pending}
+          onClick={() => { if (confirm(`Delete "${title}"? This can't be undone.`)) run({ action: 'delete', id }) }}>🗑 Delete</button>
         {pending ? <span className="cap"> saving…</span> : null}
         {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
       </span>
