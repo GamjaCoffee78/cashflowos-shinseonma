@@ -169,6 +169,7 @@ type ShopeeOrder = {
   buyer: string
   total: number
   currency: string
+  state: string   // shipping state only — the rest of the address is never kept
   items: { name: string; variation: string; qty: number; price: number }[]
 }
 
@@ -198,13 +199,22 @@ async function listOrderSns(shopId: number, token: string, from: string, to: str
   return [...new Set(sns)]
 }
 
+// "W.P. Kuala Lumpur", "KUALA LUMPUR", "wilayah persekutuan kuala lumpur" → one name.
+// Masked values ("****") and blanks become '' so they never show as a state.
+function cleanState(v: unknown): string {
+  let s = String(v ?? '').trim()
+  if (!s || /^\*+$/.test(s)) return ''
+  s = s.replace(/^(w\.?\s*p\.?|wilayah persekutuan)\s*/i, '').replace(/\s+/g, ' ')
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+}
+
 async function orderDetails(shopId: number, token: string, sns: string[]): Promise<ShopeeOrder[]> {
   const out: ShopeeOrder[] = []
   for (let i = 0; i < sns.length; i += 50) {
     const body = await call(
       shopUrl('/api/v2/order/get_order_detail', shopId, token, {
         order_sn_list: sns.slice(i, i + 50).join(','),
-        response_optional_fields: 'total_amount,currency,buyer_username,create_time,pay_time,order_status,item_list',
+        response_optional_fields: 'total_amount,currency,buyer_username,create_time,pay_time,order_status,item_list,recipient_address',
       }),
     )
     for (const o of body.response?.order_list ?? []) {
@@ -217,6 +227,7 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
         buyer: String(o.buyer_username || ''),
         total: num(o.total_amount),
         currency: String(o.currency || '').toUpperCase(),
+        state: cleanState(o.recipient_address?.state || o.recipient_address?.city),
         items: (o.item_list ?? []).map((it: any) => ({
           name: String(it.item_name || ''),
           variation: String(it.model_name || ''),
@@ -287,6 +298,7 @@ function toRecord(o: ShopeeOrder, shop: { label: string; id: number; region: str
       currency: o.currency,        // MYR / SGD — never summed across the two
       platform: 'Shopee',
       customer: o.buyer || undefined,
+      state: o.state || undefined,
       shopee_order_id: o.order_sn,
       shopee_status: o.status,
       net: net ?? undefined,
@@ -362,7 +374,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       .lte('due_date', to)
       .limit(5000)
     if (error) throw new Error(`could not read existing Shopee rows: ${error.message}`)
-    const existing = new Map<string, { id: number; amount: number; status: string; items: string; net?: number }>()
+    const existing = new Map<string, { id: number; amount: number; status: string; items: string; net?: number; state: string }>()
     for (const r of data ?? []) {
       if (!r.meta?.shopee_order_id) continue
       existing.set(String(r.meta.shopee_order_id), {
@@ -371,6 +383,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
         status: String(r.meta.shopee_status || ''),
         items: String(r.meta.items || ''),
         net: r.meta.net ? num(r.meta.net) : undefined,
+        state: String(r.meta.state || ''),
       })
     }
 
@@ -389,7 +402,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       if (!was) { toInsert.push(row); continue }
       // Nothing moved? Don't spend a write on it — a daily sync mostly re-reads
       // orders it already has, and one UPDATE each is what times the run out.
-      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005 && was.items === row.meta.items && !(was.net == null && net.has(o.order_sn))) { unchanged++; continue }
+      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005 && was.items === row.meta.items && !(was.net == null && net.has(o.order_sn)) && !(!was.state && o.state)) { unchanged++; continue }
       const { error } = await supabase.from('records').update(row).eq('id', was.id)
       if (error) throw new Error(`update order ${o.order_sn} failed: ${error.message}`)
       updated++
@@ -459,7 +472,7 @@ export async function fetchShopeeMonths(region: string, sinceISO: string) {
 }
 
 // ---- 6) Read helpers for the Shopee MY tab. ----
-export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string }
+export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string; state: string }
 
 // `region` is 'MY' | 'SG' — each tab asks only for its own shop's orders, so
 // two currencies can never land in one total.
@@ -477,6 +490,7 @@ export function shopeeOrders(rows: Rec[], region: string): ShopeeRow[] {
       net: r.meta.net ? num(r.meta.net) : undefined,
       status: String(r.meta.shopee_status || ''),
       currency: String(r.meta.currency || ''),
+      state: String(r.meta.state || ''),
     }))
     .sort((a, b) => b.date.localeCompare(a.date))
 }

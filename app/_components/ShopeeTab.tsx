@@ -57,7 +57,7 @@ export default async function ShopeeTab({
 
   const rows: ShopRow[] = orders.map(o => ({
     id: o.id, ref: o.order_sn, date: o.date, buyer: o.buyer,
-    items: o.items, amount: o.amount, currency: o.currency, status: o.status, net: o.net,
+    items: o.items, amount: o.amount, currency: o.currency, status: o.status, net: o.net, state: o.state,
   }))
 
   return (

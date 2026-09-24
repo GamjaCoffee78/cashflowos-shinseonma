@@ -18,6 +18,7 @@ export type ShopRow = {
   amount: number
   currency: string
   status: string
+  state?: string         // shipping state, when the marketplace gives it
   net?: number           // payout after the marketplace's cut, when the sync fetched it
 }
 export type MonthRow = { month: string; orders: number; revenue: number }
@@ -210,6 +211,21 @@ export default function ShopOrdersView({
   const slices = [...best, ...(otherQty > 0 ? [{ name: 'Everything else', qty: otherQty }] : [])]
   const monthMax = Math.max(1, ...months.map(x => x.revenue))
 
+  // Where the last 30 days' orders shipped to. Orders with no state (older rows
+  // not re-synced yet, or masked by the marketplace) are counted as "Unknown".
+  const stateTally = new Map<string, { orders: number; revenue: number }>()
+  for (const o of rows.filter(o => o.date >= daysAgoISO(29))) {
+    const k = o.state || 'Unknown'
+    const t = stateTally.get(k) ?? { orders: 0, revenue: 0 }
+    t.orders++; t.revenue += o.amount
+    stateTally.set(k, t)
+  }
+  const states = [...stateTally.entries()].map(([state, t]) => ({ state, ...t }))
+    .sort((a, b) => (a.state === 'Unknown' ? 1 : b.state === 'Unknown' ? -1 : b.revenue - a.revenue))
+  const stateMax = Math.max(1, ...states.map(x => x.revenue))
+  const stateTotal = states.reduce((s, x) => s + x.revenue, 0)
+  const hasStates = states.some(x => x.state !== 'Unknown')
+
   return (
     <>
       <div className="sp-head">
@@ -278,6 +294,24 @@ export default function ShopOrdersView({
                   ))}
                 </ol>
               </div>
+            </section>
+          )}
+
+          {hasStates && (
+            <section className="sp-card">
+              <p className="nav-label" style={{ margin: '0 0 10px' }}>Sales by state · last 30 days</p>
+              <table className="sp-months">
+                <tbody>
+                  {states.map(x => (
+                    <tr key={x.state}>
+                      <td className="mn">{x.state}</td>
+                      <td className="mb"><span style={{ width: `${Math.max(2, (x.revenue / stateMax) * 100)}%` }} /></td>
+                      <td className="mo">{x.orders.toLocaleString('en-MY')} · {stateTotal ? Math.round((x.revenue / stateTotal) * 100) : 0}%</td>
+                      <td className="mr">{m(x.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </section>
           )}
 
