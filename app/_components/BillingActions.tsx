@@ -92,7 +92,7 @@ export default function BillingActions({ doc, balance, sharePath, contacts, open
       <button type="button" className="btn danger" disabled={pending} onClick={() => {
         const ok = doc.status === 'draft'
           ? confirm(`Delete draft ${doc.number}? This can't be undone.`)
-          : prompt(`Delete ${doc.number} for good? This can't be undone, and anyone you sent the link to will no longer see it.\n\nTip: "Cancel" keeps a record instead.\n\nType ${doc.number} to confirm:`)?.trim().toUpperCase() === doc.number
+          : confirm(`Delete ${doc.number} for good? This can't be undone, and anyone you sent the link to will no longer see it.`)
         if (!ok) return
         start(async () => {
           const r = await post({ id: doc.id, action: 'delete' })
