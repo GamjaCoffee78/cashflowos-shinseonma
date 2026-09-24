@@ -57,8 +57,12 @@ async function call(url: string, init?: RequestInit): Promise<any> {
   const res = await fetch(url, { ...init, signal: AbortSignal.timeout(25_000) })
   const body: any = await res.json().catch(() => ({}))
   if (!res.ok || (body?.error && String(body.error).length)) {
-    const msg = body?.message || body?.error || `HTTP ${res.status}`
-    throw new Error(`Shopee said no: ${String(msg).slice(0, 200)}`)
+    // Shopee puts the useful half in `message` and the id for support in
+    // `request_id`; show all three or the same failure is unreadable twice.
+    const parts = [body?.error, body?.message, body?.request_id && `request_id ${body.request_id}`]
+      .filter(Boolean)
+      .join(' · ')
+    throw new Error(`Shopee said no: ${(parts || `HTTP ${res.status}`).slice(0, 300)}`)
   }
   return body
 }
@@ -374,4 +378,45 @@ export async function linkedRegions(): Promise<string[]> {
   if (!supabaseConfigured) return []
   const { data } = await supabase.from('shopee_auth').select('region')
   return (data ?? []).map(r => String(r.region || '').toUpperCase()).filter(Boolean)
+}
+
+// ---- 7) Diagnosis, for when Shopee says no. ----
+// Reports the shape of the credentials (never their value) and Shopee's raw
+// answer to a signed public call, so a wrong key, a wrong partner id and a
+// sandbox/live mix-up can be told apart.
+export async function shopeeDiagnose() {
+  const idRaw = process.env.SHOPEE_PARTNER_ID ?? ''
+  const keyRaw = process.env.SHOPEE_PARTNER_KEY ?? ''
+  const shape = {
+    host: HOST,
+    partner_id: PARTNER_ID || null,
+    partner_id_is_numeric: /^\d+$/.test(PARTNER_ID),
+    partner_id_had_whitespace: idRaw !== idRaw.trim(),
+    partner_key_length: PARTNER_KEY.length,          // a live key is 64 hex chars
+    partner_key_is_hex: /^[0-9a-f]+$/i.test(PARTNER_KEY),
+    partner_key_had_whitespace: keyRaw !== keyRaw.trim(),
+  }
+  if (!shopeeConfigured) return { ...shape, check: 'skipped — keys not set' }
+
+  // A public, read-only call that only needs partner_id + key. If the pair is
+  // good Shopee answers with the authorised shops; if not, it says why.
+  const path = '/api/v2/public/get_shops_by_partner'
+  const ts = Math.floor(Date.now() / 1000)
+  const url = `${HOST}${path}?${new URLSearchParams({ partner_id: PARTNER_ID, timestamp: String(ts), sign: sign(path, ts), page_size: '10' })}`
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    const body: any = await res.json().catch(() => ({}))
+    return {
+      ...shape,
+      check: {
+        status: res.status,
+        error: body?.error ?? null,
+        message: body?.message ?? null,
+        request_id: body?.request_id ?? null,
+        shops: Array.isArray(body?.response?.authed_shop_list) ? body.response.authed_shop_list.length : undefined,
+      },
+    }
+  } catch (e) {
+    return { ...shape, check: { error: 'request failed', message: String((e as Error)?.message || e) } }
+  }
 }
