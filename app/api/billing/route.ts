@@ -166,6 +166,20 @@ export async function POST(req: Request) {
     return bad('That change is not allowed.')
   }
 
+  // Delete for good — one document, by id. Drafts go straight away; an issued
+  // document asks the user to type its number (the button does that). A
+  // document other notes point at must lose those notes first, so no credit
+  // note is ever left pointing at nothing.
+  if (action === 'delete') {
+    const docs = await listDocs()
+    const children = docs.filter(d => d.id !== doc.id && d.refNo === doc.number && DOC_TYPES[d.type].needsRef)
+    if (children.length) return bad(`Delete ${children.map(c => c.number).join(', ')} first — they adjust this document.`)
+    const { error } = await supabase.from('records').delete().eq('id', id).eq('category', CATEGORY)
+    if (error) return bad(`Couldn't delete: ${error.message}`)
+    await refresh()
+    return NextResponse.json({ ok: true, message: `${doc.number} deleted.` })
+  }
+
   if (action === 'payment') {
     if (doc.type !== 'INV') return bad('Payments are recorded against invoices.')
     if (doc.status === 'draft' || doc.status === 'cancelled') return bad('Issue the invoice first.')

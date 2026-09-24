@@ -89,6 +89,17 @@ export default function BillingActions({ doc, balance, sharePath, contacts, open
           if (reason !== null) run({ action: 'status', to: 'cancelled', reason })
         }}>Cancel</button>
       ) : null}
+      <button type="button" className="btn danger" disabled={pending} onClick={() => {
+        const ok = doc.status === 'draft'
+          ? confirm(`Delete draft ${doc.number}? This can't be undone.`)
+          : prompt(`Delete ${doc.number} for good? This can't be undone, and anyone you sent the link to will no longer see it.\n\nTip: "Cancel" keeps a record instead.\n\nType ${doc.number} to confirm:`)?.trim().toUpperCase() === doc.number
+        if (!ok) return
+        start(async () => {
+          const r = await post({ id: doc.id, action: 'delete' })
+          setMsg(r.message)
+          if (r.ok) { router.push('/billing'); router.refresh() }
+        })
+      }}>🗑 Delete</button>
 
       {sending ? (
         <div className="bl-pay bl-send">
