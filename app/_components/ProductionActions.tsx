@@ -22,79 +22,69 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 export function ItemActions({ id, done, date, title }: { id: number; done: boolean; date: string; title: string }) {
   const router = useRouter()
   const [pending, start] = useTransition()
-  const [moving, setMoving] = useState(false)
-  const [newDate, setNewDate] = useState(date)
-  const [err, setErr] = useState('')
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [text, setText] = useState(title)
+  const [newDate, setNewDate] = useState(date)
+  const [isDone, setIsDone] = useState(done)
+  const [err, setErr] = useState('')
 
-  const run = (body: object) =>
+  const reset = () => { setText(title); setNewDate(date); setIsDone(done); setErr('') }
+
+  // One Save: only the parts that changed are sent, in the same order the
+  // separate buttons used to send them (wording, date, then done / not done).
+  const save = () =>
     start(async () => {
-      const r = await post(body)
-      if (!r.ok) return setErr(r.message)
-      // Saved — but say so if the Google Sheet couldn't be updated.
-      setErr(r.message.includes('⚠️') ? r.message.replace('⚠️', '').trim() : '')
-      setMoving(false)
-      setEditing(false)
+      const steps: object[] = []
+      if (text.trim() && text.trim() !== title) steps.push({ action: 'edit', id, title: text.trim() })
+      if (newDate && newDate !== date) steps.push({ action: 'move', id, date: newDate })
+      if (isDone !== done) steps.push({ action: isDone ? 'done' : 'undo', id })
+      if (!steps.length) { setOpen(false); return }
+      const warnings: string[] = []
+      for (const body of steps) {
+        const r = await post(body)
+        if (!r.ok) { setErr(r.message); router.refresh(); return }
+        if (r.message.includes('⚠️')) warnings.push(r.message.slice(r.message.indexOf('⚠️') + 2).trim())
+      }
+      setErr(warnings.join(' · '))
+      setOpen(false)
       router.refresh()
     })
 
-  if (editing) {
+  const remove = () => {
+    if (!confirm(`Delete "${title}"?\n\nIt is also removed from the Google Sheet calendar.`)) return
+    start(async () => {
+      const r = await post({ action: 'delete', id })
+      if (!r.ok) return setErr(r.message)
+      router.refresh()
+    })
+  }
+
+  if (!open) {
     return (
-      <span className="pt-act pt-edit">
-        <input
-          type="text"
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') run({ action: 'edit', id, title: text }); if (e.key === 'Escape') setEditing(false) }}
-          aria-label="Edit text"
-          autoFocus
-        />
-        <button type="button" className="pt-btn on" disabled={pending || !text.trim()} onClick={() => run({ action: 'edit', id, title: text })}>Save</button>
-        <button type="button" className="pt-btn" onClick={() => { setText(title); setEditing(false) }}>Cancel</button>
-        {pending ? <span className="cap"> saving…</span> : null}
+      <span className="pt-act">
+        <button type="button" className="pt-btn" disabled={pending} onClick={() => { reset(); setOpen(true) }}>✏️ Edit</button>
         {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
       </span>
     )
   }
 
   return (
-    <span className="pt-act">
-      <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(title); setEditing(true) }}>
-        ✏️ Edit
-      </button>
-      <button
-        type="button"
-        className={`pt-btn${done ? ' on' : ''}`}
-        disabled={pending}
-        onClick={() => run({ action: done ? 'undo' : 'done', id })}
-        title={done ? 'Mark as not done' : 'Mark as done'}
-      >
-        {done ? '✓ Done' : '✓ Mark done'}
-      </button>
-      {!done && !moving ? (
-        <button type="button" className="pt-btn" disabled={pending} onClick={() => setMoving(true)}>
-          📅 Move
-        </button>
-      ) : null}
-      {moving ? (
-        <span className="pt-move">
-          <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} aria-label="New date" />
-          <button type="button" className="pt-btn on" disabled={pending || !newDate} onClick={() => run({ action: 'move', id, date: newDate })}>
-            Save
-          </button>
-          <button type="button" className="pt-btn" onClick={() => setMoving(false)}>Cancel</button>
-        </span>
-      ) : null}
-      <button
-        type="button"
-        className="pt-btn pt-del"
-        disabled={pending}
-        onClick={() => confirm(`Delete "${title}"?\n\nIt is also removed from the Google Sheet calendar.`) && run({ action: 'delete', id })}
-      >
-        🗑 Delete
-      </button>
-      {pending ? <span className="cap"> saving…</span> : null}
+    <span className="pt-act pt-editall">
+      <input
+        type="text"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setOpen(false) }}
+        aria-label="Text"
+        autoFocus
+      />
+      <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} aria-label="Date" />
+      <label className="pt-check">
+        <input type="checkbox" checked={isDone} onChange={e => setIsDone(e.target.checked)} /> Done
+      </label>
+      <button type="button" className="pt-btn on" disabled={pending || !text.trim() || !newDate} onClick={save}>{pending ? 'Saving…' : 'Save'}</button>
+      <button type="button" className="pt-btn" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
+      <button type="button" className="pt-btn pt-del" disabled={pending} onClick={remove}>🗑 Delete</button>
       {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
     </span>
   )
