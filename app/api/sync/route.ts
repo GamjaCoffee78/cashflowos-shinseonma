@@ -45,8 +45,10 @@ export async function POST(req: Request) {
     // `days` lets a one-off deeper pull be asked for (a backfill, or re-reading
     // rows after a formatting fix). Bounded, so nobody can ask for a year and
     // time the function out.
-    const days = Number.isFinite(Number(body?.days)) ? Math.min(Math.max(Number(body.days), 1), 90) : undefined
-    const until = Number.isFinite(Number(body?.until)) ? Math.min(Math.max(Number(body.until), 0), 89) : undefined
+    // Up to ~2.5 years back, so history can be walked; each request still has to
+    // finish inside the 60s, which is what `until` is for.
+    const days = Number.isFinite(Number(body?.days)) ? Math.min(Math.max(Number(body.days), 1), 900) : undefined
+    const until = Number.isFinite(Number(body?.until)) ? Math.min(Math.max(Number(body.until), 0), 899) : undefined
     const opts = { ...(region ? { region } : {}), ...(days ? { days } : {}), ...(until ? { until } : {}) }
     const r: any = await (source.run as (o?: any) => Promise<any>)(Object.keys(opts).length ? opts : undefined)
     if (typeof r.skipped === 'string') {
