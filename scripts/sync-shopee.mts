@@ -15,10 +15,10 @@ const di = args.indexOf('--days')
 const days = di >= 0 ? Number(args[di + 1]) : undefined
 
 const r: any = await syncShopee({ days, dryRun })
-if (r.skipped) {
+if (typeof r.skipped === 'string') {
   console.error(`\n⚠️  Skipped: ${r.skipped}\n`)
   process.exit(1)
 }
-console.log(`\n🛍️  Shopee ${dryRun ? '(DRY RUN) ' : ''}${r.from} → ${r.to}: ${r.fetched} order(s) from ${r.shops} shop(s), ${r.skipped} cancelled/unpaid skipped`)
+console.log(`\n🛍️  Shopee ${dryRun ? '(DRY RUN) ' : ''}${r.from} → ${r.to}: ${r.fetched} order(s) from ${r.shops} shop(s), ${r.cancelled} cancelled/unpaid skipped`)
 if (dryRun) for (const line of r.sample ?? []) console.log(`   ${line}`)
 else console.log(`   ✅ ${r.inserted} added · ${r.updated} refreshed (category shopee_order)\n`)

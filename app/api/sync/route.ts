@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   try {
     const region = typeof body?.region === 'string' ? body.region : undefined
     const r: any = await (source.run as (o?: any) => Promise<any>)(region ? { region } : undefined)
-    if (r.skipped) {
+    if (typeof r.skipped === 'string') {
       return NextResponse.json({ ok: false, message: `${r.skipped} — add it in Vercel → Settings → Environment Variables, then redeploy.` })
     }
     const parts = [`${r.inserted} added`, `${r.updated} refreshed`]

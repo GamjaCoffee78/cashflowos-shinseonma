@@ -51,7 +51,7 @@ const STEPS: Source[] = [
 // same shape: { skipped } when a key is missing, else { from, to, inserted,
 // updated, cancelled? }.
 function describe(r: any): string {
-  if (r?.skipped) return `Skipped — ${r.skipped}.`
+  if (typeof r?.skipped === 'string') return `Skipped — ${r.skipped}.`
   // The owner sheet's guard: it read the sheet fine but refused to write,
   // because writing would have doubled the Dashboard. Say exactly why.
   if (r?.blocked) return `Nothing written — ${r.blocked}`

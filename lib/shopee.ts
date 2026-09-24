@@ -301,7 +301,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
   const from = daysAgoISO(days)
   const to = todayISO()
 
-  let fetched = 0, inserted = 0, updated = 0, skipped = 0, unchanged = 0
+  let fetched = 0, inserted = 0, updated = 0, cancelled = 0, unchanged = 0
   const sample: string[] = []
   for (const shop of shops) {
     const region = (shop.region || '').toUpperCase()
@@ -309,7 +309,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
     const stamp = { label, id: shop.shop_id, region }
     const sns = await listOrderSns(shop.shop_id, shop.access_token, from, to)
     const orders = (await orderDetails(shop.shop_id, shop.access_token, sns)).filter(o => {
-      if (SKIP_STATUS.has(o.status)) { skipped++; return false }
+      if (SKIP_STATUS.has(o.status)) { cancelled++; return false }
       return true
     })
     fetched += orders.length
@@ -353,7 +353,7 @@ export async function syncShopee(opts: { days?: number; dryRun?: boolean; region
       inserted += toInsert.slice(i, i + 500).length
     }
   }
-  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, skipped, ...(opts.dryRun ? { sample } : {}) }
+  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, ...(opts.dryRun ? { sample } : {}) }
 }
 
 // ---- 6) Read helpers for the Shopee MY tab. ----
