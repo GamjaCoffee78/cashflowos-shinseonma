@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Rec } from '@/lib/records'
+import { ItemActions, AddTask } from '@/app/_components/ProductionActions'
 
 // The Production Timeline, as a presentational component: it takes rows and
 // renders them. The page fetches; this decides what the month LOOKS like.
@@ -9,10 +10,9 @@ import type { Rec } from '@/lib/records'
 //   2. How busy is this month?   → the month chips + counts
 //   3. What exactly, and when?   → the calendar, then the week lists
 //
-// A note on status: every imported row is 'planned' (see
-// scripts/import-production.mjs) — the sheet carries no done-tracking. So this
-// page never claims an item is late or finished. A past date is shown as
-// "passed", plainly, not as an alarm.
+// Status: imported rows start 'planned'. The buttons in the day list mark one
+// 'done' or move it to another date (app/api/production). An item whose date has
+// passed and isn't done says "not done" — so it gets ticked or moved.
 
 // Order prefixes like "[FM Order] …" or "[ZUS Order- FFF] …" are how the sheet
 // tags who the work is for. Pulling them out gives each item a colour and a
@@ -76,12 +76,13 @@ export default function ProductionView({
   const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
 
   // ── 1. What needs me now? ───────────────────────────────────────
+  const isDone = (r: Rec) => (r.status || '').toLowerCase() === 'done'
   const ahead = rows
-    .filter(r => (r.due_date ?? '') >= today)
+    .filter(r => (r.due_date ?? '') >= today && !isDone(r))
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
-  const dueToday = rows.filter(r => r.due_date === today)
+  const dueToday = rows.filter(r => r.due_date === today && !isDone(r))
   const next7 = ahead.filter(r => daysBetween(r.due_date as string, today) <= 7)
-  const passed = mine.filter(r => (r.due_date ?? '') < today).length
+  const passed = mine.filter(r => (r.due_date ?? '') < today && !isDone(r)).length
 
   const byDay = new Map<string, Rec[]>()
   for (const r of mine) {
@@ -106,7 +107,7 @@ export default function ProductionView({
   const Chip = ({ r }: { r: Rec }) => {
     const { tag, rest } = splitTag(r.title)
     return (
-      <span className={`pt-chip tone-${toneFor(tag, tags)}`} title={r.title}>
+      <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}`} title={r.title}>
         {tag ? <b>{tag}</b> : null}{rest}
       </span>
     )
@@ -115,7 +116,8 @@ export default function ProductionView({
   return (
     <>
       <h1 className="ph">Production Timeline 🏭</h1>
-      <p className="cap">What has to happen, and when — from the Okmaya project sheet.</p>
+      <p className="cap">What has to happen, and when — from the Okmaya project sheet. Tick what's done, move what slipped.</p>
+      <div style={{ margin: '10px 0 16px' }}><AddTask defaultDate={today} /></div>
 
       {/* 1 ─ What needs me now. The single most useful thing on the page, so
              it goes first and reads as a sentence, not a number. */}
@@ -170,7 +172,7 @@ export default function ProductionView({
         <h2>{monthLabel(current)}</h2>
         <span className="cap" style={{ margin: 0 }}>
           {mine.length} item{mine.length === 1 ? '' : 's'}
-          {passed > 0 ? ` · ${passed} already passed` : ''}
+          {passed > 0 ? ` · ${passed} passed and not done` : ''}
         </span>
       </div>
 
@@ -244,12 +246,19 @@ export default function ProductionView({
                 <ul>
                   {items.map(r => {
                     const { tag, rest } = splitTag(r.title)
+                    const done = isDone(r)
+                    const moved = Array.isArray(r.meta?.moved_from) ? r.meta.moved_from : []
                     return (
-                      <li key={r.id}>
+                      <li key={r.id} className={done ? 'done' : ''}>
                         {tag ? (
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`}>{tag}</span>
                         ) : null}
-                        <span>{rest}</span>
+                        <span className="pt-title">{rest}</span>
+                        {!done && day < today ? <span className="pill overdue">not done</span> : null}
+                        {moved.length ? (
+                          <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
+                        ) : null}
+                        <ItemActions id={r.id} done={done} date={day} />
                       </li>
                     )
                   })}
