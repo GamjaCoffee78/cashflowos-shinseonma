@@ -817,7 +817,7 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-day-dow { font-size: 12px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
 .pt-day-note { font-size: 11px; color: var(--ink-faint); }
 .pt-day ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.pt-day li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--ink); line-height: 1.45; }
+.pt-day li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--ink); line-height: 1.45; }
 .pt-tag { flex: 0 0 auto; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--tone); background: var(--tone-bg); border-radius: 4px; padding: 2px 6px; margin-top: 2px; }
 
 @media (max-width: 768px) {
@@ -891,3 +891,16 @@ a.pg-card:hover { border-color: var(--line-2); }
   .as-num:last-child { margin-bottom: 0; }
   .as-cell::before, .as-num::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-faint); margin-bottom: 2px; }
 }
+
+/* Production Timeline — done / move / add controls */
+.pt-act { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+.pt-btn { border: 1px solid var(--line-2); background: var(--card); color: var(--ink-soft); border-radius: var(--r-pill); padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.pt-btn:hover:not(:disabled) { border-color: var(--clay); color: var(--clay); }
+.pt-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
+.pt-btn:disabled { opacity: .55; cursor: default; }
+.pt-move { display: inline-flex; gap: 6px; align-items: center; }
+.pt-move input, .pt-add input { border: 1px solid var(--line-2); border-radius: var(--r-8); padding: 6px 8px; font: inherit; font-size: 13px; background: var(--card); color: var(--ink); }
+.pt-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pt-add input[type=text] { flex: 1; min-width: 220px; }
+.pt-days li.done .pt-title { text-decoration: line-through; color: var(--ink-faint); }
+.pt-chip.done { opacity: .45; text-decoration: line-through; }
