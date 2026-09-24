@@ -61,41 +61,26 @@ export async function GET(req: Request) {
 
   const today = todayISO()
 
-  // ⓪ Pull yesterday's TikTok Ads numbers into `records` first, so the brief and
-  //    the tab see them. Never blocks the brief: a failure is logged and skipped.
-  let tiktok: any = null
-  try {
-    tiktok = await syncTikTokAds()
-  } catch (e) {
-    console.error('[CFO] tiktok sync failed:', e)
-    tiktok = { error: String((e as Error)?.message || e).slice(0, 200) }
-  }
-  // Same for Meta Ads (tab only — no line in the brief).
-  let meta: any = null
-  try {
-    meta = await syncMetaAds()
-  } catch (e) {
-    console.error('[CFO] meta sync failed:', e)
-    meta = { error: String((e as Error)?.message || e).slice(0, 200) }
-  }
-  // And Google Calendar → `event` rows (read-only copy; the Calendar tab).
-  let calendar: any = null
-  try {
-    calendar = await syncCalendar()
-  } catch (e) {
-    console.error('[CFO] calendar sync failed:', e)
-    calendar = { error: String((e as Error)?.message || e).slice(0, 200) }
-  }
-
-  // And the live Shopee MY + SG orders, so the brief quotes yesterday in full.
-  // Small payout budget: the whole cron has to fit in 60s.
-  let shopee: any = null
-  try {
-    shopee = await syncShopee({ days: 3, netBudgetMs: 4_000 })
-  } catch (e) {
-    console.error('[CFO] shopee sync failed:', e)
-    shopee = { error: String((e as Error)?.message || e).slice(0, 200) }
-  }
+  // ⓪ Refresh the outside sources first, so the brief and the tabs see them.
+  //    They run SIDE BY SIDE, each capped at 25s: one after another they ran
+  //    past Vercel's 60s and the brief never went out (504, 2026-09-24). A slow
+  //    or failed source is logged and skipped — it never blocks the brief.
+  const capped = (label: string, run: () => Promise<any>) =>
+    Promise.race([
+      run(),
+      new Promise((resolve) => setTimeout(() => resolve({ error: `${label} still running after 25s — skipped for this brief` }), 25_000)),
+    ]).catch((e) => {
+      console.error(`[CFO] ${label} sync failed:`, e)
+      return { error: String((e as Error)?.message || e).slice(0, 200) }
+    })
+  const [tiktok, meta, calendar, shopee] = await Promise.all([
+    capped('tiktok', () => syncTikTokAds()),
+    capped('meta', () => syncMetaAds()),     // tab only — no line in the brief
+    capped('calendar', () => syncCalendar()),
+    // Shopee MY + SG, so the brief quotes yesterday in full. No payout lookups
+    // here — those are one call per order; the Sync now button fills them in.
+    capped('shopee', () => syncShopee({ days: 2, netBudgetMs: 0 })),
+  ])
 
   const rows = await getRecords()
   const shopeeText = await shopeeLive()
