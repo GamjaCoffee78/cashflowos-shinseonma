@@ -248,6 +248,12 @@ code {
 .sp-day { margin-bottom: 14px; }
 .sp-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 12px; background: var(--paper-2); border-radius: var(--r-8); font-size: 13px; }
 .sp-day-head .d { font-weight: 700; }
+.sp-day > summary { cursor: pointer; list-style: none; }
+.sp-day > summary::-webkit-details-marker { display: none; }
+.sp-day > summary:hover { background: var(--clay-tint); }
+.sp-caret { display: inline-block; width: 14px; color: var(--ink-faint); transition: transform .15s; }
+.sp-day[open] .sp-caret { transform: rotate(90deg); }
+.sp-day:not([open]) { margin-bottom: 6px; }
 .sp-day-head .t { color: var(--ink-soft); }
 .sp-orders { list-style: none; margin: 0; padding: 0; }
 .sp-orders li { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 11px 12px; border-bottom: 1px solid var(--line); }
