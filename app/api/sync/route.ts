@@ -42,7 +42,12 @@ export async function POST(req: Request) {
   if (!source) return NextResponse.json({ ok: false, message: 'Unknown source.' }, { status: 400 })
   try {
     const region = typeof body?.region === 'string' ? body.region : undefined
-    const r: any = await (source.run as (o?: any) => Promise<any>)(region ? { region } : undefined)
+    // `days` lets a one-off deeper pull be asked for (a backfill, or re-reading
+    // rows after a formatting fix). Bounded, so nobody can ask for a year and
+    // time the function out.
+    const days = Number.isFinite(Number(body?.days)) ? Math.min(Math.max(Number(body.days), 1), 90) : undefined
+    const opts = { ...(region ? { region } : {}), ...(days ? { days } : {}) }
+    const r: any = await (source.run as (o?: any) => Promise<any>)(Object.keys(opts).length ? opts : undefined)
     if (typeof r.skipped === 'string') {
       return NextResponse.json({ ok: false, message: `${r.skipped} — add it in Vercel → Settings → Environment Variables, then redeploy.` })
     }
