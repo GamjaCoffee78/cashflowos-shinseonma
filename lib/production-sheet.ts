@@ -9,6 +9,11 @@ import { supabase, supabaseConfigured } from '@/lib/supabase'
 //    that day's tasks. New tasks become production rows. It never overwrites or
 //    deletes: an item the app already has (same task + the date it was ORIGINALLY
 //    on, so a task moved in the app isn't re-added at its old date) is skipped.
+//    Then it TIDIES: for every month whose tab was read, an item the sheet no
+//    longer has (the old .xlsx import, or a task since reworded or removed) is
+//    ARCHIVED — moved to category 'production_archived' by explicit id, never
+//    deleted, so it can be put back. Items added in the app are never archived,
+//    and a month whose tab parsed to nothing is left alone.
 //
 // ② WRITE (writeProductionSheet), below:
 // WRITES to exactly one tab (ABANG.productionSheet.tab), which the app owns: it
@@ -151,6 +156,7 @@ export function parseProductionGrid(grid: string[][], month: string): { date: st
 const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
 export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}) {
+  // Default: every month tab, so the tidy-up covers the whole sheet.
   if (!productionSheetConfigured()) return { skipped: 'the production sheet isn\u2019t connected (abang/config.ts → productionSheet)' as const }
   if (!supabaseConfigured) return { skipped: 'Supabase not configured' as const }
   const base = `${SHEETS}/${encodeURIComponent(ABANG.productionSheet.spreadsheetId)}`
@@ -158,15 +164,15 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
   // Which month tabs exist — only recent and future ones are read.
   const info = await proxy('GET', base, undefined, { fields: 'sheets.properties.title' })
   const now = new Date()
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (opts.monthsBack ?? 2), 1)).toISOString().slice(0, 7)
+  const from = opts.monthsBack == null ? '0000-00' : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - opts.monthsBack, 1)).toISOString().slice(0, 7)
   const tabs = ((info?.sheets ?? []) as any[])
     .map(s => String(s?.properties?.title ?? ''))
     .map(title => ({ title, month: tabMonth(title) }))
     .filter((t): t is { title: string; month: string } => !!t.month && t.month >= from)
 
   const items: { date: string; title: string; tab: string }[] = []
-  for (let i = 0; i < tabs.length; i += 4) {
-    const got = await Promise.all(tabs.slice(i, i + 4).map(async t => {
+  for (let i = 0; i < tabs.length; i += 6) {
+    const got = await Promise.all(tabs.slice(i, i + 6).map(async t => {
       const g = await proxy('GET', `${base}/values/${encodeURIComponent(`'${t.title}'!A1:J400`)}`, undefined, { valueRenderOption: 'FORMATTED_VALUE' })
       const grid = ((g?.values ?? []) as any[][]).map(row => (row ?? []).map(c => String(c ?? '')))
       return parseProductionGrid(grid, t.month).map(x => ({ ...x, tab: t.title }))
@@ -175,7 +181,7 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
   }
 
   // What the app already has, keyed by task + ORIGINAL date.
-  const { data, error } = await supabase.from('records').select('title, due_date, meta').eq('category', 'production').limit(10000)
+  const { data, error } = await supabase.from('records').select('id, title, due_date, meta').eq('category', 'production').limit(10000)
   if (error) throw new Error(error.message)
   const have = new Set<string>()
   for (const r of (data ?? []) as any[]) {
@@ -204,7 +210,28 @@ export async function syncProductionFromSheet(opts: { monthsBack?: number } = {}
     const { error } = await supabase.from('records').insert(toInsert.slice(i, i + 500))
     if (error) throw new Error(`insert failed: ${error.message}`)
   }
-  return { from: `${from}-01`, to: tabs.map(t => t.month).sort().pop() ?? from, tabs: tabs.length, fetched: items.length, inserted: toInsert.length, updated: 0 }
+  // Tidy: archive what the sheet no longer has, month by month.
+  const sheetKeys = new Set(items.map(it => `${it.date}|${norm(it.title)}`))
+  const readMonths = new Set(items.map(it => it.date.slice(0, 7)))
+  const stale = ((data ?? []) as any[]).filter(r => {
+    if (r.meta?.source === 'app') return false
+    const orig: string = r.meta?.moved_from?.[0]?.date ?? r.due_date ?? ''
+    if (!readMonths.has(orig.slice(0, 7))) return false
+    return !sheetKeys.has(`${orig}|${norm(r.title || '')}`) && !(r.meta?.sheet_key && sheetKeys.has(r.meta.sheet_key))
+  })
+  // By explicit id, 100 at a time (one call each, not one per row, so a first
+  // big tidy-up still fits inside the sync's time limit).
+  const ids = stale.map(r => r.id as number)
+  for (let i = 0; i < ids.length; i += 100) {
+    const { error } = await supabase
+      .from('records')
+      .update({ category: 'production_archived' })
+      .in('id', ids.slice(i, i + 100))
+      .eq('category', 'production')
+    if (error) throw new Error(`archive failed: ${error.message}`)
+  }
+
+  return { archived: stale.length, from: from === '0000-00' ? (tabs.map(t => t.month).sort()[0] ?? '') + '-01' : `${from}-01`, to: tabs.map(t => t.month).sort().pop() ?? from, tabs: tabs.length, fetched: items.length, inserted: toInsert.length, updated: 0 }
 }
 
 // ---- ③ Next month's tab ------------------------------------------------------
