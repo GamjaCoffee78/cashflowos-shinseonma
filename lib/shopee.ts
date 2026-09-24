@@ -231,17 +231,24 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
 
 // Net after Shopee's cut, best effort: the escrow endpoint is per order and
 // rate-limited, so a failure here never fails the sync — the order still lands,
-// just without meta.net.
+// just without meta.net. Only orders that don't have a net yet are asked, a few
+// at a time and inside a time budget, so a backlog fills in over a few syncs
+// instead of timing one out.
+const NET_BUDGET_MS = 20_000
 async function escrowNet(shopId: number, token: string, sns: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>()
-  for (const sn of sns) {
-    try {
-      const body = await call(shopUrl('/api/v2/payment/get_escrow_detail', shopId, token, { order_sn: sn }))
-      const amount = num(body.response?.escrow_amount ?? body.response?.order_income?.escrow_amount)
-      if (amount) out.set(sn, amount)
-    } catch {
-      return out // rate limited or not permitted — stop asking
-    }
+  const stopAt = Date.now() + NET_BUDGET_MS
+  let blocked = false
+  for (let i = 0; i < sns.length && !blocked && Date.now() < stopAt; i += 5) {
+    await Promise.all(sns.slice(i, i + 5).map(async sn => {
+      try {
+        const body = await call(shopUrl('/api/v2/payment/get_escrow_detail', shopId, token, { order_sn: sn }))
+        const amount = num(body.response?.order_income?.escrow_amount ?? body.response?.escrow_amount)
+        if (amount) out.set(sn, amount)
+      } catch {
+        blocked = true // rate limited or not permitted — stop asking
+      }
+    }))
   }
   return out
 }
@@ -337,8 +344,6 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       continue
     }
 
-    const net = ABANG.shopee.fetchNet ? await escrowNet(shop.shop_id, shop.access_token, orders.map(o => o.order_sn)) : new Map()
-
     // Which of these orders is already on the Shopee MY tab? Only this
     // category is read or written — the cash_in rows are never touched.
     const { data, error } = await supabase
@@ -349,7 +354,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       .lte('due_date', to)
       .limit(5000)
     if (error) throw new Error(`could not read existing Shopee rows: ${error.message}`)
-    const existing = new Map<string, { id: number; amount: number; status: string; items: string }>()
+    const existing = new Map<string, { id: number; amount: number; status: string; items: string; net?: number }>()
     for (const r of data ?? []) {
       if (!r.meta?.shopee_order_id) continue
       existing.set(String(r.meta.shopee_order_id), {
@@ -357,17 +362,23 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
         amount: num(r.amount),
         status: String(r.meta.shopee_status || ''),
         items: String(r.meta.items || ''),
+        net: r.meta.net ? num(r.meta.net) : undefined,
       })
     }
 
+    // After-fees amount, only for orders that don't have one yet.
+    const net = ABANG.shopee.fetchNet
+      ? await escrowNet(shop.shop_id, shop.access_token, orders.filter(o => existing.get(o.order_sn)?.net == null).map(o => o.order_sn))
+      : new Map<string, number>()
+
     const toInsert: any[] = []
     for (const o of orders) {
-      const row = toRecord(o, stamp, net.get(o.order_sn))
       const was = existing.get(o.order_sn)
+      const row = toRecord(o, stamp, net.get(o.order_sn) ?? was?.net)
       if (!was) { toInsert.push(row); continue }
       // Nothing moved? Don't spend a write on it — a daily sync mostly re-reads
       // orders it already has, and one UPDATE each is what times the run out.
-      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005 && was.items === row.meta.items) { unchanged++; continue }
+      if (was.status === o.status && Math.abs(was.amount - o.total) < 0.005 && was.items === row.meta.items && !(was.net == null && net.has(o.order_sn))) { unchanged++; continue }
       const { error } = await supabase.from('records').update(row).eq('id', was.id)
       if (error) throw new Error(`update order ${o.order_sn} failed: ${error.message}`)
       updated++
@@ -472,7 +483,15 @@ export function shopeeTotals(orders: ShopeeRow[], back: number, until = 0) {
   const to = daysAgoISO(until)
   const w = orders.filter(o => o.date >= from && o.date <= to)
   const revenue = w.reduce((s, o) => s + o.amount, 0)
-  return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0 }
+  // After Shopee's cut. Orders synced before fetchNet was on have no net yet;
+  // those are estimated at the fee rate of the orders that do, and `netExact`
+  // says whether any estimating happened.
+  const known = w.filter(o => o.net != null)
+  const knownGross = known.reduce((s, o) => s + o.amount, 0)
+  const knownNet = known.reduce((s, o) => s + (o.net as number), 0)
+  const keep = knownGross > 0 ? knownNet / knownGross : 0
+  const net = known.length ? knownNet + (revenue - knownGross) * keep : undefined
+  return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0, net, netExact: known.length === w.length }
 }
 
 // What sold, from the summary we wrote ("2× Bulgogi Sauce @ $8.61; …").

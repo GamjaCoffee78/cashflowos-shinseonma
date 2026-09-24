@@ -98,9 +98,23 @@ function Period({
       <p className="nav-label">{label}</p>
       <div className="sp-figs">
         <div>
-          <span className="l">Revenue</span>
+          <span className="l">Sales · before Shopee cut</span>
           <span className="v big">{m(now.revenue)}</span>
           {comparable && <Delta now={now.revenue} before={before.revenue} />}
+        </div>
+        <div>
+          <span className="l">You receive · after fees</span>
+          {now.net != null ? (
+            <>
+              <span className="v big" style={{ color: 'var(--sage)' }}>{now.netExact ? '' : '≈ '}{m(now.net)}</span>
+              <span className="sp-cut">
+                Shopee took {m(now.revenue - now.net)} ({now.revenue ? Math.round(((now.revenue - now.net) / now.revenue) * 100) : 0}%)
+                {!now.netExact && ' · est.'}
+              </span>
+            </>
+          ) : (
+            <span className="sp-cut">Not synced yet — press Sync now</span>
+          )}
         </div>
         <div>
           <span className="l">Orders</span>
@@ -176,6 +190,9 @@ export default async function ShopeeTab({
           <h1 className="ph">{title}</h1>
           <p className="cap">
             Live from your Shopee {region} shop · all figures in {cur} · synced every morning
+          </p>
+          <p className="cap" style={{ marginTop: 4 }}>
+            <b>Sales</b> = what buyers paid · <b>You receive</b> = Shopee's payout after commission, service and transaction fees · cancelled and unpaid orders are left out
           </p>
         </div>
         {orders.length > 0 && (
