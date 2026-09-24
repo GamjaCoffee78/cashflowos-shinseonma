@@ -41,9 +41,12 @@ export async function proxy(req: NextRequest) {
 //   • /manifest.webmanifest   — the REAL PWA manifest (app/manifest.ts serves HERE);
 //     /manifest.json          — belt-and-braces extra so install never silently breaks
 //   • /icons/*, /favicon.ico, /_next/* — static assets the install/render needs
+//   • /share/*, /doc-print.css — a billing document sent to a customer by link.
+//     Guarded by its own signature (lib/billing-share.ts): only a link the app
+//     minted opens, and only that one document.
 // A single missed exclusion here = a locked webhook on class day, so this list is tested.
 export const config = {
   matcher: [
-    '/((?!login|api/login|api/auth|api/telegram|api/cron-daily|manifest\\.webmanifest|manifest\\.json|icons|_next|favicon\\.ico).*)',
+    '/((?!login|api/login|api/auth|api/telegram|api/cron-daily|share/|doc-print\\.css|manifest\\.webmanifest|manifest\\.json|icons|_next|favicon\\.ico).*)',
   ],
 }

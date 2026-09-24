@@ -18,6 +18,9 @@ export default function DocSheet({ doc }: { doc: BillingDoc }) {
   const t = totals(doc)
   const ship = doc.type === 'PO' ? (doc.shipTo || `${COMPANY.name}\n${COMPANY.address.join('\n')}`) : doc.shipTo
   return (
+    <>
+    {/* Styles live in public/doc-print.css so the public share page can use them too. */}
+    <link rel="stylesheet" href="/doc-print.css" precedence="default" />
     <article className={`bdoc${doc.status === 'cancelled' ? ' void' : ''}`}>
       {doc.status === 'draft' ? <div className="bdoc-stamp">DRAFT</div> : null}
       {doc.status === 'cancelled' ? <div className="bdoc-stamp">CANCELLED</div> : null}
@@ -121,5 +124,6 @@ export default function DocSheet({ doc }: { doc: BillingDoc }) {
       </div>
       <p className="bdoc-fine">This is a computer-generated document.</p>
     </article>
+    </>
   )
 }
