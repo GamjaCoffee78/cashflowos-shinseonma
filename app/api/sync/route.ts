@@ -61,6 +61,9 @@ export async function POST(req: Request) {
     if (r.netAdded) parts.push(`payout found for ${r.netAdded}`)
     if (r.netTried && !r.netAdded && !r.netError) parts.push(`Shopee returned no payout for ${r.netTried} checked`)
     if (r.netError) parts.push(`Shopee refused the payout lookup: ${r.netError}`)
+    if (typeof r.addrWithState === 'number' && r.fetched) {
+      parts.push(r.addrWithState ? `state found for ${r.addrWithState}` : `no state from Shopee (${r.addrOrders} addresses; fields sent: ${r.addrFields || 'none'})`)
+    }
     return NextResponse.json({
       ok: true,
       message: `${r.from} → ${r.to}: ${r.fetched} ${source.unit} from ${source.label} — ${parts.join(', ')}.`,

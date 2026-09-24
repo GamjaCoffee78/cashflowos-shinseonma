@@ -208,6 +208,34 @@ function cleanState(v: unknown): string {
   return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
 }
 
+// Malaysian postcode → state, by its first two digits. Used when Shopee leaves
+// `state` blank but still sends the postcode (it often masks the rest).
+const MY_POSTCODE: [number, number, string][] = [
+  [1, 2, 'Perlis'], [5, 9, 'Kedah'], [10, 14, 'Pulau Pinang'], [15, 18, 'Kelantan'],
+  [20, 24, 'Terengganu'], [25, 28, 'Pahang'], [30, 36, 'Perak'], [39, 39, 'Pahang'],
+  [40, 48, 'Selangor'], [49, 49, 'Pahang'], [50, 60, 'Kuala Lumpur'], [62, 62, 'Putrajaya'],
+  [63, 68, 'Selangor'], [69, 69, 'Pahang'], [70, 73, 'Negeri Sembilan'], [75, 78, 'Melaka'],
+  [79, 86, 'Johor'], [87, 87, 'Labuan'], [88, 91, 'Sabah'], [93, 98, 'Sarawak'],
+]
+function stateFromPostcode(v: unknown): string {
+  const m = String(v ?? '').trim().match(/^(\d{2})\d{3}$/)
+  if (!m) return ''
+  const n = Number(m[1])
+  return MY_POSTCODE.find(([a, b]) => n >= a && n <= b)?.[2] ?? ''
+}
+// What Shopee actually put in recipient_address this sync — field NAMES only,
+// never values — so "0 refreshed" can say why no state came back.
+let addrOrders = 0, addrWithState = 0
+const addrFields = new Set<string>()
+function addressState(a: any): string {
+  if (!a || typeof a !== 'object') return ''
+  addrOrders++
+  for (const [k, v] of Object.entries(a)) if (v && !/^\*+$/.test(String(v).trim())) addrFields.add(k)
+  const st = cleanState(a.state) || stateFromPostcode(a.zipcode) || cleanState(a.city)
+  if (st) addrWithState++
+  return st
+}
+
 async function orderDetails(shopId: number, token: string, sns: string[]): Promise<ShopeeOrder[]> {
   const out: ShopeeOrder[] = []
   for (let i = 0; i < sns.length; i += 50) {
@@ -227,7 +255,7 @@ async function orderDetails(shopId: number, token: string, sns: string[]): Promi
         buyer: String(o.buyer_username || ''),
         total: num(o.total_amount),
         currency: String(o.currency || '').toUpperCase(),
-        state: cleanState(o.recipient_address?.state || o.recipient_address?.city),
+        state: addressState(o.recipient_address),
         items: (o.item_list ?? []).map((it: any) => ({
           name: String(it.item_name || ''),
           variation: String(it.model_name || ''),
@@ -318,6 +346,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
   let netStopAt = 0
   let netTried = 0
   netError = ''
+  addrOrders = 0; addrWithState = 0; addrFields.clear()
   let netAdded = 0
   if (!shopeeConfigured) return { skipped: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' as const }
   if (!supabaseConfigured && !opts.dryRun) return { skipped: 'Supabase not configured' as const }
@@ -413,7 +442,7 @@ export async function syncShopee(opts: { days?: number; until?: number; dryRun?:
       inserted += toInsert.slice(i, i + 500).length
     }
   }
-  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, netAdded, netTried, ...(netError ? { netError } : {}), ...(opts.dryRun ? { sample } : {}) }
+  return { from, to, shops: shops.length, fetched, inserted, updated, unchanged, cancelled, netAdded, netTried, addrOrders, addrWithState, addrFields: [...addrFields].join(', '), ...(netError ? { netError } : {}), ...(opts.dryRun ? { sample } : {}) }
 }
 
 // Just this shop's recent orders, straight from the table. Deliberately NOT
