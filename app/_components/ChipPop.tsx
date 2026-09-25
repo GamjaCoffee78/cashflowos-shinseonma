@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 
 // Hover (or tap) a calendar chip → a card with the WHOLE item: full text,
 // channels / customer tag, day and status. Positioned `fixed` from the chip's
@@ -27,6 +28,16 @@ export default function ChipPop({
   const show = (e: { currentTarget: HTMLElement }) => setBox(e.currentTarget.getBoundingClientRect())
   const hide = () => { if (!pinned) setBox(null) }
   const close = () => { setPinned(false); setBox(null); setErr('') }
+  // A pinned card closes on a click anywhere else on the page.
+  useEffect(() => {
+    if (!pinned) return
+    const away = (e: MouseEvent) => {
+      const t = e.target as HTMLElement
+      if (!t.closest('.pt-pop') && !t.closest('.pt-pop-anchor')) close()
+    }
+    document.addEventListener('mousedown', away)
+    return () => document.removeEventListener('mousedown', away)
+  }, [pinned])
   const act = (body: object) => start(async () => {
     try {
       const res = await fetch('/api/production', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) })
@@ -66,7 +77,9 @@ export default function ChipPop({
       }}
     >
       {children}
-      {box ? (
+      {/* Drawn on <body>, not inside the day cell: a faded (past) cell would
+          fade the card too and let the next days show through it. */}
+      {box && typeof document !== 'undefined' ? createPortal(
         <span className={`pt-pop${pinned ? ' pinned' : ''}`} role={pinned ? "dialog" : "tooltip"} style={style}>
           {tag ? <span className="pt-pop-tag">{tag}</span> : null}
           <span className="pt-pop-title">{title}</span>
@@ -79,7 +92,8 @@ export default function ChipPop({
             </span>
           ) : id && !pinned ? <span className="pt-pop-hint">Tap to Done or Delete</span> : null}
           {err ? <span className="pt-pop-meta" role="alert">⚠️ {err}</span> : null}
-        </span>
+        </span>,
+        document.body,
       ) : null}
     </span>
   )
