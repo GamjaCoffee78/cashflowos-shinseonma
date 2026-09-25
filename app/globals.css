@@ -1279,3 +1279,6 @@ input, select, textarea { font-family: inherit; }
 .cl-folder small { color: var(--ink-soft); font-size: 12px; }
 .cl-inside { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px; }
 .cl-crumb { font-size: 16px; }
+.pt-pop-edit { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.pt-pop-edit textarea, .pt-pop-edit input[type=date] { font: inherit; font-size: 14px; border: 1px solid var(--line-2); border-radius: 10px; padding: 7px 9px; background: var(--paper); color: var(--ink); resize: vertical; }
+.pt-pop-edit .pt-channels label { font-size: 12px; padding: 3px 8px; }
