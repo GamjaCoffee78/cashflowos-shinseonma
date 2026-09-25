@@ -186,13 +186,13 @@ export function AddTask({
 
 // The Social Calendar's channels. Ticked ones become the post's tag,
 // "[IGR/IGST] Seaweed Soup", which the sheet uses to pick the channel rows.
-const CHANNELS = [
+export const CHANNELS = [
   { key: 'IGF', label: 'IGF · feed' },
   { key: 'IGR', label: 'IGR · reels' },
   { key: 'IGST', label: 'IGST · stories' },
   { key: 'TIKTOK', label: 'TikTok' },  // the sheet's REELS row
 ]
-function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+export function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   return (
     <span className="pt-channels" role="group" aria-label="Channels">
       {CHANNELS.map(c => (
@@ -205,7 +205,7 @@ function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: str
     </span>
   )
 }
-const withChannels = (category: string, channels: string[], title: string) =>
+export const withChannels = (category: string, channels: string[], title: string) =>
   category === 'social_plan' && channels.length ? `[${channels.join('/')}] ${title.replace(/^\s*\[[^\]]*\]\s*/, '')}` : title
 
 // ＋ on a calendar day: add an item on THAT date without picking it again.

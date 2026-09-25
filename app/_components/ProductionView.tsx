@@ -170,7 +170,7 @@ export default function ProductionView({
         tag={social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
         when={fullDay(r.due_date as string)}
         status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
-        {...(editable ? { id: r.id, done: isDone(r) } : {})}
+        {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, category } : {})}
       >
         <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>
           {tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}
