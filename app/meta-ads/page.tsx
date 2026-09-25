@@ -33,7 +33,7 @@ export default async function MetaAds({ searchParams }: { searchParams: Promise<
         )
       }
     >
-      <AdsLeaderboard rows={metaAdRows(all)} basePath="/meta-ads" {...lb} />
+      <AdsLeaderboard rows={metaAdRows(all)} basePath="/meta-ads" {...lb} groupOrder="live-first" />
       {metaConfigured && <MetaAudience />}
     </AdsTab>
   )

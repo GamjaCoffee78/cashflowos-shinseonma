@@ -291,8 +291,7 @@ code {
 .lb-thumb { width: 36px; height: 36px; border-radius: var(--r-8); object-fit: cover; background: var(--paper-2); flex-shrink: 0; }
 .lb-thumb.big { width: 56px; height: 56px; }
 .lb-thumb.ph { display: grid; place-items: center; font-size: 18px; }
-.lb-name { font-weight: 700; font-size: 14px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.lb-camp { font-size: 12px; color: var(--ink-faint); margin: 2px 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-name { font-weight: 700; font-size: 14px; margin: 0 0 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lb-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
 .lb-nums .l { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
 .lb-nums .v { font-size: 15px; font-weight: 600; }
@@ -300,8 +299,19 @@ code {
 .lb-notes li + li { margin-top: 6px; }
 .lb-group { margin-bottom: 14px; }
 .lb-group > summary { cursor: pointer; padding: 10px 12px; background: var(--paper-2); border-radius: var(--r-8); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
-.lb-group-name { font-weight: 700; }
+.lb-group-name { font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .lb-group-sum { color: var(--ink-soft); font-size: 13px; }
+/* Live-first ordering (Meta Ads): a pill marks what's still running, and the
+   finished campaigns sit quieter below it. */
+.lb-pill { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; }
+.lb-pill.live { color: #2E5A40; background: rgba(75,122,90,.16); }
+.lb-pill.done { color: var(--ink-faint); background: var(--paper-2); }
+.lb-group.done > summary { background: transparent; border: 1px solid var(--line); }
+.lb-group.done .lb-group-name { font-weight: 600; color: var(--ink-soft); }
+/* Section headers that split "Running now" from "Past campaigns". */
+.lb-section { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 26px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.lb-section-h { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; }
+.lb-section-sum { color: var(--ink-soft); font-size: 13px; }
 .lb-table { margin-top: 6px; }
 .lb-table th a { color: inherit; text-decoration: none; }
 .lb-table th a:hover { color: var(--clay-deep); }

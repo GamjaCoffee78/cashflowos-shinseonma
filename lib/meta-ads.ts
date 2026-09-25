@@ -1,7 +1,7 @@
 import { ABANG } from '@/abang/config'
 import { type AdDay, num, syncAdDays, adDays, adTotals, daysAgoISO } from './ads-daily'
 import type { Rec } from './records'
-import { type AdRow, type AdMetrics, emptyMetrics, upsertAdRows, adRows } from './ads-leaderboard'
+import { type AdRow, type AdMetrics, emptyMetrics, upsertAdRows, adRows, preferCampaignNames } from './ads-leaderboard'
 
 // Meta Ads (Facebook + Instagram) → the ONE `records` table, one 'meta_ads' row
 // per day. This module only knows how to FETCH days from Meta's Marketing API;
@@ -117,19 +117,23 @@ export async function fetchMetaAdRows(): Promise<AdRow[]> {
     fetchMetaAdWindow(daysAgoISO(30), y),
     fetchMetaAdWindow(daysAgoISO(60), daysAgoISO(31)),
   ])
-  const info = new Map<string, { status: AdRow['status']; note: string; thumbnail?: string; ends?: string }>()
+  const info = new Map<string, { status: AdRow['status']; note: string; thumbnail?: string; starts?: string; ends?: string }>()
   try {
-    const ads = await metaGetAll(`${account()}/ads`, { fields: 'id,effective_status,adset{end_time},creative{thumbnail_url}', limit: '500' })
+    const ads = await metaGetAll(`${account()}/ads`, { fields: 'id,effective_status,adset{start_time,end_time},creative{thumbnail_url}', limit: '500' })
     const now = Date.now()
     for (const a of ads) {
       const eff = String(a.effective_status || '')
       const ends = a.adset?.end_time ? String(a.adset.end_time) : undefined
+      // The ad set's schedule is the real flight window — ad NAMES can carry a
+      // typo'd period, so never derive the dates from the name.
+      const starts = a.adset?.start_time ? String(a.adset.start_time) : undefined
       // Meta keeps a finished ad 'ACTIVE' — the ad set's schedule is what ended.
       const finished = !!ends && new Date(ends).getTime() < now
       info.set(String(a.id), {
         status: finished ? 'completed' : eff === 'ACTIVE' ? 'active' : /PAUSED/.test(eff) ? 'paused' : 'other',
         note: finished ? `ended ${ends!.slice(0, 10)}` : eff,
         thumbnail: a.creative?.thumbnail_url || undefined,
+        starts,
         ends,
       })
     }
@@ -148,6 +152,7 @@ export async function fetchMetaAdRows(): Promise<AdRow[]> {
       adset: meta.adset,
       status: st?.status ?? 'other',
       status_note: st?.note,
+      starts: st?.starts,
       ends: st?.ends,
       thumbnail: st?.thumbnail,
       d7: d7.get(id)?.m ?? emptyMetrics(),
@@ -160,7 +165,10 @@ export async function fetchMetaAdRows(): Promise<AdRow[]> {
 }
 
 export const AD_CATEGORY = 'meta_ad'
-export const metaAdRows = (rows: Rec[]) => adRows(rows, AD_CATEGORY)
+// Meta names a boosted post's AD after the caption, so the leaderboard shows
+// the campaign name — which is what the advertiser actually typed in Ads
+// Manager, and is also the one that carries the correct flight dates.
+export const metaAdRows = (rows: Rec[]) => preferCampaignNames(adRows(rows, AD_CATEGORY))
 
 // ---- 2) Upsert into `records` (shared): the daily rows, then the per-ad rows. ----
 export async function syncMetaAds(opts: { days?: number; dryRun?: boolean } = {}) {

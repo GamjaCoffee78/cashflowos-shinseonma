@@ -17,6 +17,7 @@ export type AdRow = {
   campaign: string
   adset: string
   status: 'active' | 'paused' | 'completed' | 'other'
+  starts?: string        // scheduled start (ISO), when the platform has one
   ends?: string          // scheduled end (ISO), when the platform has one
   status_note?: string
   thumbnail?: string
@@ -82,10 +83,30 @@ export function adRows(rows: Rec[], category: string): AdRow[] {
       adset: String(r.meta.adset || ''),
       status: (r.meta.status as AdRow['status']) || 'other',
       status_note: r.meta.status_note ? String(r.meta.status_note) : undefined,
+      starts: r.meta.starts ? String(r.meta.starts) : undefined,
       ends: r.meta.ends ? String(r.meta.ends) : undefined,
       thumbnail: r.meta.thumbnail ? String(r.meta.thumbnail) : undefined,
       d7: m(r.meta.d7), p7: m(r.meta.p7), d30: m(r.meta.d30), p30: m(r.meta.p30),
     }))
+}
+
+// ---- Show the name the advertiser typed, not Meta's auto-generated one. ----
+// Boosting an Instagram post makes Meta name the AD after the post's caption
+// ("Instagram post: I miss Tteokbokki so much after…"). The hand-written name
+// — "IG Post: Okmaya SG TBK (Miss TBK from Korea) (23 Sep - 6 Oct)" — sits on
+// the campaign. Where a campaign holds several ads the campaign name alone
+// would make them indistinguishable, so those keep their own name appended.
+export function preferCampaignNames(rows: AdRow[]): AdRow[] {
+  const perCampaign = new Map<string, number>()
+  for (const r of rows) {
+    const c = r.campaign || r.adset
+    if (c) perCampaign.set(c, (perCampaign.get(c) ?? 0) + 1)
+  }
+  return rows.map(r => {
+    const c = r.campaign || r.adset
+    if (!c) return r
+    return { ...r, name: perCampaign.get(c)! > 1 && r.name && r.name !== c ? `${c} · ${r.name}` : c }
+  })
 }
 
 // ---- Ranking: by CTR, among ads that actually ran in the window. ----
@@ -94,6 +115,72 @@ export function ranked(rows: AdRow[], w: Window): AdRow[] {
   return rows
     .filter(r => cur(r, w).impressions >= MIN_IMPRESSIONS && cur(r, w).spend > 0)
     .sort((a, b) => ctrOf(cur(b, w)) - ctrOf(cur(a, w)))
+}
+
+// ---- Campaign block order on the tab. ----
+// 'spend' is the original: biggest spender on top.
+// 'live-first' (Meta Ads) stacks them the way you'd work through them —
+// still-running campaigns first, then the newest by ad set end date, then
+// best CTR. A block counts as live if any ad in it is still delivering.
+export type GroupOrder = 'spend' | 'live-first'
+
+// "Still in flight", which is NOT the same as Meta's ACTIVE flag: Meta keeps an
+// ad ACTIVE for as long as its campaign is on, so ads that finished their run
+// months ago still come back ACTIVE. An ad counts as live here only if its
+// schedule hasn't passed — or, when it has no end date, if it actually spent
+// something in the window.
+export function adIsLive(r: AdRow, w: Window): boolean {
+  if (r.status !== 'active') return false
+  if (r.ends) return r.ends.slice(0, 10) >= todayISO()
+  return cur(r, w).spend > 0
+}
+export const groupIsLive = (list: AdRow[], w: Window) => list.some(r => adIsLive(r, w))
+export const groupEndsAt = (list: AdRow[]) =>
+  list.reduce((latest, r) => (r.ends && r.ends > latest ? r.ends : latest), '')
+
+// ---- Flight period, for grouping the finished ads. ----
+// The ad SET's schedule is the source of truth. Ad names usually carry the same
+// period in brackets — "(23 Sep - 6 Oct)" — but they are typed by hand and can
+// disagree with the real dates, so the name is only a fallback for ads whose
+// schedule hasn't been synced yet.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const dmy = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return { y, label: `${d} ${MONTHS[m - 1]}` }
+}
+// "(9 - 22 Sep)", "(26 Aug – 8 Sep)", "(11th August - 25th August)" → the text.
+const namePeriod = (name: string) => {
+  const m = name.match(/\(([^()]*\d[^()]*[-–—][^()]*\d[^()]*)\)\s*$/)
+  return m ? m[1].replace(/\s+/g, ' ').replace(/[-–—]/g, '–').trim() : ''
+}
+export function periodOf(r: AdRow): { key: string; label: string } {
+  if (r.starts && r.ends) {
+    const a = dmy(r.starts), b = dmy(r.ends)
+    const year = a.y === b.y ? (b.y === new Date().getUTCFullYear() ? '' : ` ${b.y}`) : ''
+    return { key: `${r.starts.slice(0, 10)}_${r.ends.slice(0, 10)}`, label: `${a.label} – ${b.label}${year}` }
+  }
+  const fromName = namePeriod(r.name) || namePeriod(r.campaign)
+  if (fromName) return { key: `name:${fromName.toLowerCase()}`, label: fromName }
+  if (r.ends) return { key: `ends:${r.ends.slice(0, 10)}`, label: `ended ${dmy(r.ends).label}` }
+  return { key: 'no-period', label: 'No set period' }
+}
+
+export function orderGroups(groups: Map<string, AdRow[]>, w: Window, order: GroupOrder): [string, AdRow[]][] {
+  const spend = (list: AdRow[]) => list.reduce((t, r) => t + cur(r, w).spend, 0)
+  const ctr = (list: AdRow[]) => {
+    const t = list.reduce((a, r) => { const c = cur(r, w); a.clicks += c.clicks; a.impressions += c.impressions; return a }, emptyMetrics())
+    return ctrOf(t)
+  }
+  return [...groups.entries()].sort(([, a], [, b]) => {
+    if (order === 'live-first') {
+      if (groupIsLive(a, w) !== groupIsLive(b, w)) return groupIsLive(a, w) ? -1 : 1
+      const ea = groupEndsAt(a), eb = groupEndsAt(b)
+      if (ea !== eb) return eb.localeCompare(ea)   // newest first; '' sinks
+      const ca = ctr(a), cb = ctr(b)
+      if (ca !== cb) return cb - ca
+    }
+    return spend(b) - spend(a)
+  })
 }
 
 // ---- Plain-English observations. ----
