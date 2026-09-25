@@ -1270,3 +1270,12 @@ input, select, textarea { font-family: inherit; }
 .cl-person.on b { color: #fff; }
 .cl-thumb img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.15); display: block; }
 .cl-big { max-width: 100%; max-height: 260px; border-radius: 12px; display: block; margin: 0 auto; }
+.cl-folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 0 0 20px; }
+.cl-folder { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 16px 18px; border: none; border-radius: 18px; background: var(--card); box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06); font: inherit; color: var(--ink); cursor: pointer; border-top: 5px solid #F0A014; transition: transform .12s, box-shadow .12s; }
+.cl-folder:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+.cl-ficon { font-size: 26px; }
+.cl-folder b { font-size: 16px; }
+.cl-fowed { font-size: 22px; font-weight: 800; color: var(--clay); letter-spacing: -.02em; }
+.cl-folder small { color: var(--ink-soft); font-size: 12px; }
+.cl-inside { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px; }
+.cl-crumb { font-size: 16px; }
