@@ -1,13 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import { sendMessage, sendWithButtons } from '@/lib/telegram'
-import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, type Rec } from '@/lib/records'
+import { getRecords, getFunnel, rm, todayISO, inMoneyWindow, moneyFromLabel, BUSINESS_TZ, type Rec } from '@/lib/records'
 import { propose, proposeAndNotify, runAutopilot } from '@/lib/actions'
 import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
-import { syncCalendar } from '@/lib/calendar'
+import { syncCalendar, calendarEvents, timeLabel } from '@/lib/calendar'
 import { ensureNextMonthTab, syncProductionFromSheet } from '@/lib/production-sheet'
 import { syncShopee, fetchShopeeOrders, shopeeOrders, shopeeTotals, money as shopeeMoney, currencyOf } from '@/lib/shopee'
 
@@ -62,6 +62,24 @@ export async function GET(req: Request) {
 
   const today = todayISO()
 
+  // TEST-ONLY SHORT-CIRCUIT: ?scope=digest sends ONLY the personal today-digest
+  // (Calendar / Production / Social Calendar / Events) to todayBriefRecipients.
+  // It skips the money brief (so the OMY group never hears about a manual test),
+  // the WhatsApp forward and the scheduled-agent sweep. Still fail-closed behind
+  // the same Bearer token as the real cron. See scripts/digest-test.mjs.
+  if (new URL(req.url).searchParams.get('scope') === 'digest') {
+    const safe = (label: string, run: () => Promise<any>) =>
+      run().catch((e) => console.error(`[CFO] ${label} sync failed:`, e))
+    await Promise.all([
+      safe('calendar', () => syncCalendar()),
+      safe('production tab', () => ensureNextMonthTab(today)),
+      safe('work sheet', () => syncProductionFromSheet()),
+    ])
+    const rows = await getRecords()
+    const { sent, recipients } = await sendTodayDigest(rows, today)
+    return Response.json({ ok: true, scope: 'digest', sent, recipients })
+  }
+
   // ⓪ Refresh the outside sources first, so the brief and the tabs see them.
   //    They run SIDE BY SIDE, each capped at 25s: one after another they ran
   //    past Vercel's 60s and the brief never went out (504, 2026-09-24). A slow
@@ -90,6 +108,11 @@ export async function GET(req: Request) {
 
   const rows = await getRecords()
   const shopeeText = await shopeeLive()
+
+  // ①b THE PERSONAL "TODAY" DIGEST — Calendar + Production Timeline + Social
+  //    Calendar + Events/Others, no money. Rides this SAME cron run, so it
+  //    spends none of Hobby's 2 cron slots (see abang/config.ts → todayBriefRecipients).
+  const { sent: todayDigestSent, recipients: todayDigestRecipients } = await sendTodayDigest(rows, today)
 
   // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
   //    brief and the app can never quote different totals).
@@ -192,6 +215,8 @@ export async function GET(req: Request) {
     ok: true,
     sent,
     recipients: to.length,
+    today_digest_sent: todayDigestSent,
+    today_digest_recipients: todayDigestRecipients,
     needs_yes: proposed.length,
     proposals_created: created,
     tiktok,
@@ -202,6 +227,56 @@ export async function GET(req: Request) {
     workSheet,
     whatsapp,
   })
+}
+
+// Builds + sends the personal today-digest to each id in todayBriefRecipients —
+// a private message, separate from the OMY-group money brief. If
+// TELEGRAM_HUIYEE_BOT_TOKEN is set, it sends from THAT PERSON'S OWN bot;
+// otherwise it falls back to Abang's bot (still a separate DM, just not a
+// separate bot identity) — so this works with ZERO extra Vercel/owner action
+// until someone chooses to add their own bot token later.
+async function sendTodayDigest(rows: Rec[], today: string): Promise<{ sent: number; recipients: number }> {
+  const recipients = ABANG.todayBriefRecipients
+    .map((s) => String(s).trim())
+    .filter((s) => /^-?\d+$/.test(s))
+  if (!recipients.length) return { sent: 0, recipients: 0 }
+
+  const botToken = process.env.TELEGRAM_HUIYEE_BOT_TOKEN?.trim() || undefined
+  const digest = buildTodayDigest(rows, today)
+  const sends = await Promise.allSettled(recipients.map((id) => sendMessage(id, digest, botToken)))
+  return { sent: sends.filter((r) => r.status === 'fulfilled').length, recipients: recipients.length }
+}
+
+// The personal "what's on today" digest — Calendar, Production Timeline,
+// Social Calendar and Events/Others, each filtered to today only. No money.
+function buildTodayDigest(rows: Rec[], today: string): string {
+  const events = calendarEvents(rows).filter((e) => e.date === today)
+  const production = rows.filter((r) => r.category === 'production' && r.due_date === today)
+  const social = rows.filter((r) => r.category === 'social_plan' && r.due_date === today)
+  const others = rows.filter((r) => r.category === 'events_other' && r.due_date === today)
+
+  const section = (label: string, lines: string[]) =>
+    `<b>${label}</b>\n${lines.length ? lines.join('\n') : 'Nothing today'}\n\n`
+
+  const calLines = events.map((e) => `• ${timeLabel(e)} — ${e.title}${e.location ? ` (${e.location})` : ''}`)
+  const prodLines = production.map((r) => `• ${r.title}`)
+  const socialLines = social.map((r) => `• ${r.title}`)
+  const otherLines = others.map((r) => `• ${r.title}`)
+
+  const dateLabel = new Intl.DateTimeFormat('en-MY', {
+    timeZone: BUSINESS_TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(`${today}T00:00:00Z`))
+
+  return (
+    `☀️ <b>Today — ${dateLabel}</b>\n\n` +
+    section('📅 Calendar', calLines) +
+    section('🏭 Production Timeline', prodLines) +
+    section('📱 Social Calendar', socialLines) +
+    section('🎪 Events / Others', otherLines)
+  ).trim()
 }
 
 // The mandated brief text — the funnel, the money, and what needs a YES. Plain,

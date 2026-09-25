@@ -18,7 +18,8 @@
     "sync:sheet": "node --env-file-if-exists=.env --conditions react-server --import tsx scripts/sync-sheet.mts",
     "purge:demo": "node --env-file-if-exists=.env scripts/purge-demo.mjs",
     "purge:source": "node --env-file-if-exists=.env scripts/purge-source.mjs",
-    "brief:test": "node --env-file-if-exists=.env scripts/brief-test.mjs"
+    "brief:test": "node --env-file-if-exists=.env scripts/brief-test.mjs",
+    "digest:test": "node --env-file-if-exists=.env scripts/digest-test.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -3,8 +3,11 @@
 // inline it on a command line). Safe to call even before the token is set — they
 // just no-op with a warning so the app doesn't crash.
 
-const api = (method: string) => {
-  const token = process.env.TELEGRAM_BOT_TOKEN?.trim()
+// `tokenOverride` lets a caller send through a DIFFERENT bot (e.g. a
+// teammate's own personal bot) instead of the app's default TELEGRAM_BOT_TOKEN.
+// Omit it (undefined) for the normal default-bot behavior every other caller uses.
+const api = (method: string, tokenOverride?: string) => {
+  const token = (tokenOverride ?? process.env.TELEGRAM_BOT_TOKEN)?.trim()
   return token ? `https://api.telegram.org/bot${token}/${method}` : null
 }
 
@@ -64,8 +67,8 @@ export async function downloadFileBytes(filePath: string): Promise<Buffer | null
 export type InlineButton = { text: string; callback_data: string } | { text: string; url: string }
 export type InlineKeyboard = InlineButton[][]
 
-export async function sendMessage(chatId: string | number, text: string) {
-  const url = api('sendMessage')
+export async function sendMessage(chatId: string | number, text: string, botToken?: string) {
+  const url = api('sendMessage', botToken)
   if (!url) {
     console.warn('[CFO] TELEGRAM_BOT_TOKEN not set yet — skipping sendMessage.')
     return

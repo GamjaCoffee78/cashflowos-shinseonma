@@ -55,6 +55,26 @@ export const ABANG = {
   briefRecipients: [] as string[],
 
   /**
+   * Telegram ids that get a SEPARATE personal digest — what's on today in
+   * Calendar, Production Timeline, Social Calendar and Events/Others (no
+   * money, and NOT the OMY-group brief above — a private message only that
+   * person gets). Sent by the SAME daily cron run as the main brief, so it
+   * costs nothing extra against Hobby's 2 cron slots — it just piggybacks on
+   * the one that already fires at 08:15 Malaysia time. ZERO owner action
+   * needed beyond having the id here (and TELEGRAM_ALLOWED_USER_IDS / here in
+   * allowedUserIds if they also use the bot) — it sends from Abang's existing
+   * bot by default.
+   *
+   * OPTIONAL upgrade: set TELEGRAM_HUIYEE_BOT_TOKEN in Vercel and it sends
+   * from that PERSON'S OWN bot instead (BotFather → /newbot → paste the
+   * token as that one env var — nothing else changes). Purely cosmetic
+   * (which bot it looks like it's from); skip it if you'd rather not ask for
+   * another Vercel change. Each person must have pressed Start on whichever
+   * bot actually messages them, or Telegram won't deliver.
+   */
+  todayBriefRecipients: ['8978520563'] as string[],   // Hui Yee
+
+  /**
    * WHERE the morning brief goes. When this is non-empty it REPLACES
    * OWNER_CHAT_ID / TELEGRAM_TEAM_CHAT_IDS entirely — the brief stops going to
    * the owner's private chat and goes here instead. (briefRecipients above is
