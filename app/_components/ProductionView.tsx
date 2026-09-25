@@ -51,10 +51,10 @@ const toneFor = (tag: string | null, tags: string[]) =>
 // Social Calendar channels: one fixed colour each, so a post reads at a glance.
 // REELS is the sheet's old name for the TikTok row, so it shows as TikTok.
 const CHANNELS = [
-  { key: 'IGF', label: 'IGF · feed', fg: '#1E5FC4', bg: 'rgba(30,95,196,.14)' },
-  { key: 'IGR', label: 'IGR · reels', fg: '#C8407E', bg: 'rgba(200,64,126,.14)' },
-  { key: 'IGST', label: 'IGST · stories', fg: '#D9731A', bg: 'rgba(217,115,26,.16)' },
-  { key: 'TIKTOK', label: 'TikTok', fg: '#16877F', bg: 'rgba(22,135,127,.15)' },
+  { key: 'IGF', label: 'IGF · feed', fg: '#1E5FC4', bg: 'rgba(30,95,196,.22)' },
+  { key: 'IGR', label: 'IGR · reels', fg: '#D63384', bg: 'rgba(214,51,132,.22)' },
+  { key: 'IGST', label: 'IGST · stories', fg: '#E8740C', bg: 'rgba(240,130,20,.24)' },
+  { key: 'TIKTOK', label: 'TikTok', fg: '#0A9A8F', bg: 'rgba(0,170,160,.22)' },
 ] as const
 function channelsOf(tag: string | null) {
   if (!tag) return []
