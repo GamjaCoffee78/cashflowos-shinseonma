@@ -178,7 +178,16 @@ export const ABANG = {
    * Reuses COMPOSIO_API_KEY; the ids below are not secrets.
    */
   calendar: {
-    calendarId: 'huiyee.lee@okmayaofficial.com',
+    calendarId: 'huiyee.lee@okmayaofficial.com',   // the account Composio is linked to
+    // Everyone whose calendar shows on the Calendar tab. Each person shares their
+    // Google Calendar with the account above ("See all event details"); one that
+    // isn't shared yet is skipped and named in the Sync now answer.
+    people: [
+      { name: 'Seonma', calendarId: 'seonma.shin@okmayaofficial.com', color: '#E0312A' },
+      { name: 'Hui Yee', calendarId: 'huiyee.lee@okmayaofficial.com', color: '#1E5FC4' },
+      { name: 'Cindy', calendarId: 'cindy.j@okmayaofficial.com', color: '#1F9D55' },
+      { name: 'Ivy', calendarId: 'ivy.joo@okmayaofficial.com', color: '#D63384' },
+    ],
     composioAccount: 'ca_joPzpFAk1MLz',   // the Google Calendar connection in the Composio project
     pastDays: 14,
     futureDays: 60,

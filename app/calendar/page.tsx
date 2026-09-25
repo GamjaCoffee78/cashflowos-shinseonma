@@ -3,7 +3,7 @@
 // table like every other tab; read-only — nothing here writes to Google.
 import Link from 'next/link'
 import { getRecords, todayISO } from '@/lib/records'
-import { calendarEvents, calendarConfigured, timeLabel, type CalEvent } from '@/lib/calendar'
+import { calendarEvents, calendarConfigured, timeLabel, PEOPLE, type CalEvent } from '@/lib/calendar'
 import { addDays } from '@/lib/ads-daily'
 import Stat from '@/app/_components/Stat'
 import SyncNow from '@/app/_components/SyncNow'
@@ -19,10 +19,32 @@ const dayLabel = (iso: string) => {
 // Monday-first weekday index (0 = Mon … 6 = Sun) of an ISO date.
 const dow = (iso: string) => (new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7
 
-export default async function Calendar({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
+const colorOf = (name: string) => PEOPLE.find(p => p.name === name)?.color ?? 'var(--clay)'
+// One event, coloured by the first owner; a shared meeting shows a dot per person.
+function Who({ owners }: { owners?: string[] }) {
+  return <>{(owners ?? []).map(o => <i key={o} className="wc-dot" style={{ background: colorOf(o) }} title={o} />)}</>
+}
+
+export default async function Calendar({ searchParams }: { searchParams: Promise<{ m?: string; hide?: string }> }) {
   const sp = await searchParams
   const today = todayISO()
-  const events = calendarEvents(await getRecords())
+  // ?hide=Cindy,Ivy — people unticked in the legend.
+  const hidden = new Set((sp.hide ?? '').split(',').map(x => x.trim()).filter(Boolean))
+  const all = calendarEvents(await getRecords())
+  const events = all.filter(e => (e.owners ?? []).some(o => !hidden.has(o)))
+  const hideLink = (name: string) => {
+    const next = new Set(hidden)
+    if (next.has(name)) next.delete(name); else next.add(name)
+    const q = new URLSearchParams()
+    if (sp.m) q.set('m', sp.m)
+    if (next.size) q.set('hide', [...next].join(','))
+    return `/calendar${q.size ? `?${q}` : ''}`
+  }
+  const keep = (extra: Record<string, string>) => {
+    const q = new URLSearchParams(extra)
+    if (hidden.size) q.set('hide', [...hidden].join(','))
+    return `/calendar?${q}`
+  }
   const byDate = new Map<string, CalEvent[]>()
   for (const e of events) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e])
 
@@ -52,7 +74,19 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
   return (
     <>
       <h1 className="ph">Calendar 📅</h1>
-      <p className="cap">Your Google Calendar, copied in every morning with the brief. Read-only here — edit in Google.</p>
+      <p className="cap">Everyone&apos;s Google Calendar in one place, copied in every morning with the brief. Read-only here — edit in Google.</p>
+
+      <div className="wc-people">
+        {PEOPLE.map(p => {
+          const on = !hidden.has(p.name)
+          const n = all.filter(e => e.date >= today && (e.owners ?? []).includes(p.name)).length
+          return (
+            <Link key={p.name} href={hideLink(p.name)} className={`wc-person${on ? ' on' : ''}`} style={{ ['--pc' as string]: p.color }}>
+              <span className="wc-box">{on ? '✓' : ''}</span>{p.name}<b>{n}</b>
+            </Link>
+          )
+        })}
+      </div>
 
       {calendarConfigured && <SyncNow source="calendar" label="📅 Sync now" hint="Asking Google Calendar…" />}
 
@@ -73,9 +107,9 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
       </div>
 
       <div className="cal-head">
-        <Link href={`/calendar?m=${prev}`} aria-label="Previous month">‹</Link>
+        <Link href={keep({ m: prev })} aria-label="Previous month">‹</Link>
         <strong>{MONTHS[M - 1]} {Y}</strong>
-        <Link href={`/calendar?m=${next}`} aria-label="Next month">›</Link>
+        <Link href={keep({ m: next })} aria-label="Next month">›</Link>
       </div>
       <div className="cal-grid">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <div className="cal-dow" key={d}>{d}</div>)}
@@ -85,8 +119,12 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
           return (
             <div className={`cal-cell${d === today ? ' today' : ''}${list.length ? ' has' : ''}`} key={d}>
               <span className="cal-n">{Number(d.slice(8))}</span>
-              {list.slice(0, 2).map(e => <span className="cal-ev" key={e.id} title={e.title}>{e.title}</span>)}
-              {list.length > 2 ? <span className="cal-more">+{list.length - 2}</span> : null}
+              {list.slice(0, 3).map(e => (
+                <span className="cal-ev wc-ev" key={e.id} title={`${e.title} — ${(e.owners ?? []).join(', ')}`} style={{ ['--pc' as string]: colorOf(e.owners?.[0] ?? '') }}>
+                  <Who owners={e.owners} />{e.title}
+                </span>
+              ))}
+              {list.length > 3 ? <span className="cal-more">+{list.length - 3}</span> : null}
             </div>
           )
         })}
@@ -107,6 +145,7 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
                     {e.link ? <a href={e.link} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{e.title}</a> : e.title}
                     {e.status === 'tentative' ? <span className="pill pending" style={{ marginLeft: 8 }}>tentative</span> : null}
                   </td>
+                  <td data-label="Who"><span className="wc-who"><Who owners={e.owners} />{(e.owners ?? []).join(', ')}</span></td>
                   <td data-label="Where" style={{ color: 'var(--ink-soft)' }}>{e.location || '—'}</td>
                 </tr>
               ))
