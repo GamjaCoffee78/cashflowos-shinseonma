@@ -6,6 +6,7 @@ import { getRecords, rm, m, todayISO, inMoneyWindow, moneyFromLabel } from '@/li
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 import SpendBreakdown from '@/app/_components/SpendBreakdown'
+import DeleteReceipt from '@/app/_components/DeleteReceipt'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,7 @@ export default async function CashOut() {
               <th>Status</th>
               <th>Date</th>
               <th>Amount</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -74,6 +76,7 @@ export default async function CashOut() {
                 </td>
                 <td data-label="Date">{r.due_date || '—'}</td>
                 <td data-label="Amount">{rm(r.amount)}</td>
+                <td data-label="">{r.meta?.source === 'vault' ? <DeleteReceipt id={r.id} title={r.title} /> : null}</td>
               </tr>
             ))}
           </tbody>
