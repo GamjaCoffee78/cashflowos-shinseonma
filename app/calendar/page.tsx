@@ -1,7 +1,7 @@
 // 👉 Calendar 📅 — everyone's Google Calendar, working like Google Calendar:
 // Month / Week / Day, add, edit, delete, drag to move, invite teammates.
 // Events come from the `event` rows the sync copies in (lib/calendar.ts);
-// changes go to Google through /api/calendar (app/_components/CalendarApp.tsx).
+// changes are saved in the app only (/api/calendar); Google is only read (app/_components/CalendarApp.tsx).
 import { getRecords, todayISO } from '@/lib/records'
 import { calendarEvents, calendarConfigured, PEOPLE } from '@/lib/calendar'
 import { ABANG } from '@/abang/config'
@@ -19,7 +19,7 @@ export default async function Calendar() {
   return (
     <>
       <h1 className="ph">Calendar 📅</h1>
-      <p className="cap">Everyone&apos;s Google Calendar in one place. Click a day or time to add, click an event to change it, drag to move — it all goes straight to Google.</p>
+      <p className="cap">Everyone&apos;s Google Calendar in one place. Read from Google Calendar. Click a day or time to add, click an event to change it, drag to move — changes are saved in the app for the whole team; Google Calendar itself is never changed.</p>
       {calendarConfigured ? (
         <SyncNow source="calendar" label="📅 Sync now" hint="Asking Google Calendar…" />
       ) : (

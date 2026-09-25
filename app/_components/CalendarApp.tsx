@@ -7,8 +7,8 @@ import { isLeave } from '@/lib/calendar-leave'
 
 // The Calendar tab, working like Google Calendar: Month / Week / Day views,
 // click a day or an hour to add, click an event to edit or delete it, drag an
-// event to move it, tick teammates to invite them. Every change goes to the
-// real Google Calendar through /api/calendar.
+// event to move it, tick teammates to add them. Google Calendar is only READ:
+// changes are saved in the app (/api/calendar) and Google is never changed.
 
 type Person = { name: string; calendarId: string; color: string }
 type Draft = {
@@ -116,7 +116,7 @@ export default function CalendarApp({ events, people, today, me }: { events: Cal
     if (r.ok) { setDraft(null); router.refresh() }
   })
   const remove = (d: Draft) => {
-    if (!d.rowId || !confirm(`Delete "${d.title}" from Google Calendar? Invited teammates lose it too.`)) return
+    if (!d.rowId || !confirm(`Delete "${d.title}" from the app calendar?${d.link ? '\n\nIt stays in Google Calendar — the app only reads Google.' : ''}`)) return
     start(async () => {
       const r = await post({ action: 'delete', id: d.rowId })
       setMsg(r.message)
@@ -131,7 +131,7 @@ export default function CalendarApp({ events, people, today, me }: { events: Cal
     if (!x) return
     const span = Math.round((new Date(`${x.endDate}T00:00:00Z`).getTime() - new Date(`${x.date}T00:00:00Z`).getTime()) / 86400000)
     const moved: Draft = {
-      rowId: x.e.rowId, title: x.e.title, calendar: '', allDay: x.e.allDay, date, endDate: addDays(date, span),
+      rowId: x.e.rowId, title: x.e.title, calendar: nameOfEmail(x.e.calOf ?? '') ?? x.e.owners?.[0] ?? me, allDay: x.e.allDay, date, endDate: addDays(date, span),
       start: x.startHm, end: x.endHm, location: x.e.location, description: x.e.description,
       invite: (x.e.owners ?? []), link: x.e.link, kind: isLeave(x.e) ? 'leave' : 'event',
     }
@@ -355,7 +355,7 @@ export default function CalendarApp({ events, people, today, me }: { events: Cal
               <input type="date" value={draft.endDate} min={draft.date} onChange={e => setDraft({ ...draft, endDate: e.target.value })} required />
             </div>
             {draft.kind === 'event' ? <><div className="gc-row">
-              <span>Invite</span>
+              <span>With</span>
               <span className="gc-invite">
                 {people.filter(p => p.name !== draft.calendar).map(p => (
                   <label key={p.name} style={{ ['--pc' as string]: p.color }} className={draft.invite.includes(p.name) ? 'on' : ''}>
