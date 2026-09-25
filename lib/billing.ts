@@ -73,7 +73,8 @@ export function invoiceBalance(inv: StoredDoc, docs: StoredDoc[]) {
 
 // ── Contacts: saved customers & suppliers ─────────────────────────────────
 // category='billing_contact'; the contact sits in `meta`, `title` is the name.
-// Removing a contact sets status 'archived' — old documents keep their copy.
+// Deleting a contact removes its row (old documents keep their own copy);
+// rows archived before that change are still hidden by the status filter.
 export const CONTACT_CATEGORY = 'billing_contact'
 
 export async function listContacts(): Promise<Contact[]> {
