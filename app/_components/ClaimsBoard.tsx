@@ -40,6 +40,19 @@ export default function ClaimsBoard({ claims }: { claims: Claim[] }) {
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [claims])
   const owedTotal = owed.reduce((s, [, v]) => s + v, 0)
+  // One folder per person: open claims, amount owed, paid so far.
+  const folders = useMemo(() => {
+    const m = new Map<string, { open: number; owed: number; paid: number; total: number; check: number }>()
+    for (const c of claims) {
+      const f = m.get(c.claimant) ?? { open: 0, owed: 0, paid: 0, total: 0, check: 0 }
+      f.total++
+      if (c.status === 'to_claim' || c.status === 'approved') { f.open++; f.owed += c.amount }
+      if (c.status === 'paid') f.paid += c.amount
+      if (c.check) f.check++
+      m.set(c.claimant, f)
+    }
+    return [...m.entries()].sort((a, b) => b[1].owed - a[1].owed || a[0].localeCompare(b[0]))
+  }, [claims])
   const paidMonth = claims.filter(c => c.status === 'paid' && c.date.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((s, c) => s + c.amount, 0)
 
   const run = (body: object, after?: () => void) => start(async () => {
@@ -56,11 +69,28 @@ export default function ClaimsBoard({ claims }: { claims: Claim[] }) {
         <div className="bl-stat"><span>Paid this month</span><b>{rm(paidMonth)}</b><small>by receipt date</small></div>
       </div>
 
-      {owed.length ? (
-        <div className="cl-owed">
-          {owed.map(([name, v]) => <button type="button" key={name} className={`cl-person${who === name ? ' on' : ''}`} onClick={() => setWho(who === name ? 'All' : name)}><b>{name}</b> {rm(v)}</button>)}
+      {who === 'All' ? (
+        <>
+          <p className="rowlabel">📁 Claim folders — one per person</p>
+          <div className="cl-folders">
+            {folders.map(([name, f]) => (
+              <button type="button" key={name} className="cl-folder" onClick={() => { setWho(name); setStatus('open') }}>
+                <span className="cl-ficon">📁</span>
+                <b>{name}</b>
+                <span className="cl-fowed">{rm(f.owed)}</span>
+                <small>{f.open} open · {f.total} total{f.check ? ` · ${f.check} to check` : ''}</small>
+                <small>Paid so far {rm(f.paid)}</small>
+              </button>
+            ))}
+            {folders.length === 0 ? <p className="cap">No folders yet — each person gets one with their first claim.</p> : null}
+          </div>
+        </>
+      ) : (
+        <div className="cl-inside">
+          <button type="button" className="btn ghost" onClick={() => setWho('All')}>← All folders</button>
+          <span className="cl-crumb">📂 <b>{who}</b>&apos;s claims · owed {rm(folders.find(([n]) => n === who)?.[1].owed ?? 0)}</span>
         </div>
-      ) : null}
+      )}
 
       <div className="bl-filter">
         {(['open', 'to_claim', 'approved', 'paid', 'rejected', 'all'] as const).map(k => (

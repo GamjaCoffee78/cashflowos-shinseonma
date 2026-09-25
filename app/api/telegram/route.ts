@@ -92,7 +92,8 @@ const HELP_CARD =
   `✅ <b>Tasks</b> — "what's due this week?"\n` +
   `📣 <b>Content</b> — "what's scheduled?"\n` +
   `🤝 <b>People</b> — "who do I follow up with?" · "draft a follow-up for Angela"\n` +
-  `🚨 <b>Triage</b> — "what needs my attention today?"\n\n` +
+  `🚨 <b>Triage</b> — "what needs my attention today?"\n` +
+  `🧾 <b>Claims</b> — send a receipt photo with <b>claim</b> in its caption (or send "claim" right after it)\n\n` +
   `I can also <b>DO</b> things — "log RM45 Grab", "add task chase supplier Friday", ` +
   `"add lead Angela 8000", "mark ABC invoice paid", "move Koochester to appointment".\n` +
   `Small stuff I just do (reply <code>/undo-&lt;id&gt;</code> to reverse). Money stuff I propose ` +
@@ -351,6 +352,13 @@ async function handleMessage(msg: any): Promise<Response> {
     }
     const res = await undoAction(Number(undoMatch[1]))
     await sendMessage(chatId, res.message)
+    return Response.json({ ok: true })
+  }
+
+  // "claim" sent as its OWN message right after a receipt (instead of as the
+  // photo's caption): move that receipt from Cash Out to the Claims tab.
+  if (/^\s*(\/?claims?|my claim|this is (a|my) claim|claim (this|it)|for claim)\s*[.!]?\s*$/i.test(text)) {
+    await sendMessage(chatId, await claimLastReceipt(msg))
     return Response.json({ ok: true })
   }
 
@@ -717,6 +725,40 @@ async function runVaultPipeline(msg: any): Promise<void> {
     // A proposal with this exact file already exists — don't send a second card.
     await sendMessage(chatId, '📁 I\'m already waiting on your YES for this one — check the buttons above.')
   }
+}
+
+// The sender's latest receipt (last 24h) that the Vault filed into Cash Out →
+// turned into a claim under their name. Reuses the same row (by id), so nothing
+// is double-counted; its /undo is retired so it can't post a Cash Out reversal.
+async function claimLastReceipt(msg: any): Promise<string> {
+  if (!supabaseConfigured) return '🧾 The database isn\'t connected, so I can\'t file claims yet.'
+  const chatId = msg.chat?.id
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString()
+  const { data: files } = await supabase.from('vault_files')
+    .select('record_id, created_at').eq('uploaded_by_chat_id', chatId).gte('created_at', since)
+    .not('record_id', 'is', null).order('created_at', { ascending: false }).limit(1)
+  const recordId = files?.[0]?.record_id
+  if (!recordId) {
+    return '🧾 I couldn\'t find a receipt from you in the last 24 hours. Send the photo with <b>claim</b> written in its caption (type it in the same message as the photo).'
+  }
+  const { data: row } = await supabase.from('records').select('id, title, amount, category, due_date, meta').eq('id', recordId).maybeSingle()
+  if (!row) return '🧾 That receipt is no longer in the app. Send it again with <b>claim</b> in the caption.'
+  if (row.category === 'claim') return '🧾 Your last receipt is already on the Claims tab.'
+  if (row.category !== 'cash_out' || row.meta?.source !== 'vault') return '🧾 Your last file wasn\'t a receipt I can claim. Send it again with <b>claim</b> in the caption.'
+  const who = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ').trim() || msg.from?.username || 'Someone'
+  const merchant = row.meta?.merchant as string | undefined
+  const { error } = await supabase.from('records').update({
+    title: `Claim · ${who}${merchant ? ` · ${merchant}` : ''}`,
+    status: 'to_claim',
+    category: 'claim',
+    due_date: row.due_date || todayISO(),
+    meta: { ...row.meta, source: 'telegram', claimant: who, telegram_id: msg.from?.id, expense_type: row.meta?.category, moved_from: 'cash_out', submitted_at: new Date().toISOString() },
+  }).eq('id', row.id).eq('category', 'cash_out')
+  if (error) return `🧾 Couldn't move it: ${error.message}`
+  // Retire the filing's /undo — it would post a reversal against the claim.
+  const { data: acts } = await supabase.from('agent_actions').select('id, result').eq('status', 'executed').contains('result', { record_id: row.id })
+  for (const a of acts ?? []) await supabase.from('agent_actions').update({ result: { ...(a.result as any), undone: true, moved_to_claim: true } }).eq('id', a.id)
+  return `🧾 Done — moved <b>${rm(Number(row.amount || 0))}</b>${merchant ? ` · ${merchant}` : ''} from Cash Out to the <b>Claims</b> tab under <b>${who}</b>.`
 }
 
 // Save a staff claim (see the CLAIM branch in runVaultPipeline) and confirm.
