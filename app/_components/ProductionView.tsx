@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Rec } from '@/lib/records'
 import { ItemActions, AddTask, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
+import { colorStyle } from '@/lib/item-colors'
 
 // Months to show: every month with items, plus this month and the next five —
 // so any date can be picked and filled with the ＋ on its day.
@@ -146,7 +147,7 @@ export default function ProductionView({
         status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
         {...(editable ? { id: r.id, done: isDone(r) } : {})}
       >
-        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}`}>
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
           {tag ? <b>{tag}</b> : null}{rest}
         </span>
       </ChipPop>
@@ -296,16 +297,16 @@ export default function ProductionView({
                     const done = isDone(r)
                     const moved = Array.isArray(r.meta?.moved_from) ? r.meta.moved_from : []
                     return (
-                      <li key={r.id} className={done ? 'done' : ''}>
+                      <li key={r.id} className={`${done ? 'done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
                         {tag ? (
-                          <span className={`pt-tag tone-${toneFor(tag, tags)}`}>{tag}</span>
+                          <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color)}>{tag}</span>
                         ) : null}
                         <span className="pt-title">{rest}</span>
                         {editable && !done && day < today ? <span className="pill overdue">not done</span> : null}
                         {moved.length ? (
                           <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
                         ) : null}
-                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} /> : null}
+                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} color={r.meta?.color ?? ''} /> : null}
                       </li>
                     )
                   })}

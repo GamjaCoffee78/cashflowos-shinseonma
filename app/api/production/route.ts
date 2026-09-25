@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
+import { ITEM_COLORS } from '@/lib/item-colors'
 import { writeProductionSheet, productionSheetConfigured, applyToGrid, EDITABLE } from '@/lib/production-sheet'
 
 // The Production Timeline's buttons: mark an item done (or undo), move it to
@@ -125,6 +126,12 @@ export async function POST(req: Request) {
       ...(notesChanged ? { notes: notes || null } : {}),
       meta: { ...meta, edits: [...edits, { from: (row as any).title, at: now }] },
     }
+  } else if (action === 'color') {
+    // A colour for the item on the calendar; '' clears it. App-only — the sheet is untouched.
+    const color = String(body?.color || '')
+    if (color && !ITEM_COLORS.some(c => c.key === color)) return bad('Unknown colour.')
+    const { color: _old, ...rest } = meta
+    patch = { meta: color ? { ...meta, color } : rest }
   } else if (action === 'done') {
     patch = { status: 'done', meta: { ...meta, done_at: now } }
   } else if (action === 'undo') {
@@ -155,7 +162,7 @@ export async function POST(req: Request) {
   else if (action === 'edit' && row.category !== 'content_idea') grid = await gridNote({ action: 'edit', category: row.category, title: String(patch.title), date: row.due_date, oldTitle: title }, id, newMeta)
   else if (action === 'done' || action === 'undo') grid = await gridNote({ action, category: row.category, title, date: row.due_date }, null, newMeta)
   refresh()
-  return NextResponse.json({ ok: true, message: `Saved.${grid}${await sheetNote()}` })
+  return NextResponse.json({ ok: true, message: action === 'color' ? 'Colour saved.' : `Saved.${grid}${await sheetNote()}` })
 }
 
 // Write the change into the month calendar; remember where it now sits

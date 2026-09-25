@@ -1010,3 +1010,11 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-pop-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; pointer-events: auto; }
 .pt-pop-hint { display: block; margin-top: 6px; font-size: 11px; color: var(--ink-faint); }
 .pt-pop.pinned { pointer-events: auto; }
+
+/* Item colours (🎨 on the Work calendars) */
+.pt-palette { display: inline-flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 4px 6px; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-pill); }
+.pt-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; padding: 0; }
+.pt-swatch.on { box-shadow: 0 0 0 2px var(--ink); }
+.pt-swatch:hover { transform: scale(1.15); }
+.pt-chip.colored { background: var(--tone-bg); border-left-width: 4px; font-weight: 600; }
+.pt-days li.colored { border-left: 4px solid var(--tone); background: var(--tone-bg); padding-left: 8px; border-radius: 6px; }
