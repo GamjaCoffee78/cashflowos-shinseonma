@@ -125,6 +125,8 @@ export function AddTask({
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(defaultDate)
   const [msg, setMsg] = useState('')
+  const [channels, setChannels] = useState<string[]>(['IGR'])
+  const social = category === 'social_plan'
 
   if (!open) {
     return (
@@ -137,7 +139,8 @@ export function AddTask({
       onSubmit={e => {
         e.preventDefault()
         start(async () => {
-          const r = await post({ action: 'add', title, date, category })
+          if (social && !channels.length) return setMsg('Tick at least one channel.')
+          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
@@ -148,6 +151,7 @@ export function AddTask({
         })
       }}
     >
+      {social ? <ChannelPicker value={channels} onChange={setChannels} /> : null}
       <input
         type="text"
         placeholder={placeholder}
@@ -165,13 +169,39 @@ export function AddTask({
   )
 }
 
+
+// The Social Calendar's channels. Ticked ones become the post's tag,
+// "[IGR/IGST] Seaweed Soup", which the sheet uses to pick the channel rows.
+const CHANNELS = [
+  { key: 'IGF', label: 'IGF · feed' },
+  { key: 'IGR', label: 'IGR · reels' },
+  { key: 'IGST', label: 'IGST · stories' },
+]
+function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <span className="pt-channels" role="group" aria-label="Channels">
+      {CHANNELS.map(c => (
+        <label key={c.key} className={value.includes(c.key) ? 'on' : ''}>
+          <input type="checkbox" checked={value.includes(c.key)}
+            onChange={e => onChange(e.target.checked ? CHANNELS.map(x => x.key).filter(k => k === c.key || value.includes(k)) : value.filter(k => k !== c.key))} />
+          {c.label}
+        </label>
+      ))}
+    </span>
+  )
+}
+const withChannels = (category: string, channels: string[], title: string) =>
+  category === 'social_plan' && channels.length ? `[${channels.join('/')}] ${title.replace(/^\s*\[[^\]]*\]\s*/, '')}` : title
+
 // ＋ on a calendar day: add an item on THAT date without picking it again.
 export function DayAdd({ date, category = 'production', label }: { date: string; category?: string; label: string }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
+  const [channels, setChannels] = useState<string[]>(['IGR'])
   const [msg, setMsg] = useState('')
+  const social = category === 'social_plan'
   if (!open) {
     return <button type="button" className="cal-add" title={`Add on ${label}`} aria-label={`Add on ${label}`} onClick={() => setOpen(true)}>＋</button>
   }
@@ -181,7 +211,8 @@ export function DayAdd({ date, category = 'production', label }: { date: string;
       onSubmit={e => {
         e.preventDefault()
         start(async () => {
-          const r = await post({ action: 'add', title, date, category })
+          if (social && !channels.length) return setMsg('Tick at least one channel.')
+          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setTitle(''); setMsg(''); setOpen(false)
@@ -190,7 +221,8 @@ export function DayAdd({ date, category = 'production', label }: { date: string;
       }}
     >
       <b>{label}</b>
-      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="What's happening?" aria-label="Title" autoFocus required />
+      {social ? <ChannelPicker value={channels} onChange={setChannels} /> : null}
+      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={social ? 'What are we posting?' : "What's happening?"} aria-label="Title" autoFocus required />
       <span className="btnrow">
         <button type="submit" className="btn sync" disabled={pending}>{pending ? 'Saving…' : 'Add'}</button>
         <button type="button" className="btn ghost" onClick={() => setOpen(false)}>Cancel</button>

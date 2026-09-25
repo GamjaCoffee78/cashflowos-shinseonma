@@ -11,8 +11,8 @@ import { IdeasBoard, AddTask, type Idea } from '@/app/_components/ProductionActi
 export const dynamic = 'force-dynamic'
 
 const TITLE = 'Social Calendar 📱'
-const CAPTION = "What goes out on IG and TikTok, and when — from the Okmaya project sheet. Tags show the channels (IGF feed · IGR reels · IGST stories · REELS TikTok). Tick what's posted, move what slipped."
-const PLACEHOLDER = 'e.g. [IGR/REELS] Sundubu boiling video'
+const CAPTION = "What goes out on Instagram, and when — from the Okmaya project sheet. Tags show the channels (IGF feed · IGR reels · IGST stories). Tick what's posted, move what slipped."
+const PLACEHOLDER = 'e.g. Sundubu boiling video'
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
   const today = todayISO()
