@@ -7,6 +7,7 @@ import {
 } from '@/lib/tiktok-shop'
 import ShopOrdersView, { type ShopRow } from '@/app/_components/ShopOrdersView'
 import SyncNow from '@/app/_components/SyncNow'
+import TikTokIcon from '@/app/_components/TikTokIcon'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -49,7 +50,7 @@ export default async function TikTokShop() {
       money={money}
       statusOf={statusOf}
       today={todayISO()}
-      toolbar={tiktokShopConfigured && <SyncNow source="tiktok_shop" label="🎵 Sync now" hint="Asking TikTok Shop for the latest orders…" />}
+      toolbar={tiktokShopConfigured && <SyncNow source="tiktok_shop" label={<><TikTokIcon />Sync now</>} hint="Asking TikTok Shop for the latest orders…" />}
       empty={
         !tiktokShopConfigured ? (
           <>
