@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ITEM_COLORS } from '@/lib/item-colors'
 
 // The buttons on the Production Timeline. Each POSTs to /api/production and
 // refreshes the page. (A plain route, not a server action — see SyncNow.tsx.)
@@ -19,7 +20,8 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 }
 
 // ✓ Done / Undo, and 📅 Move to another date — one row's controls.
-export function ItemActions({ id, done, date, title }: { id: number; done: boolean; date: string; title: string }) {
+export function ItemActions({ id, done, date, title, color = '' }: { id: number; done: boolean; date: string; title: string; color?: string }) {
+  const [painting, setPainting] = useState(false)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [moving, setMoving] = useState(false)
@@ -84,6 +86,19 @@ export function ItemActions({ id, done, date, title }: { id: number; done: boole
             Save
           </button>
           <button type="button" className="pt-btn" onClick={() => setMoving(false)}>Cancel</button>
+        </span>
+      ) : null}
+      <button type="button" className="pt-btn" disabled={pending} onClick={() => setPainting(v => !v)} title="Colour">
+        🎨 Colour
+      </button>
+      {painting ? (
+        <span className="pt-palette" role="group" aria-label="Pick a colour">
+          {ITEM_COLORS.map(c => (
+            <button key={c.key} type="button" className={`pt-swatch${color === c.key ? ' on' : ''}`} style={{ background: c.fg }}
+              title={c.label} aria-label={c.label} disabled={pending}
+              onClick={() => { setPainting(false); run({ action: 'color', id, color: c.key }) }} />
+          ))}
+          <button type="button" className="pt-btn" disabled={pending || !color} onClick={() => { setPainting(false); run({ action: 'color', id, color: '' }) }}>No colour</button>
         </span>
       ) : null}
       <button
