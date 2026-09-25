@@ -67,6 +67,7 @@ function describe(r: any): string {
   let tail = Number(r?.missing || 0)
     ? ` ${r.missing} stored row(s) are no longer in the sheet — left alone, nothing is ever deleted.`
     : ''
+  if (Array.isArray(r?.notShared) && r.notShared.length) tail += ` Calendars not shared yet: ${r.notShared.join(', ')}.`
   if (r?.netAdded) tail += ` Payout (after fees) found for ${r.netAdded} order(s).`
   if (r?.netTried && !r?.netAdded && !r?.netError) tail += ` Shopee returned no payout for ${r.netTried} order(s) checked.`
   if (r?.netError) tail += ` Shopee refused the payout lookup: ${r.netError}`

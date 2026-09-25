@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     }
     const parts = [`${r.inserted} added`, `${r.updated} refreshed`]
     if (typeof r.cancelled === 'number') parts.push(`${r.cancelled} cancelled`)
+    if (Array.isArray(r.notShared) && r.notShared.length) parts.push(`not shared yet: ${r.notShared.join(', ')}`)
     if (r.netAdded) parts.push(`payout found for ${r.netAdded}`)
     if (r.netTried && !r.netAdded && !r.netError) parts.push(`Shopee returned no payout for ${r.netTried} checked`)
     if (r.netError) parts.push(`Shopee refused the payout lookup: ${r.netError}`)

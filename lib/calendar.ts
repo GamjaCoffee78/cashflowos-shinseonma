@@ -30,17 +30,22 @@ export type CalEvent = {
   description: string
   link: string
   status: 'confirmed' | 'tentative' | 'cancelled'
+  uid?: string          // iCalUID: the same meeting in several people's calendars shares it
+  owners?: string[]     // whose calendars it is on (names from ABANG.calendar.people)
 }
+
+export const PEOPLE = ABANG.calendar.people
 
 // "2026-09-21T15:00:00+08:00" → "2026-09-21" in the business timezone.
 const dateInTz = (iso: string) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 
 // ---- 1) Ask Google (via Composio) for the events in a window. ----
-export async function fetchCalendarEvents(fromDate: string, toDate: string): Promise<CalEvent[]> {
+export async function fetchCalendarEvents(fromDate: string, toDate: string, calendarIdArg?: string): Promise<CalEvent[]> {
   const key = process.env.COMPOSIO_API_KEY?.trim()
   if (!key) throw new Error('COMPOSIO_API_KEY is not set')
-  const { calendarId, composioAccount } = ABANG.calendar
+  const { composioAccount } = ABANG.calendar
+  const calendarId = calendarIdArg || ABANG.calendar.calendarId
 
   const out: CalEvent[] = []
   let pageToken = ''
@@ -89,6 +94,7 @@ export async function fetchCalendarEvents(fromDate: string, toDate: string): Pro
         description: String(e.description || '').replace(/<[^>]+>/g, '').trim().slice(0, 300),
         link: String(e.htmlLink || ''),
         status: e.status === 'tentative' ? 'tentative' : 'confirmed',
+        uid: String(e.iCalUID || e.id),
       })
     }
     pageToken = g?.nextPageToken || ''
@@ -104,8 +110,27 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
 
   const from = daysAgoISO(ABANG.calendar.pastDays)
   const to = addDays(todayISO(), ABANG.calendar.futureDays)
-  const fetched = await fetchCalendarEvents(from, to)
-  if (opts.dryRun) return { from, to, fetched: fetched.length, inserted: 0, updated: 0, cancelled: 0, rows: fetched }
+  // Everyone's calendar; one meeting on several calendars becomes ONE row that
+  // lists all its owners. A calendar that can't be read (not shared yet) is
+  // skipped, and its events are left alone rather than marked cancelled.
+  const byUid = new Map<string, CalEvent>()
+  const readOk: string[] = []
+  const notShared: string[] = []
+  for (const person of PEOPLE) {
+    let list: CalEvent[]
+    try { list = await fetchCalendarEvents(from, to, person.calendarId) }
+    catch { notShared.push(person.name); continue }
+    readOk.push(person.name)
+    for (const e of list) {
+      const key = e.uid || e.id
+      const was = byUid.get(key)
+      if (was) { if (!was.owners!.includes(person.name)) was.owners!.push(person.name) }
+      else byUid.set(key, { ...e, owners: [person.name] })
+    }
+  }
+  if (!readOk.length) throw new Error(`Couldn't read any calendar (${notShared.join(', ')}) — check they are shared with ${ABANG.calendar.calendarId}.`)
+  const fetched = [...byUid.values()]
+  if (opts.dryRun) return { from, to, fetched: fetched.length, inserted: 0, updated: 0, cancelled: 0, notShared, rows: fetched }
 
   // Existing event rows inside the window (by due_date), keyed on the Google id.
   const { data: existingRows, error } = await supabase
@@ -116,17 +141,19 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
     .lte('due_date', to)
     .limit(5000)
   if (error) throw new Error(`could not read event rows: ${error.message}`)
-  const existing = new Map<string, { id: number; status: string }>()
+  const existing = new Map<string, { id: number; status: string; owners: string[] }>()
   for (const r of existingRows ?? []) {
-    const gid = r.meta?.gcal_id
-    if (gid) existing.set(String(gid), { id: r.id, status: r.status })
+    const key = r.meta?.gcal_uid || r.meta?.gcal_id
+    const owners: string[] = Array.isArray(r.meta?.owners) ? r.meta.owners : [PEOPLE.find(p => p.calendarId === r.meta?.calendar_id)?.name ?? '']
+    if (key) existing.set(String(key), { id: r.id, status: r.status, owners })
   }
 
   let inserted = 0, updated = 0, cancelled = 0
   const toInsert: any[] = []
   const seen = new Set<string>()
   for (const e of fetched) {
-    seen.add(e.id)
+    const key = e.uid || e.id
+    seen.add(key); seen.add(e.id)   // rows saved before uids were stored are keyed by id
     const row = {
       title: e.title,
       status: e.status,
@@ -138,6 +165,8 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
         source: 'google_calendar',
         calendar_id: ABANG.calendar.calendarId,
         gcal_id: e.id,
+        gcal_uid: key,
+        owners: e.owners,
         start: e.start,
         end: e.end,
         all_day: e.allDay,
@@ -146,7 +175,7 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
         synced_at: new Date().toISOString(),
       },
     }
-    const ex = existing.get(e.id)
+    const ex = existing.get(key) ?? existing.get(e.id)
     if (ex) {
       const { error } = await supabase.from('records').update(row).eq('id', ex.id)
       if (error) throw new Error(`update ${e.id} failed: ${error.message}`)
@@ -161,10 +190,12 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
   // Gone from Google inside the window → mark cancelled (soft; never delete).
   for (const [gid, ex] of existing) {
     if (seen.has(gid) || ex.status === 'cancelled') continue
+    // Only when every calendar it was on was read this time.
+    if (!ex.owners.every(o => readOk.includes(o))) continue
     const { error } = await supabase.from('records').update({ status: 'cancelled' }).eq('id', ex.id)
     if (!error) cancelled++
   }
-  return { from, to, fetched: fetched.length, inserted, updated, cancelled }
+  return { from, to, fetched: fetched.length, inserted, updated, cancelled, notShared }
 }
 
 // ---- 3) Read helpers for the tab + the brief (pure, from records). ----
@@ -182,6 +213,7 @@ export function calendarEvents(rows: Rec[]): CalEvent[] {
       description: '',
       link: String(r.meta.link || ''),
       status: (r.status as CalEvent['status']) || 'confirmed',
+      owners: Array.isArray(r.meta.owners) ? r.meta.owners : [PEOPLE.find(p => p.calendarId === r.meta.calendar_id)?.name ?? PEOPLE[0]?.name ?? ''],
     }))
     .filter(e => e.status !== 'cancelled')
     .sort((a, b) => a.start.localeCompare(b.start))
