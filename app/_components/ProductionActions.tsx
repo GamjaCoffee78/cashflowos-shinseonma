@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { ITEM_COLORS } from '@/lib/item-colors'
 
 // The buttons on the Production Timeline. Each POSTs to /api/production and
@@ -219,7 +220,9 @@ export function DayAdd({ date, category = 'production', label }: { date: string;
   if (!open) {
     return <button type="button" className="cal-add" title={`Add on ${label}`} aria-label={`Add on ${label}`} onClick={() => setOpen(true)}>＋</button>
   }
-  return (
+  // Drawn on <body> with a dimmed backdrop, so a faded (past) day can't fade it.
+  return createPortal(
+    <div className="cal-addwrap" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false) }}>
     <form
       className="cal-addform"
       onSubmit={e => {
@@ -243,6 +246,8 @@ export function DayAdd({ date, category = 'production', label }: { date: string;
       </span>
       {msg ? <span className="cap" role="alert">⚠️ {msg}</span> : null}
     </form>
+    </div>,
+    document.body,
   )
 }
 

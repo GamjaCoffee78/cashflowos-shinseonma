@@ -1027,3 +1027,5 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-edit .pt-channels { flex-basis: 100%; }
 .pt-channels label { flex: 0 0 auto !important; width: auto !important; }
 .pt-channels input[type=checkbox] { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; padding: 0 !important; }
+.cal-addwrap { position: fixed; inset: 0; z-index: 69; background: rgba(33,28,22,.28); }
+.pt-pop.pinned { box-shadow: 0 14px 36px rgba(33,28,22,.28); }
