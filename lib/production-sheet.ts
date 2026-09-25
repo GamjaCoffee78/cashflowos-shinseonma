@@ -452,7 +452,9 @@ function splitChannels(category: string, title: string): { channels: string[] | 
   if (category !== 'social_plan') return { channels: null, text: title }
   const m = /^\s*\[([^\]]+)\]\s*(.*)$/.exec(title)
   if (!m) return { channels: ['IGR'], text: title }
-  return { channels: m[1].split(/[\/,\s]+/).map(c => c.trim().toUpperCase()).filter(Boolean), text: m[2] }
+  // TIKTOK is the app's name for the sheet's REELS row (the TikTok channel).
+  const channels = m[1].split(/[\/,\s]+/).map(c => c.trim().toUpperCase()).filter(Boolean).map(c => (c === 'TIKTOK' ? 'REELS' : c))
+  return { channels: [...new Set(channels)], text: m[2] }
 }
 
 async function writeCells(f: Found, cells: { row: number; col: number; value: string }[]) {
