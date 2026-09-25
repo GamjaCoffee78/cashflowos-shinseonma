@@ -1023,3 +1023,7 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-channels label.on { background: var(--clay); border-color: var(--clay); color: #fff; }
 .pt-channels input { margin: 0; }
 .pt-ch + .pt-ch { margin-left: 4px; }
+.pt-edit { flex-wrap: wrap; }
+.pt-edit .pt-channels { flex-basis: 100%; }
+.pt-channels label { flex: 0 0 auto !important; width: auto !important; }
+.pt-channels input[type=checkbox] { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; padding: 0 !important; }

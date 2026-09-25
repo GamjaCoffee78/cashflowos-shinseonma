@@ -20,7 +20,15 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 }
 
 // ✓ Done / Undo, and 📅 Move to another date — one row's controls.
-export function ItemActions({ id, done, date, title, color = '' }: { id: number; done: boolean; date: string; title: string; color?: string }) {
+export function ItemActions({ id, done, date, title, color = '', category = '' }: { id: number; done: boolean; date: string; title: string; color?: string; category?: string }) {
+  // Social posts edit their channels with tick boxes; the text box holds the words only.
+  const social = category === 'social_plan'
+  const tagged = /^\s*\[([^\]]*)\]\s*(.*)$/.exec(title)
+  const startChannels = () => social && tagged
+    ? CHANNELS.map(c => c.key).filter(k => tagged[1].toUpperCase().split(/[\/,\s]+/).map(x => (x === 'REELS' ? 'TIKTOK' : x)).includes(k))
+    : ['IGR']
+  const startText = () => (social && tagged ? tagged[2] : title)
+  const [channels, setChannels] = useState<string[]>(startChannels)
   const [painting, setPainting] = useState(false)
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -28,7 +36,11 @@ export function ItemActions({ id, done, date, title, color = '' }: { id: number;
   const [newDate, setNewDate] = useState(date)
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState(false)
-  const [text, setText] = useState(title)
+  const [text, setText] = useState(startText)
+  const saveEdit = () => {
+    if (social && !channels.length) return setErr('Tick at least one channel.')
+    run({ action: 'edit', id, title: social ? withChannels(category, channels, text) : text })
+  }
 
   const run = (body: object) =>
     start(async () => {
@@ -44,16 +56,17 @@ export function ItemActions({ id, done, date, title, color = '' }: { id: number;
   if (editing) {
     return (
       <span className="pt-act pt-edit">
+        {social ? <ChannelPicker value={channels} onChange={setChannels} /> : null}
         <input
           type="text"
           value={text}
           onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') run({ action: 'edit', id, title: text }); if (e.key === 'Escape') setEditing(false) }}
+          onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false) }}
           aria-label="Edit text"
           autoFocus
         />
-        <button type="button" className="pt-btn on" disabled={pending || !text.trim()} onClick={() => run({ action: 'edit', id, title: text })}>Save</button>
-        <button type="button" className="pt-btn" onClick={() => { setText(title); setEditing(false) }}>Cancel</button>
+        <button type="button" className="pt-btn on" disabled={pending || !text.trim()} onClick={saveEdit}>Save</button>
+        <button type="button" className="pt-btn" onClick={() => { setText(startText()); setChannels(startChannels()); setErr(''); setEditing(false) }}>Cancel</button>
         {pending ? <span className="cap"> saving…</span> : null}
         {err ? <span className="cap" role="alert"> ⚠️ {err}</span> : null}
       </span>
@@ -62,7 +75,7 @@ export function ItemActions({ id, done, date, title, color = '' }: { id: number;
 
   return (
     <span className="pt-act">
-      <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(title); setEditing(true) }}>
+      <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(startText()); setChannels(startChannels()); setEditing(true) }}>
         ✏️ Edit
       </button>
       <button
