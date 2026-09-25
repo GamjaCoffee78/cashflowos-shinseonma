@@ -82,7 +82,7 @@ export const ABANG = {
    * Telegram user id on its own does not let a stranger message you, but keep
    * them in TELEGRAM_ALLOWED_USER_IDS instead if you would rather not publish.
    */
-  allowedUserIds: ['8956330282'] as string[],   // the owner
+  allowedUserIds: ['8956330282', '8978520563'] as string[],   // the owner · Hui Yee
 
   /**
    * REPORT MONEY FROM this date (YYYY-MM-DD). The database keeps the full
