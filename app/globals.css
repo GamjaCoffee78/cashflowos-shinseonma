@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 :root {
   /* ============================================================
      CLAUDE MALAYSIA — canonical brand tokens
@@ -1182,3 +1183,80 @@ button.wc-person { font: inherit; font-weight: 700; font-size: 14px; cursor: poi
 .gc-kind { display: inline-flex; border: 1.5px solid #143A73; border-radius: 999px; overflow: hidden; align-self: flex-start; }
 .gc-kind button { border: none; background: var(--card); padding: 6px 14px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; color: #143A73; }
 .gc-kind button.on { background: #143A73; color: #fff; }
+
+/* ============================================================
+   MODERN THEME — cool light-grey ground, white cards that float
+   on soft shadows, rounder corners, Plus Jakarta Sans, a sleeker
+   navy sidebar. Brand navy + badge red kept. Overrides only: every
+   rule above still applies underneath.
+   ============================================================ */
+:root {
+  --paper:   #F4F6FB;
+  --paper-2: #EDF1F8;
+  --card:    #FFFFFF;
+  --ink:       #0F172A;
+  --ink-soft:  #475569;
+  --ink-faint: #94A3B8;
+  --dim:       #64748B;
+  --line:   rgba(15,23,42,.08);
+  --line-2: rgba(15,23,42,.14);
+  --r-8: 10px;
+  --r-13: 16px;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+  --shadow:    0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
+  --shadow-lg: 0 10px 30px rgba(15,23,42,.10);
+}
+body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--paper); letter-spacing: -.005em; }
+
+/* Sidebar */
+.side { width: 236px; padding: 22px 16px; background: linear-gradient(180deg, #102B5E 0%, #14336B 60%, #173C7A 100%); border-right: none; box-shadow: 4px 0 24px rgba(15,23,42,.08); position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.brand { font-size: 17px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 20px; }
+.nav-label { font-size: 10px; letter-spacing: .12em; margin: 0 0 6px 12px; opacity: .85; }
+.nav a { padding: 9px 12px; border-radius: 10px; font-size: 14px; font-weight: 500; transition: background .15s, transform .15s; }
+.nav a:hover { background: rgba(255,255,255,.10); transform: translateX(2px); }
+.nav a.active { background: #FFFFFF; color: #102B5E; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.nav-group { margin-bottom: 16px; }
+
+/* Page */
+.main { padding: 28px 40px 48px; }
+.ph { font-size: 28px; font-weight: 800; letter-spacing: -.025em; }
+.cap { font-size: 14px; color: var(--ink-soft); }
+.topmark img { height: 38px; }
+
+/* Cards */
+.stat { border: none; border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow); position: relative; overflow: hidden; transition: transform .15s, box-shadow .15s; }
+.stat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, var(--clay), var(--sky)); }
+.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.stat .l { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); }
+.stat .v { font-size: 28px; font-weight: 800; letter-spacing: -.025em; }
+.grid { gap: 16px; }
+
+.tbl { border: none; border-radius: 18px; box-shadow: var(--shadow); }
+.tbl th { background: #F8FAFC; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); padding: 12px 16px; }
+.tbl td { padding: 13px 16px; }
+.tbl tbody tr { transition: background .12s; }
+.tbl tbody tr:hover td { background: #F8FAFF; }
+
+.pill { border-radius: 999px; padding: 3px 10px; font-weight: 700; }
+.empty { background: var(--card); border: 1.5px dashed var(--line-2); border-radius: 18px; }
+
+/* Buttons & inputs */
+.btn { border-radius: 12px; padding: 10px 18px; font-weight: 700; box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 4px 12px rgba(30,76,150,.18); transition: transform .12s, box-shadow .12s, background .12s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(30,76,150,.25); }
+.btn.ghost { background: var(--card); border: 1px solid var(--line-2); box-shadow: var(--shadow-sm); color: var(--ink); }
+.btn.ghost:hover:not(:disabled) { background: #F8FAFC; box-shadow: var(--shadow); }
+input, select, textarea { font-family: inherit; }
+
+/* Sections that were flat cards */
+.bf-card, .bl-stat, .pt-now, .pt-day, .gc-leavepanel, .bc-form { border: none !important; border-radius: 18px !important; box-shadow: var(--shadow); }
+.bl-stat b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.cal, .gc-month, .gc-week { border-radius: 20px !important; box-shadow: var(--shadow-lg) !important; }
+
+/* Phone bar */
+.bottomnav { backdrop-filter: saturate(1.4) blur(12px); background: rgba(255,255,255,.88) !important; box-shadow: 0 -6px 20px rgba(15,23,42,.08); }
+
+@media (max-width: 768px) {
+  .main { padding: 18px 16px 90px; }
+  .ph { font-size: 24px; }
+  .side { position: static; height: auto; }
+}
