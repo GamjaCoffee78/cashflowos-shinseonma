@@ -176,6 +176,7 @@ const CHANNELS = [
   { key: 'IGF', label: 'IGF · feed' },
   { key: 'IGR', label: 'IGR · reels' },
   { key: 'IGST', label: 'IGST · stories' },
+  { key: 'TIKTOK', label: 'TikTok' },  // the sheet's REELS row
 ]
 function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   return (
