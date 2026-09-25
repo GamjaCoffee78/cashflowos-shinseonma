@@ -18,6 +18,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/cash-in', label: 'Cash In' },
     { href: '/cash-out', label: 'Cash Out' },
     { href: '/billing', label: 'Billing' },
+    { href: '/claims', label: 'Claims' },
   ] },
   { label: 'Sales', tabs: [
     { href: '/ecomm-sales', label: 'Ecomm' },

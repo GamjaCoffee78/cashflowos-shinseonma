@@ -660,6 +660,14 @@ async function runVaultPipeline(msg: any): Promise<void> {
     }
   }
 
+  // 🧾 CLAIM — a receipt sent with "claim" in the caption is a staff claim, not a
+  // company expense: it becomes a `claim` row under the sender's name (tracked on
+  // the Claims tab: to claim → approved → paid). It never touches Cash Out.
+  if (/\bclaims?\b/i.test(String(msg.caption || ''))) {
+    await fileClaim(msg, v, { sha256, storagePath, mime, size: bytes.length })
+    return
+  }
+
   // The immutable payload every downstream step reads (executor + /undo).
   const isExpense = typeof v.amount === 'number' && v.amount > 0 && v.kind !== 'doc'
   const payload = {
@@ -709,6 +717,49 @@ async function runVaultPipeline(msg: any): Promise<void> {
     // A proposal with this exact file already exists — don't send a second card.
     await sendMessage(chatId, '📁 I\'m already waiting on your YES for this one — check the buttons above.')
   }
+}
+
+// Save a staff claim (see the CLAIM branch in runVaultPipeline) and confirm.
+async function fileClaim(msg: any, v: VisionResult, f: { sha256: string; storagePath: string | null; mime: string; size: number }) {
+  const chatId = msg.chat?.id
+  if (!supabaseConfigured) { await sendMessage(chatId, '🧾 The database isn\'t connected, so I can\'t file claims yet.'); return }
+  const who = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ').trim() || msg.from?.username || 'Someone'
+  const note = String(msg.caption || '').replace(/\bclaims?\b[:\-]?/i, '').trim().slice(0, 300)
+  const amount = typeof v.amount === 'number' && v.amount > 0 ? v.amount : 0
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(v.date || '')) ? String(v.date) : todayISO()
+  const { data: row, error } = await supabase.from('records').insert({
+    title: `Claim · ${who}${v.merchant ? ` · ${v.merchant}` : ''}`,
+    status: 'to_claim',
+    amount,
+    category: 'claim',
+    due_date: date,
+    notes: note || null,
+    meta: {
+      source: 'telegram',
+      claimant: who,
+      telegram_id: msg.from?.id,
+      merchant: v.merchant || undefined,
+      expense_type: v.category || undefined,
+      confidence: v.confidence,
+      check_amount: !amount || v.confidence === 'low' ? true : undefined,
+      sha256: f.sha256,
+      storage_path: f.storagePath,
+      mime: f.mime,
+      submitted_at: new Date().toISOString(),
+    },
+  }).select('id').single()
+  if (error) { await sendMessage(chatId, `🧾 Couldn't save the claim: ${error.message}`); return }
+  await supabase.from('vault_files').insert({
+    sha256: f.sha256, storage_path: f.storagePath, mime: f.mime, size_bytes: f.size,
+    uploaded_by_chat_id: chatId, record_id: row?.id ?? null,
+  })
+  await sendMessage(
+    chatId,
+    amount
+      ? `🧾 Claim filed for <b>${who}</b>: <b>${rm(amount)}</b>${v.merchant ? ` · ${v.merchant}` : ''} · ${date}.` +
+        `${v.confidence === 'low' ? ' ⚠️ I wasn\'t sure of the amount — please check it on the Claims tab.' : ''} Track it on the Claims tab.`
+      : `🧾 Claim filed for <b>${who}</b> — I couldn't read the amount, so please fill it in on the Claims tab.`,
+  )
 }
 
 // The 🟡 proposal wording. Low confidence gets the "robot unsure" flag so the human
