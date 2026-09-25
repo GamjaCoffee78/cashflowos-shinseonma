@@ -121,71 +121,6 @@ export function editCalendar(e: CalEvent) {
   return org?.calendarId ?? e.calOf ?? ABANG.calendar.calendarId
 }
 
-// ---- Write to Google Calendar (through the same Composio connection). ----
-// sendUpdates=all so invited teammates get the event (and changes) in their
-// own calendars. Throws Google's own message on failure.
-export async function gcalWrite(method: 'POST' | 'PATCH' | 'DELETE', calendarId: string, eventId: string, body?: object): Promise<any> {
-  const key = process.env.COMPOSIO_API_KEY?.trim()
-  if (!key) throw new Error('COMPOSIO_API_KEY is not set')
-  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ''}`
-  const res = await fetch(`${COMPOSIO_URL}/api/v3/tools/execute/proxy`, {
-    method: 'POST',
-    headers: { 'x-api-key': key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      connected_account_id: ABANG.calendar.composioAccount,
-      method,
-      endpoint,
-      parameters: [{ name: 'sendUpdates', value: 'all', type: 'query' }],
-      ...(body ? { body } : {}),
-    }),
-    signal: AbortSignal.timeout(25_000),
-  })
-  const out: any = await res.json().catch(() => ({}))
-  const g = out?.data
-  if (!res.ok || out?.error || g?.error) {
-    const msg = out?.error?.message || g?.error?.message || `HTTP ${res.status}`
-    if (/insufficient|scope|forbidden|403|writer|permission/i.test(String(msg)))
-      throw new Error(`Google refused the change on ${calendarId}. That calendar must be shared with ${ABANG.calendar.calendarId} as "Make changes to events", and the Composio Google connection needs calendar edit access.`)
-    throw new Error(`Google said no: ${String(msg).slice(0, 200)}`)
-  }
-  return g ?? {}
-}
-
-// A Google event (as returned by a write) → the same row the sync writes.
-export function eventRowFromGoogle(g: any, calOf: string) {
-  const allDay = !!g.start?.date
-  const start = allDay ? g.start.date : g.start?.dateTime
-  const end = allDay ? g.end?.date : g.end?.dateTime
-  const attendees: string[] = (g.attendees ?? []).map((a: any) => String(a.email || '').toLowerCase())
-  const emails = [calOf.toLowerCase(), String(g.organizer?.email || '').toLowerCase(), ...attendees]
-  const owners = PEOPLE.filter(p => emails.includes(p.calendarId.toLowerCase())).map(p => p.name)
-  const date = allDay ? start : dateInTz(start)
-  return {
-    title: String(g.summary || '(no title)'),
-    status: g.status === 'tentative' ? 'tentative' : 'confirmed',
-    amount: 0,
-    category: CATEGORY,
-    due_date: date,
-    notes: [g.location, g.description].filter(Boolean).join(' · ').slice(0, 300) || null,
-    meta: {
-      source: 'google_calendar',
-      calendar_id: ABANG.calendar.calendarId,
-      cal_of: calOf,
-      kind: g.extendedProperties?.private?.okmayaKind === 'leave' ? 'leave' : undefined,
-      organizer: String(g.organizer?.email || '').toLowerCase() || undefined,
-      attendees: attendees.length ? attendees : undefined,
-      description: String(g.description || '') || undefined,
-      gcal_id: String(g.id),
-      gcal_uid: String(g.iCalUID || g.id),
-      owners,
-      start, end: end || start, all_day: allDay,
-      location: String(g.location || '') || undefined,
-      link: String(g.htmlLink || '') || undefined,
-      synced_at: new Date().toISOString(),
-    },
-  }
-}
-
 // ---- 2) Upsert into `records`, keyed on the Google event id. ----
 export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
   if (!calendarConfigured) return { skipped: 'COMPOSIO_API_KEY not set' as const }
@@ -224,11 +159,15 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
     .lte('due_date', to)
     .limit(5000)
   if (error) throw new Error(`could not read event rows: ${error.message}`)
-  const existing = new Map<string, { id: number; status: string; owners: string[] }>()
+  // Events made in the app (source 'app') are the app's own — the sync never
+  // touches them. Google events changed or deleted in the app (app_edited /
+  // app_deleted) keep the app's version: the sync leaves them alone too.
+  const existing = new Map<string, { id: number; status: string; owners: string[]; appLocked: boolean }>()
   for (const r of existingRows ?? []) {
+    if (r.meta?.source === 'app') continue
     const key = r.meta?.gcal_uid || r.meta?.gcal_id
     const owners: string[] = Array.isArray(r.meta?.owners) ? r.meta.owners : [PEOPLE.find(p => p.calendarId === r.meta?.calendar_id)?.name ?? '']
-    if (key) existing.set(String(key), { id: r.id, status: r.status, owners })
+    if (key) existing.set(String(key), { id: r.id, status: r.status, owners, appLocked: !!(r.meta?.app_edited || r.meta?.app_deleted) })
   }
 
   let inserted = 0, updated = 0, cancelled = 0
@@ -264,6 +203,7 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
       },
     }
     const ex = existing.get(key) ?? existing.get(e.id)
+    if (ex?.appLocked) continue
     if (ex) {
       const { error } = await supabase.from('records').update(row).eq('id', ex.id)
       if (error) throw new Error(`update ${e.id} failed: ${error.message}`)
@@ -277,7 +217,7 @@ export async function syncCalendar(opts: { dryRun?: boolean } = {}) {
   }
   // Gone from Google inside the window → mark cancelled (soft; never delete).
   for (const [gid, ex] of existing) {
-    if (seen.has(gid) || ex.status === 'cancelled') continue
+    if (seen.has(gid) || ex.status === 'cancelled' || ex.appLocked) continue
     // Only when every calendar it was on was read this time.
     if (!ex.owners.every(o => readOk.includes(o))) continue
     const { error } = await supabase.from('records').update({ status: 'cancelled' }).eq('id', ex.id)
