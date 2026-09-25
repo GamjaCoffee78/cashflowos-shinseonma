@@ -1260,3 +1260,13 @@ input, select, textarea { font-family: inherit; }
   .ph { font-size: 24px; }
   .side { position: static; height: auto; }
 }
+
+/* Claims tab */
+.cl-how { background: var(--card); border-radius: 16px; box-shadow: var(--shadow, none); padding: 12px 16px; margin: 0 0 16px; font-size: 14px; line-height: 1.6; border-left: 5px solid var(--clay); }
+.cl-owed { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.cl-person { border: 1.5px solid var(--line-2); background: var(--card); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); }
+.cl-person b { color: var(--clay); margin-right: 4px; }
+.cl-person.on { background: var(--clay); color: #fff; border-color: var(--clay); }
+.cl-person.on b { color: #fff; }
+.cl-thumb img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.15); display: block; }
+.cl-big { max-width: 100%; max-height: 260px; border-radius: 12px; display: block; margin: 0 auto; }
