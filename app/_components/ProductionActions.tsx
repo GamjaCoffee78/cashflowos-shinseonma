@@ -265,7 +265,7 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
                   <>
                     <button type="button" className="pt-btn" disabled={pending} onClick={() => { setETitle(i.title); setENotes(i.notes ?? ''); setEditing(i.id) }}>✏️ Edit</button>
                     <button type="button" className="pt-btn" disabled={pending} onClick={() => { setDate(today); setScheduling(i.id) }}>📅 Schedule</button>
-                    <button type="button" className="pt-btn" disabled={pending} onClick={() => run({ action: 'idea_drop', id: i.id })}>✕ Drop</button>
+                    <button type="button" className="pt-btn pt-del" disabled={pending} onClick={() => confirm(`Delete the idea "${i.title}"?`) && run({ action: 'delete', id: i.id })}>🗑 Delete</button>
                   </>
                 )}
               </span>
@@ -286,6 +286,7 @@ export function IdeasBoard({ ideas, today }: { ideas: Idea[]; today: string }) {
             <li key={i.id}>
               <div className="ideas-text"><b>{i.title}</b></div>
               <button type="button" className="pt-btn" disabled={pending} onClick={() => run({ action: 'idea_restore', id: i.id })}>↩ Bring back</button>
+              <button type="button" className="pt-btn pt-del" disabled={pending} onClick={() => confirm(`Delete the idea "${i.title}"?`) && run({ action: 'delete', id: i.id })}>🗑 Delete</button>
             </li>
           ))}
         </ul>
