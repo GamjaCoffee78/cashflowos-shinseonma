@@ -343,7 +343,7 @@ export default function ProductionView({
                         {moved.length ? (
                           <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
                         ) : null}
-                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} color={r.meta?.color ?? ''} /> : null}
+                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} color={r.meta?.color ?? ''} category={category} /> : null}
                       </li>
                     )
                   })}
