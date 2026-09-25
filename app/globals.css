@@ -1022,3 +1022,4 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-channels label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: var(--card); cursor: pointer; color: var(--ink); }
 .pt-channels label.on { background: var(--clay); border-color: var(--clay); color: #fff; }
 .pt-channels input { margin: 0; }
+.pt-ch + .pt-ch { margin-left: 4px; }

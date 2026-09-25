@@ -48,6 +48,30 @@ const TAG_TONES = ['clay', 'sage', 'honey', 'rust', 'ink'] as const
 const toneFor = (tag: string | null, tags: string[]) =>
   tag ? TAG_TONES[tags.indexOf(tag) % TAG_TONES.length] : 'ink'
 
+// Social Calendar channels: one fixed colour each, so a post reads at a glance.
+// REELS is the sheet's old name for the TikTok row, so it shows as TikTok.
+const CHANNELS = [
+  { key: 'IGF', label: 'IGF · feed', fg: '#1E5FC4', bg: 'rgba(30,95,196,.14)' },
+  { key: 'IGR', label: 'IGR · reels', fg: '#C8407E', bg: 'rgba(200,64,126,.14)' },
+  { key: 'IGST', label: 'IGST · stories', fg: '#D9731A', bg: 'rgba(217,115,26,.16)' },
+  { key: 'TIKTOK', label: 'TikTok', fg: '#16877F', bg: 'rgba(22,135,127,.15)' },
+] as const
+function channelsOf(tag: string | null) {
+  if (!tag) return []
+  const keys = new Set(tag.split(/[\/,\s]+/).map(c => c.trim().toUpperCase()).map(c => (c === 'REELS' ? 'TIKTOK' : c)))
+  return CHANNELS.filter(c => keys.has(c.key))
+}
+const channelStyle = (tag: string | null) => {
+  const c = channelsOf(tag)[0]
+  return c ? ({ '--tone': c.fg, '--tone-bg': c.bg } as React.CSSProperties) : undefined
+}
+// "IGR IGST TikTok", each in its own colour.
+function ChannelTags({ tag }: { tag: string }) {
+  const cs = channelsOf(tag)
+  if (!cs.length) return <>{tag}</>
+  return <>{cs.map(c => <span key={c.key} className="pt-ch" style={{ color: c.fg }}>{c.key === 'TIKTOK' ? 'TikTok' : c.key}</span>)}</>
+}
+
 const dayNum = (iso: string) => Number(iso.slice(8, 10))
 
 function fmt(iso: string, opts: Intl.DateTimeFormatOptions): string {
@@ -106,6 +130,7 @@ export default function ProductionView({
     const { tag } = splitTag(r.title)
     if (tag) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
   }
+  const social = category === 'social_plan'
   const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
 
   // ── 1. What needs me now? ───────────────────────────────────────
@@ -142,13 +167,13 @@ export default function ProductionView({
     return (
       <ChipPop
         title={rest}
-        tag={/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null}
+        tag={social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
         when={fullDay(r.due_date as string)}
         status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
         {...(editable ? { id: r.id, done: isDone(r) } : {})}
       >
-        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
-          {tag ? <b>{tag}</b> : null}{rest}
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>
+          {tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}
         </span>
       </ChipPop>
     )
@@ -222,7 +247,18 @@ export default function ProductionView({
         </span>
       </div>
 
-      {tags.length > 0 ? (
+      {social || tags.length > 0 ? (
+        social ? (
+        <div className="pt-legend">
+          {CHANNELS.map(c => (
+            <span key={c.key}>
+              <i className="pt-sw" style={{ background: c.fg }} aria-hidden="true" />
+              {c.label}
+              <b>{mine.filter(r => channelsOf(splitTag(r.title).tag).some(x => x.key === c.key)).length}</b>
+            </span>
+          ))}
+        </div>
+        ) : (
         <div className="pt-legend">
           {tags.map(t => (
             <span key={t}>
@@ -232,6 +268,7 @@ export default function ProductionView({
             </span>
           ))}
         </div>
+        )
       ) : null}
 
       {mine.length === 0 ? (
@@ -299,7 +336,7 @@ export default function ProductionView({
                     return (
                       <li key={r.id} className={`${done ? 'done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
                         {tag ? (
-                          <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color)}>{tag}</span>
+                          <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>{social ? <ChannelTags tag={tag} /> : tag}</span>
                         ) : null}
                         <span className="pt-title">{rest}</span>
                         {editable && !done && day < today ? <span className="pill overdue">not done</span> : null}
