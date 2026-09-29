@@ -41,10 +41,12 @@ const TONE: Record<Tone, { bg: string; fg: string; label: string }> = {
 // After every save, the bar at the bottom says what was saved and offers ↩ Undo.
 type Saved = (message: string, undo?: Undo) => void
 const SavedCtx = createContext<Saved>(() => {})
+// Where saves go: /api/stock for the team, /share/stock/<token>/save for the share link.
+let ENDPOINT = '/api/stock'
 
 async function post(body: object): Promise<{ ok: boolean; message: string; undo?: Undo }> {
   try {
-    const r = await fetch('/api/stock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     return (await r.json().catch(() => null)) ?? { ok: false, message: `HTTP ${r.status}` }
   } catch (e) {
     return { ok: false, message: String((e as Error)?.message || e) }
@@ -207,7 +209,8 @@ function UndoBar({ note, onClose }: { note: { message: string; undo?: Undo }; on
   )
 }
 
-export default function StockView({ data }: { data: StockCount }) {
+export default function StockView({ data, endpoint = '/api/stock', canAddProduct = true }: { data: StockCount; endpoint?: string; canAddProduct?: boolean }) {
+  ENDPOINT = endpoint
   const [note, setNote] = useState<{ id: number; message: string; undo?: Undo } | null>(null)
   const saved: Saved = (message, undo) => setNote({ id: Date.now(), message, undo })
   // Only lines with stock are shown: blank and 0 quantities are hidden, and a
@@ -230,7 +233,7 @@ export default function StockView({ data }: { data: StockCount }) {
       </section>
       <section className="stk-grid">
         {products.map(p => <ProductCard key={p.row0} p={p} />)}
-        <AddProduct />
+        {canAddProduct ? <AddProduct /> : null}
       </section>
       {note ? <UndoBar key={note.id} note={note} onClose={() => setNote(null)} /> : null}
     </SavedCtx.Provider>
