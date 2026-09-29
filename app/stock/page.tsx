@@ -1,6 +1,7 @@
 // 📦 Stock count — read live from the "OMYG STOCK COUNT_2026" Google Sheet
-// (lib/stock-sheet.ts). Edit a QTY here and it's written into the sheet; edit
-// the sheet and it shows here on the next load. Nothing is stored in Supabase.
+// (lib/stock-sheet.ts), latest count only (today columns I–K). Edits and new
+// products are written into the sheet; edits made in the sheet show here on
+// the next load. Nothing is stored in Supabase.
 import { readStock, stockSheetConfigured, type StockCount } from '@/lib/stock-sheet'
 import { ABANG } from '@/abang/config'
 import StockView from '@/app/_components/StockView'
@@ -19,10 +20,10 @@ export default async function Stock() {
     <>
       <h1 className="ph">Stock</h1>
       <p className="cap">
-        Live from the <a href={link} target="_blank" rel="noreferrer">OMYG stock count sheet</a>
-        {data ? ` · latest count as of ${data.latest}` : ''}. Tap a quantity to change it — it saves into the sheet.
+        {data ? `Count as of ${data.asOf} · ` : ''}live from the{' '}
+        <a href={link} target="_blank" rel="noreferrer">OMYG stock count sheet</a>. Changes here save straight into the sheet.
       </p>
-      {error ? <p className="cap" style={{ color: 'var(--danger, #b42318)' }}>⚠️ {error}</p> : null}
+      {error ? <p className="cap" style={{ color: 'var(--rust)' }}>⚠️ {error}</p> : null}
       {data ? <StockView data={data} /> : null}
     </>
   )
