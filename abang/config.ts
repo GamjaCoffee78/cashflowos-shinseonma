@@ -254,6 +254,15 @@ export const ABANG = {
     tab: 'App updates',
     composioAccount: 'ca_kw8p5M9618Ko',   // Google Sheets connection (Hui Yee), edit access
   },
+
+  // 📦 Stock count ⇄ "OMYG STOCK COUNT_2026" (Ivy's Google Sheet). The Stock tab
+  // reads it live and writes QTY edits back into the LATEST "AS OF" block only.
+  // The linked Google account must have Editor access to this sheet.
+  stockSheet: {
+    spreadsheetId: '1fTxiZEHGIzh-DaJv1qJ18Jq1PRH4liLehro8EUYmtlM',
+    tab: 'OMY GROUP',
+    composioAccount: 'ca_kw8p5M9618Ko',   // same Google Sheets connection as productionSheet
+  },
 }
 
 /**

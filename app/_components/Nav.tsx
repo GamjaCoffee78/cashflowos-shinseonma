@@ -38,6 +38,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/content', label: 'Content' },
     { href: '/tasks', label: 'Tasks' },
     { href: '/production', label: 'Production Timeline' },
+    { href: '/stock', label: 'Stock' },
     { href: '/social-calendar', label: 'Social Calendar' },
     { href: '/events-others', label: 'Events / Others' },
   ] },
