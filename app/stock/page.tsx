@@ -5,6 +5,7 @@
 import { readStock, stockSheetConfigured, type StockCount } from '@/lib/stock-sheet'
 import { ABANG } from '@/abang/config'
 import StockView from '@/app/_components/StockView'
+import StockShare from '@/app/_components/StockShare'
 import { stockShareToken } from '@/lib/stock-share'
 import { headers } from 'next/headers'
 
@@ -29,16 +30,9 @@ export default async function Stock() {
         {data ? `Count as of ${data.asOf} · ` : ''}live from the{' '}
         <a href={link} target="_blank" rel="noreferrer">OMYG stock count sheet</a>. Changes here save straight into the sheet.
       </p>
+      <StockShare url={shareUrl} />
       {error ? <p className="cap" style={{ color: 'var(--rust)' }}>⚠️ {error}</p> : null}
       {data ? <StockView data={data} /> : null}
-      {shareUrl ? (
-        <details style={{ marginTop: 24 }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>🔗 Share this page with someone outside the team</summary>
-          <p className="cap">Whoever has this link can open ONLY this Stock page (no login, no other tabs) and edit it fully — quantities, expiries, new batches, new products. Send it privately.</p>
-          <input readOnly value={shareUrl} style={{ width: '100%', font: 'inherit', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)' }} />
-          <p className="cap">To switch it off: in Vercel set <code>STOCK_SHARE_VERSION</code> to a new number (2, 3…) and redeploy — the old link stops working and a new one appears here.</p>
-        </details>
-      ) : null}
     </>
   )
 }
