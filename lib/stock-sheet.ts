@@ -15,7 +15,8 @@ import { ABANG } from '@/abang/config'
 //  • edit a line → its EXPIRY DATE and/or QTY cell, only if both still hold what
 //    the person saw (so two people can't silently overwrite each other);
 //  • add a product → one new row after the last stock line (NO., name, expiry,
-//    qty, total). Existing TOTAL cells and older counts are never written.
+//    qty, total); add a batch → one new row under that product's last batch
+//    (expiry, qty). Existing TOTAL cells and older counts are never written.
 
 const COMPOSIO_URL = (process.env.COMPOSIO_BASE_URL || 'https://backend.composio.dev').replace(/\/+$/, '')
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets'
@@ -172,6 +173,30 @@ export async function addStockProduct(name: string, expiry: string, qty: number)
     ],
   })
   return `${nextNo}. ${clean}`
+}
+
+// A new expiry batch for an existing product: one new row straight after that
+// product's last batch, with expiry + qty in the latest count. NO. / name stay
+// blank (the parser carries the product down, like the merged rows).
+export async function addStockBatch(firstRow: number, expiry: string, qty: number): Promise<string> {
+  const now = await readStock()
+  const p = now.products.find(x => x.batches[0].row === firstRow)
+  if (!p) throw new Error('That product is no longer in the sheet — reload the page.')
+  const exp = toExpiry(expiry)
+  if (!exp) throw new Error('Pick the expiry month.')
+  if (p.batches.some(b => b.expiry.toLowerCase() === exp.toLowerCase())) {
+    throw new Error(`${p.name} already has a ${exp} line — edit that one instead.`)
+  }
+  const at = p.batches[p.batches.length - 1].row + 1
+  const sheetId = await tabId()
+  await proxy('POST', `${base()}:batchUpdate`, {
+    requests: [{ insertDimension: { range: { sheetId, dimension: 'ROWS', startIndex: at, endIndex: at + 1 }, inheritFromBefore: true } }],
+  })
+  await proxy('POST', `${base()}/values:batchUpdate`, {
+    valueInputOption: 'USER_ENTERED',
+    data: [{ range: `${cellA1(now.cols.exp, at)}:${colL(now.cols.qty)}${at + 1}`, values: [[exp, qty]] }],
+  })
+  return `${p.name} · ${exp}`
 }
 
 async function tabId(): Promise<number> {

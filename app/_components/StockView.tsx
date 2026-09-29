@@ -56,7 +56,6 @@ function BatchRow({ b }: { b: StockBatch }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const t = TONE[tone(b)]
-  const empty = !(b.qty && b.qty > 0)
 
   async function save() {
     setBusy(true); setMsg('')
@@ -82,7 +81,7 @@ function BatchRow({ b }: { b: StockBatch }) {
     )
   }
   return (
-    <li className={`stk-batch${empty ? ' stk-empty' : ''}`}>
+    <li className="stk-batch">
       <span className="stk-exp" style={{ background: t.bg, color: t.fg }} title={t.label ? `Expires ${t.label}` : undefined}>
         {b.expiry || 'No expiry'}
       </span>
@@ -92,7 +91,38 @@ function BatchRow({ b }: { b: StockBatch }) {
   )
 }
 
-function ProductCard({ p }: { p: StockProduct }) {
+function AddBatch({ row }: { row: number }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [open, setOpen] = useState(false)
+  const [exp, setExp] = useState('')
+  const [qty, setQty] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function save() {
+    setBusy(true); setMsg('')
+    const res = await post({ action: 'add_batch', row, expiry: exp, qty })
+    setBusy(false)
+    if (res.ok) { setOpen(false); setExp(''); setQty(''); start(() => router.refresh()) } else setMsg(res.message)
+  }
+
+  if (!open) return <button className="stk-addbatch" onClick={() => setOpen(true)}>＋ Add expiry &amp; qty</button>
+  return (
+    <div className="stk-batch stk-editing">
+      <label>Expiry<input type="month" value={exp} onChange={e => setExp(e.target.value)} autoFocus /></label>
+      <label>Qty<input type="number" min={0} inputMode="numeric" value={qty} onChange={e => setQty(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setOpen(false) }} /></label>
+      <div className="stk-actions">
+        <button className="btn" onClick={save} disabled={busy || pending || !exp || qty === ''}>{busy ? 'Adding…' : 'Add'}</button>
+        <button className="btn ghost" onClick={() => { setOpen(false); setMsg('') }}>Cancel</button>
+      </div>
+      {msg ? <p className="stk-err">{msg}</p> : null}
+    </div>
+  )
+}
+
+function ProductCard({ p }: { p: StockProduct & { row0: number } }) {
   const worst = p.batches.map(tone).find(x => x === 'urgent') ?? p.batches.map(tone).find(x => x === 'soon')
   return (
     <article className="stk-card">
@@ -107,6 +137,7 @@ function ProductCard({ p }: { p: StockProduct }) {
         <b>{fmt(p.total)}</b> <span>units</span>
       </div>
       <ul>{p.batches.map(b => <BatchRow key={b.row} b={b} />)}</ul>
+      <AddBatch row={p.row0} />
     </article>
   )
 }
@@ -147,21 +178,26 @@ function AddProduct() {
 }
 
 export default function StockView({ data }: { data: StockCount }) {
-  const all = data.products.flatMap(p => p.batches)
-  const units = data.products.reduce((s, p) => s + p.total, 0)
+  // Only lines with stock are shown: blank and 0 quantities are hidden, and a
+  // product with nothing left is hidden too. (They stay in the sheet.) row0 is
+  // the product's first sheet row, which "add expiry" uses to find it.
+  const products = data.products
+    .map(p => ({ ...p, row0: p.batches[0].row, batches: p.batches.filter(b => (b.qty ?? 0) > 0) }))
+    .filter(p => p.batches.length)
+  const all = products.flatMap(p => p.batches)
+  const units = products.reduce((s, p) => s + p.total, 0)
   const expiring = all.filter(b => tone(b) === 'urgent' || tone(b) === 'soon')
-  const out = data.products.filter(p => p.total === 0).length
   return (
     <>
       <style>{CSS}</style>
       <section className="stk-stats">
         <div><span>Total units</span><b>{fmt(units)}</b></div>
-        <div><span>Products</span><b>{data.products.length}</b></div>
+        <div><span>Products in stock</span><b>{products.length}</b></div>
         <div><span>Expiring ≤ 6 months</span><b style={{ color: expiring.length ? 'var(--honey)' : undefined }}>{fmt(expiring.reduce((s, b) => s + (b.qty ?? 0), 0))}</b><small>{expiring.length} batch{expiring.length === 1 ? '' : 'es'}</small></div>
-        <div><span>Out of stock</span><b style={{ color: out ? 'var(--rust)' : undefined }}>{out}</b><small>product{out === 1 ? '' : 's'}</small></div>
+        <div><span>Expiry batches</span><b>{all.length}</b></div>
       </section>
       <section className="stk-grid">
-        {data.products.map(p => <ProductCard key={p.batches[0].row} p={p} />)}
+        {products.map(p => <ProductCard key={p.row0} p={p} />)}
         <AddProduct />
       </section>
     </>
@@ -186,7 +222,6 @@ const CSS = `
 .stk-card ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .stk-batch { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .stk-batch:last-child { border-bottom: none; }
-.stk-empty { opacity: .5; }
 .stk-exp { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
 .stk-qty { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stk-edit { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; opacity: .6; }
@@ -196,6 +231,8 @@ const CSS = `
 .stk-card input { font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
 .stk-actions { display: flex; gap: 8px; width: 100%; }
 .stk-err { color: var(--rust); font-size: 12px; margin: 0; width: 100%; }
+.stk-addbatch { align-self: flex-start; background: none; border: none; padding: 2px 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--clay); cursor: pointer; }
+.stk-addbatch:hover { text-decoration: underline; }
 .stk-add { border: 2px dashed var(--line); background: transparent; align-items: center; justify-content: center; min-height: 160px; cursor: pointer; font: inherit; font-weight: 600; color: var(--clay); }
 .stk-add span { font-size: 28px; }
 .stk-add:hover { background: var(--clay-tint); }

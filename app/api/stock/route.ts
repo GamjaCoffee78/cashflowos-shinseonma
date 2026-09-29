@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { stockSheetConfigured, updateStockLine, addStockProduct } from '@/lib/stock-sheet'
+import { stockSheetConfigured, updateStockLine, addStockProduct, addStockBatch } from '@/lib/stock-sheet'
 
 // Stock tab → Google Sheet (lib/stock-sheet.ts). Gated by the login cookie
 // like every route (proxy.ts).
 //   { action: 'edit', row, expiry?, qty?, expected: { expiry, qty } }
 //   { action: 'add', name, expiry, qty }
+//   { action: 'add_batch', row (product's first row), expiry, qty }
 export const dynamic = 'force-dynamic'
 
 const reply = (ok: boolean, message: string, status = 200) => NextResponse.json({ ok, message }, { status })
@@ -31,6 +32,13 @@ export async function POST(req: Request) {
     }
     const row = Number(body?.row)
     if (!Number.isInteger(row) || row < 2) return reply(false, 'Which line?', 400)
+    if (body?.action === 'add_batch') {
+      const qty = parseQty(body?.qty)
+      if (qty === 'bad' || qty === null) return reply(false, 'Quantity must be a whole number (0 or more).', 400)
+      const msg = await addStockBatch(row, String(body?.expiry ?? ''), qty)
+      revalidatePath('/stock')
+      return reply(true, `Added to the sheet: ${msg}`)
+    }
     const change: { expiry?: string; qty?: number | null } = {}
     if (body?.expiry !== undefined) change.expiry = String(body.expiry)
     if (body?.qty !== undefined) {
