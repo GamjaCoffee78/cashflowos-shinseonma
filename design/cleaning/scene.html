@@ -1,45 +1,77 @@
 <!doctype html><html><head><meta charset="utf-8"><style>
-*{margin:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#0f3b5c}
-.wrap{position:absolute;inset:0}
-.room{position:absolute;inset:140px 60px 170px 60px;border-radius:28px;overflow:hidden;box-shadow:0 20px 50px #0006}
-.half{position:absolute;inset:0}
-.dirty{background:#8b7d5e}.clean{background:#eaf6fb}
-.floor{position:absolute;left:0;right:0;bottom:0;height:34%}
-.dirty .floor{background:#5e513a}.clean .floor{background:repeating-linear-gradient(90deg,#cfe3ec 0 118px,#bcd6e2 118px 120px)}
-.win{position:absolute;left:12%;top:12%;width:26%;height:32%;border:10px solid #fff;border-radius:6px}
-.dirty .win{background:#6f6a55;border-color:#b3a88a}.clean .win{background:linear-gradient(#8fd3ff,#d8f1ff)}
-.sofa{position:absolute;left:48%;bottom:26%;width:40%;height:22%;border-radius:22px 22px 10px 10px}
-.dirty .sofa{background:#6b5a44}.clean .sofa{background:#2aa7a0}
-.stain{position:absolute;border-radius:50%;background:#3d321f;opacity:.8}
-.clean .spark{position:absolute;color:#fff;font-size:48px;text-shadow:0 0 12px #7fe6ff;animation:tw 1.2s infinite alternate}
-@keyframes tw{from{opacity:.3;transform:scale(.7)}to{opacity:1;transform:scale(1.15)}}
-.cleanClip{clip-path:inset(0 0 0 var(--x,50%))}
-.divider{position:absolute;top:0;bottom:0;left:var(--x,50%);width:8px;margin-left:-4px;background:#fff}
-.knob{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;background:#fff;color:#0f3b5c;font:bold 30px Arial;display:flex;align-items:center;justify-content:center}
-.tag{position:absolute;top:24px;padding:10px 26px;border-radius:40px;font-weight:bold;font-size:34px;letter-spacing:2px}
-.tb{left:24px;background:#3d321f;color:#f3e3c3}.ta{right:24px;background:#fff;color:#0f8a84}
-h1{position:absolute;top:40px;width:100%;text-align:center;color:#fff;font-size:62px;letter-spacing:1px}
-h1 span{color:#5fe0d6}
-.foot{position:absolute;bottom:50px;width:100%;text-align:center;color:#fff;font-size:34px}
-.cta{display:inline-block;margin-top:10px;background:#5fe0d6;color:#0f3b5c;padding:12px 34px;border-radius:40px;font-weight:bold}
-</style></head><body><div class="wrap" id="w">
+*{margin:0}body{width:1080px;height:1080px;overflow:hidden;font-family:Arial,sans-serif;background:#0f3b5c}
+h1{position:absolute;top:36px;width:100%;text-align:center;color:#fff;font-size:60px}h1 span{color:#5fe0d6}
+.room{position:absolute;left:60px;top:130px;width:960px;height:780px;border-radius:28px;overflow:hidden;box-shadow:0 20px 50px #0007}
+.room svg{position:absolute;inset:0}#clean{clip-path:inset(0 0 0 var(--x,50%))}
+.div{position:absolute;top:0;bottom:0;left:var(--x,50%);width:8px;margin-left:-4px;background:#fff}
+.knob{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;background:#fff;color:#0f3b5c;font:bold 30px Arial;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px #0005}
+.tag{position:absolute;top:22px;padding:10px 26px;border-radius:40px;font-weight:bold;font-size:32px;letter-spacing:2px}
+.tb{left:22px;background:#3d2f1c;color:#f3e3c3}.ta{right:22px;background:#fff;color:#0f8a84}
+.foot{position:absolute;bottom:40px;width:100%;text-align:center;color:#fff;font-size:30px}
+.cta{display:inline-block;margin-top:8px;background:#5fe0d6;color:#0f3b5c;padding:10px 34px;border-radius:40px;font-weight:bold}
+.sp{animation:tw 1.2s infinite alternate;transform-box:fill-box;transform-origin:center}@keyframes tw{from{opacity:.2;transform:scale(.6)}to{opacity:1;transform:scale(1.2)}}
+</style></head><body>
 <h1>From Messy to <span>Sparkling</span></h1>
 <div class="room">
- <div class="half dirty"><div class="floor"></div><div class="win"></div><div class="sofa"></div>
-  <div class="stain" style="left:10%;bottom:8%;width:120px;height:40px"></div>
-  <div class="stain" style="left:40%;bottom:14%;width:80px;height:30px"></div>
-  <div class="stain" style="left:62%;bottom:5%;width:150px;height:44px"></div>
-  <div class="stain" style="left:20%;top:55%;width:60px;height:60px;opacity:.5"></div></div>
- <div class="half clean cleanClip"><div class="floor"></div><div class="win"></div><div class="sofa"></div>
-  <div class="spark" style="left:20%;top:18%">✦</div><div class="spark" style="left:70%;top:40%;animation-delay:.4s">✦</div>
-  <div class="spark" style="left:40%;bottom:10%;animation-delay:.8s">✦</div><div class="spark" style="left:85%;bottom:20%;animation-delay:.2s">✦</div></div>
- <div class="divider"><div class="knob">⇆</div></div>
- <div class="tag tb">BEFORE</div><div class="tag ta">AFTER</div>
+<svg id="dirty" viewBox="0 0 960 780"><use href="#base"/>
+ <!-- grime -->
+ <rect width="960" height="780" fill="#6b5530" opacity=".35"/>
+ <rect x="0" y="0" width="960" height="470" fill="url(#grime)" opacity=".35"/>
+ <g fill="#3a2c18" opacity=".7"><ellipse cx="160" cy="690" rx="90" ry="22"/><ellipse cx="520" cy="740" rx="120" ry="25"/><ellipse cx="800" cy="660" rx="60" ry="15"/><circle cx="700" cy="170" r="30" opacity=".4"/><circle cx="90" cy="300" r="40" opacity=".4"/></g>
+ <!-- cobweb -->
+ <g stroke="#ddd" stroke-width="2" fill="none" opacity=".8"><path d="M0 0 L120 90 M0 0 L60 120 M0 0 L130 30"/><path d="M40 30 Q60 50 30 60 M80 60 Q100 80 50 95"/></g>
+ <!-- dishes piled in sink -->
+ <g><ellipse cx="300" cy="400" rx="46" ry="12" fill="#e8e0cc" stroke="#8a7a5a" stroke-width="3"/><ellipse cx="310" cy="388" rx="42" ry="11" fill="#d9ceb4" stroke="#8a7a5a" stroke-width="3"/><ellipse cx="290" cy="376" rx="40" ry="10" fill="#e8e0cc" stroke="#8a7a5a" stroke-width="3"/><rect x="350" y="340" width="36" height="52" rx="4" fill="#c9a35a" stroke="#6b5530" stroke-width="3"/><circle cx="310" cy="388" r="6" fill="#7a4a1a"/></g>
+ <!-- clutter on floor -->
+ <g><rect x="620" y="620" width="70" height="50" fill="#8a6a3a" stroke="#4a3a1a" stroke-width="3" transform="rotate(-12 655 645)"/><path d="M90 640 q30 -30 60 0 q-20 20 -60 0z" fill="#aa4444"/><circle cx="440" cy="660" r="18" fill="#556"/><path d="M720 700 l40 -10 l5 20 l-40 10z" fill="#ddd"/></g>
+ <!-- trash bin overflowing -->
+ <g><rect x="840" y="560" width="80" height="110" rx="6" fill="#555"/><circle cx="860" cy="555" r="20" fill="#777"/><circle cx="895" cy="548" r="22" fill="#666"/><path d="M830 670 l-30 10 l10 -20z" fill="#999"/></g>
+ <!-- flies -->
+ <g fill="#111"><circle cx="880" cy="500" r="4"/><circle cx="905" cy="515" r="4"/><circle cx="330" cy="330" r="4"/></g>
+</svg>
+<svg id="clean" viewBox="0 0 960 780"><use href="#base"/>
+ <rect width="960" height="470" fill="#fff" opacity=".15"/>
+ <!-- tidy dish rack -->
+ <g><rect x="250" y="360" width="140" height="10" fill="#ccc"/><g fill="#fff" stroke="#bcd" stroke-width="3"><ellipse cx="275" cy="340" rx="10" ry="32"/><ellipse cx="300" cy="340" rx="10" ry="32"/><ellipse cx="325" cy="340" rx="10" ry="32"/></g><rect x="350" y="318" width="30" height="42" rx="4" fill="#9fe" stroke="#6bc" stroke-width="3"/></g>
+ <!-- plant, bowl of fruit -->
+ <g><rect x="840" y="600" width="70" height="70" rx="8" fill="#f2f2f2" stroke="#ccc" stroke-width="3"/><path d="M875 600 q-40 -80 -10 -120 q10 60 10 120 q10 -80 40 -110 q0 70 -40 110" fill="#3bb273"/></g>
+ <g><ellipse cx="620" cy="440" rx="50" ry="14" fill="#fff"/><circle cx="600" cy="425" r="16" fill="#f25"/><circle cx="628" cy="420" r="16" fill="#fb3"/><circle cx="645" cy="430" r="13" fill="#6c3"/></g>
+ <!-- rug -->
+ <ellipse cx="480" cy="690" rx="220" ry="45" fill="#5fe0d6" opacity=".55"/>
+ <!-- shine on floor -->
+ <g fill="#fff" opacity=".6"><path d="M120 600 l120 0 l-40 160 l-120 0z" opacity=".25"/><path d="M620 600 l60 0 l-20 160 l-60 0z" opacity=".25"/></g>
+ <g fill="#fff"><path class="sp" d="M150 180 l8 22 l22 8 l-22 8 l-8 22 l-8 -22 l-22 -8 l22 -8z"/><path class="sp" style="animation-delay:.4s" d="M720 250 l8 22 l22 8 l-22 8 l-8 22 l-8 -22 l-22 -8 l22 -8z"/><path class="sp" style="animation-delay:.8s" d="M380 620 l8 22 l22 8 l-22 8 l-8 22 l-8 -22 l-22 -8 l22 -8z"/><path class="sp" style="animation-delay:.2s" d="M300 300 l6 16 l16 6 l-16 6 l-6 16 l-6 -16 l-16 -6 l16 -6z"/></g>
+</svg>
+<svg width="0" height="0" style="position:absolute"><defs>
+ <pattern id="grime" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="6" fill="#4a3a1a" opacity=".3"/><circle cx="30" cy="28" r="4" fill="#4a3a1a" opacity=".3"/></pattern>
+ <g id="base"><rect width="960" height="780" fill="#e9f4f8"/><rect x="760" y="470" width="200" height="120" fill="#e9f4f8"/>
+  <rect width="960" height="470" fill="#e9f4f8"/>
+  <!-- tiles backsplash -->
+  <g fill="none" stroke="#cfe0e8" stroke-width="2"><path d="M0 250 H960 M0 300 H960 M0 350 H960 M0 400 H960"/></g>
+  <!-- window -->
+  <rect x="420" y="60" width="260" height="190" fill="#9ad8ff" stroke="#fff" stroke-width="12"/><path d="M550 60 V250 M420 155 H680" stroke="#fff" stroke-width="8"/>
+  <circle cx="630" cy="110" r="26" fill="#ffe680"/><path d="M430 250 q60 -60 120 0z" fill="#7ccf8a"/>
+  <!-- upper cabinets -->
+  <rect x="40" y="40" width="330" height="170" rx="8" fill="#f4d9a8" stroke="#c9a970" stroke-width="4"/><path d="M205 40 V210" stroke="#c9a970" stroke-width="4"/><circle cx="190" cy="125" r="6" fill="#8a6a3a"/><circle cx="220" cy="125" r="6" fill="#8a6a3a"/>
+  <rect x="730" y="40" width="190" height="170" rx="8" fill="#f4d9a8" stroke="#c9a970" stroke-width="4"/>
+  <!-- clock -->
+  <circle cx="825" cy="290" r="36" fill="#fff" stroke="#556" stroke-width="5"/><path d="M825 290 V266 M825 290 H843" stroke="#556" stroke-width="4"/>
+  <!-- counter -->
+  <rect x="0" y="440" width="960" height="30" fill="#b0bec5"/>
+  <rect x="0" y="470" width="760" height="120" fill="#f4d9a8" stroke="#c9a970" stroke-width="4"/>
+  <path d="M190 470 V590 M380 470 V590 M570 470 V590" stroke="#c9a970" stroke-width="4"/>
+  <!-- sink + tap -->
+  <rect x="240" y="395" width="170" height="45" rx="6" fill="#cfd8dc"/><path d="M325 395 V340 q0 -20 30 -20" stroke="#90a4ae" stroke-width="10" fill="none"/>
+  <!-- floor -->
+  <rect x="0" y="590" width="960" height="190" fill="#dfe9ee"/>
+  <g stroke="#c5d4dc" stroke-width="3"><path d="M0 650 H960 M0 715 H960 M120 590 V780 M300 590 V780 M480 590 V780 M660 590 V780 M840 590 V780"/></g>
+ </g></defs></svg>
+<div class="div"><div class="knob">⇆</div></div>
+<div class="tag tb">BEFORE</div><div class="tag ta">AFTER</div>
 </div>
 <div class="foot">Professional home &amp; office cleaning<br><span class="cta">Book your clean today</span></div>
-</div>
 <script>
 const r=document.querySelector('.room');let t0=performance.now();
-function f(t){if(window.STATIC)return;const s=((t-t0)/1000)%6;let x=s<2?100-s*50*0.9:s<3.5?10:s<5.5?10+(s-3.5)*40:90;r.style.setProperty('--x',x+'%');requestAnimationFrame(f)}
+function f(t){const s=((t-t0)/1000)%6;let x=s<2?100-s*45:s<3.5?10:s<5.5?10+(s-3.5)*40:90;r.style.setProperty('--x',x+'%');requestAnimationFrame(f)}
 if(!window.STATIC)requestAnimationFrame(f);
 </script></body></html>
