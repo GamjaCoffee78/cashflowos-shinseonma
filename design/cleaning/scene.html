@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#0f3b5c}
+.wrap{position:absolute;inset:0}
+.room{position:absolute;inset:140px 60px 170px 60px;border-radius:28px;overflow:hidden;box-shadow:0 20px 50px #0006}
+.half{position:absolute;inset:0}
+.dirty{background:#8b7d5e}.clean{background:#eaf6fb}
+.floor{position:absolute;left:0;right:0;bottom:0;height:34%}
+.dirty .floor{background:#5e513a}.clean .floor{background:repeating-linear-gradient(90deg,#cfe3ec 0 118px,#bcd6e2 118px 120px)}
+.win{position:absolute;left:12%;top:12%;width:26%;height:32%;border:10px solid #fff;border-radius:6px}
+.dirty .win{background:#6f6a55;border-color:#b3a88a}.clean .win{background:linear-gradient(#8fd3ff,#d8f1ff)}
+.sofa{position:absolute;left:48%;bottom:26%;width:40%;height:22%;border-radius:22px 22px 10px 10px}
+.dirty .sofa{background:#6b5a44}.clean .sofa{background:#2aa7a0}
+.stain{position:absolute;border-radius:50%;background:#3d321f;opacity:.8}
+.clean .spark{position:absolute;color:#fff;font-size:48px;text-shadow:0 0 12px #7fe6ff;animation:tw 1.2s infinite alternate}
+@keyframes tw{from{opacity:.3;transform:scale(.7)}to{opacity:1;transform:scale(1.15)}}
+.cleanClip{clip-path:inset(0 0 0 var(--x,50%))}
+.divider{position:absolute;top:0;bottom:0;left:var(--x,50%);width:8px;margin-left:-4px;background:#fff}
+.knob{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;background:#fff;color:#0f3b5c;font:bold 30px Arial;display:flex;align-items:center;justify-content:center}
+.tag{position:absolute;top:24px;padding:10px 26px;border-radius:40px;font-weight:bold;font-size:34px;letter-spacing:2px}
+.tb{left:24px;background:#3d321f;color:#f3e3c3}.ta{right:24px;background:#fff;color:#0f8a84}
+h1{position:absolute;top:40px;width:100%;text-align:center;color:#fff;font-size:62px;letter-spacing:1px}
+h1 span{color:#5fe0d6}
+.foot{position:absolute;bottom:50px;width:100%;text-align:center;color:#fff;font-size:34px}
+.cta{display:inline-block;margin-top:10px;background:#5fe0d6;color:#0f3b5c;padding:12px 34px;border-radius:40px;font-weight:bold}
+</style></head><body><div class="wrap" id="w">
+<h1>From Messy to <span>Sparkling</span></h1>
+<div class="room">
+ <div class="half dirty"><div class="floor"></div><div class="win"></div><div class="sofa"></div>
+  <div class="stain" style="left:10%;bottom:8%;width:120px;height:40px"></div>
+  <div class="stain" style="left:40%;bottom:14%;width:80px;height:30px"></div>
+  <div class="stain" style="left:62%;bottom:5%;width:150px;height:44px"></div>
+  <div class="stain" style="left:20%;top:55%;width:60px;height:60px;opacity:.5"></div></div>
+ <div class="half clean cleanClip"><div class="floor"></div><div class="win"></div><div class="sofa"></div>
+  <div class="spark" style="left:20%;top:18%">✦</div><div class="spark" style="left:70%;top:40%;animation-delay:.4s">✦</div>
+  <div class="spark" style="left:40%;bottom:10%;animation-delay:.8s">✦</div><div class="spark" style="left:85%;bottom:20%;animation-delay:.2s">✦</div></div>
+ <div class="divider"><div class="knob">⇆</div></div>
+ <div class="tag tb">BEFORE</div><div class="tag ta">AFTER</div>
+</div>
+<div class="foot">Professional home &amp; office cleaning<br><span class="cta">Book your clean today</span></div>
+</div>
+<script>
+const r=document.querySelector('.room');let t0=performance.now();
+function f(t){if(window.STATIC)return;const s=((t-t0)/1000)%6;let x=s<2?100-s*50*0.9:s<3.5?10:s<5.5?10+(s-3.5)*40:90;r.style.setProperty('--x',x+'%');requestAnimationFrame(f)}
+if(!window.STATIC)requestAnimationFrame(f);
+</script></body></html>
