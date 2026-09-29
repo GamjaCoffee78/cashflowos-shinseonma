@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { createContext, useContext, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { StockCount, StockBatch, StockProduct } from '@/lib/stock-sheet'
+import type { StockCount, StockBatch, StockProduct, Undo } from '@/lib/stock-sheet'
 
 // The Stock tab: a summary strip, then one card per product with its expiry
 // batches. ✏️ edits a batch's expiry + qty; "＋ Add product" adds a row. Every
@@ -38,7 +38,11 @@ const TONE: Record<Tone, { bg: string; fg: string; label: string }> = {
   none: { bg: 'var(--paper)', fg: 'var(--ink-soft)', label: '' },
 }
 
-async function post(body: object): Promise<{ ok: boolean; message: string }> {
+// After every save, the bar at the bottom says what was saved and offers ↩ Undo.
+type Saved = (message: string, undo?: Undo) => void
+const SavedCtx = createContext<Saved>(() => {})
+
+async function post(body: object): Promise<{ ok: boolean; message: string; undo?: Undo }> {
   try {
     const r = await fetch('/api/stock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     return (await r.json().catch(() => null)) ?? { ok: false, message: `HTTP ${r.status}` }
@@ -48,6 +52,7 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 }
 
 function BatchRow({ b }: { b: StockBatch }) {
+  const saved = useContext(SavedCtx)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [editing, setEditing] = useState(false)
@@ -63,7 +68,7 @@ function BatchRow({ b }: { b: StockBatch }) {
     if (exp !== toMonthInput(b.expiry)) change.expiry = exp
     const res = await post(change)
     setBusy(false)
-    if (res.ok) { setEditing(false); start(() => router.refresh()) } else setMsg(res.message)
+    if (res.ok) { saved(res.message, res.undo); setEditing(false); start(() => router.refresh()) } else setMsg(res.message)
   }
 
   if (editing) {
@@ -92,6 +97,7 @@ function BatchRow({ b }: { b: StockBatch }) {
 }
 
 function AddBatch({ row }: { row: number }) {
+  const saved = useContext(SavedCtx)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [open, setOpen] = useState(false)
@@ -104,7 +110,7 @@ function AddBatch({ row }: { row: number }) {
     setBusy(true); setMsg('')
     const res = await post({ action: 'add_batch', row, expiry: exp, qty })
     setBusy(false)
-    if (res.ok) { setOpen(false); setExp(''); setQty(''); start(() => router.refresh()) } else setMsg(res.message)
+    if (res.ok) { saved(res.message, res.undo); setOpen(false); setExp(''); setQty(''); start(() => router.refresh()) } else setMsg(res.message)
   }
 
   if (!open) return <button className="stk-addbatch" onClick={() => setOpen(true)}>＋ Add expiry &amp; qty</button>
@@ -143,6 +149,7 @@ function ProductCard({ p }: { p: StockProduct & { row0: number } }) {
 }
 
 function AddProduct() {
+  const saved = useContext(SavedCtx)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [open, setOpen] = useState(false)
@@ -156,7 +163,7 @@ function AddProduct() {
     setBusy(true); setMsg('')
     const res = await post({ action: 'add', name, expiry: exp, qty })
     setBusy(false)
-    if (res.ok) { setOpen(false); setName(''); setExp(''); setQty(''); start(() => router.refresh()) } else setMsg(res.message)
+    if (res.ok) { saved(res.message, res.undo); setOpen(false); setName(''); setExp(''); setQty(''); start(() => router.refresh()) } else setMsg(res.message)
   }
 
   if (!open) {
@@ -177,7 +184,32 @@ function AddProduct() {
   )
 }
 
+function UndoBar({ note, onClose }: { note: { message: string; undo?: Undo }; onClose: () => void }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(note.message)
+  const [undo, setUndo] = useState(note.undo)
+  async function doUndo() {
+    if (!undo) return
+    setBusy(true)
+    const res = await post({ action: 'undo', undo })
+    setBusy(false)
+    setMsg(res.message)
+    if (res.ok) { setUndo(undefined); start(() => router.refresh()) }
+  }
+  return (
+    <div className="stk-toast" role="status">
+      <span>{msg}</span>
+      {undo ? <button className="btn" onClick={doUndo} disabled={busy || pending}>{busy ? 'Undoing…' : '↩ Undo'}</button> : null}
+      <button className="stk-x" onClick={onClose} aria-label="Close">✕</button>
+    </div>
+  )
+}
+
 export default function StockView({ data }: { data: StockCount }) {
+  const [note, setNote] = useState<{ id: number; message: string; undo?: Undo } | null>(null)
+  const saved: Saved = (message, undo) => setNote({ id: Date.now(), message, undo })
   // Only lines with stock are shown: blank and 0 quantities are hidden, and a
   // product with nothing left is hidden too. (They stay in the sheet.) row0 is
   // the product's first sheet row, which "add expiry" uses to find it.
@@ -188,7 +220,7 @@ export default function StockView({ data }: { data: StockCount }) {
   const units = products.reduce((s, p) => s + p.total, 0)
   const expiring = all.filter(b => tone(b) === 'urgent' || tone(b) === 'soon')
   return (
-    <>
+    <SavedCtx.Provider value={saved}>
       <style>{CSS}</style>
       <section className="stk-stats">
         <div><span>Total units</span><b>{fmt(units)}</b></div>
@@ -200,7 +232,8 @@ export default function StockView({ data }: { data: StockCount }) {
         {products.map(p => <ProductCard key={p.row0} p={p} />)}
         <AddProduct />
       </section>
-    </>
+      {note ? <UndoBar key={note.id} note={note} onClose={() => setNote(null)} /> : null}
+    </SavedCtx.Provider>
   )
 }
 
@@ -236,5 +269,8 @@ const CSS = `
 .stk-add { border: 2px dashed var(--line); background: transparent; align-items: center; justify-content: center; min-height: 160px; cursor: pointer; font: inherit; font-weight: 600; color: var(--clay); }
 .stk-add span { font-size: 28px; }
 .stk-add:hover { background: var(--clay-tint); }
+.stk-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 50; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); background: var(--ink); color: #FFFDF9; padding: 10px 12px 10px 16px; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 14px; }
+.stk-toast .btn { background: #FFFDF9; color: var(--ink); padding: 7px 12px; white-space: nowrap; }
+.stk-x { background: none; border: none; color: #FFFDF9; opacity: .7; cursor: pointer; font-size: 14px; }
 @media (max-width: 700px) { .stk-stats { grid-template-columns: repeat(2, 1fr); } .stk-stats b { font-size: 22px; } }
 `

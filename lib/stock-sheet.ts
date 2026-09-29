@@ -137,7 +137,7 @@ export async function updateStockLine(
   row: number,
   change: { expiry?: string; qty?: number | null },
   expected: { expiry: string; qty: string },
-): Promise<string> {
+): Promise<Done> {
   const now = await readStock()
   const hit = now.products.flatMap(p => p.batches.map(b => ({ b, name: p.name }))).find(x => x.b.row === row)
   if (!hit) throw new Error('That line is no longer in the sheet — reload the page.')
@@ -147,14 +147,18 @@ export async function updateStockLine(
   const data: { range: string; values: (string | number)[][] }[] = []
   if (change.expiry !== undefined) data.push({ range: cellA1(now.cols.exp, row), values: [[toExpiry(change.expiry)]] })
   if (change.qty !== undefined) data.push({ range: cellA1(now.cols.qty, row), values: [[change.qty === null ? '' : change.qty]] })
-  if (!data.length) return 'Nothing to change.'
+  if (!data.length) return { message: 'Nothing to change.' }
   await proxy('POST', `${base()}/values:batchUpdate`, { valueInputOption: 'USER_ENTERED', data })
-  return hit.name
+  const after = {
+    expiry: change.expiry !== undefined ? toExpiry(change.expiry) : hit.b.rawExpiry,
+    qty: change.qty !== undefined ? (change.qty === null ? '' : String(change.qty)) : hit.b.rawQty,
+  }
+  return { message: hit.name, undo: { kind: 'edit', row, before: { expiry: hit.b.rawExpiry, qty: hit.b.rawQty }, after } }
 }
 
 // A new product: one new row straight after the last stock line, with NO.,
 // name, and the latest count's expiry / qty / total. Nothing else moves.
-export async function addStockProduct(name: string, expiry: string, qty: number): Promise<string> {
+export async function addStockProduct(name: string, expiry: string, qty: number): Promise<Done> {
   const now = await readStock()
   const clean = name.trim()
   if (now.products.some(p => p.name.toLowerCase() === clean.toLowerCase())) throw new Error(`"${clean}" is already in the sheet.`)
@@ -172,13 +176,13 @@ export async function addStockProduct(name: string, expiry: string, qty: number)
       { range: `${cellA1(now.cols.exp, at)}:${colL(now.cols.total)}${at + 1}`, values: [[exp, qty, qty]] },
     ],
   })
-  return `${nextNo}. ${clean}`
+  return { message: `${nextNo}. ${clean}`, undo: { kind: 'row', row: at, name: clean, after: { expiry: exp, qty: String(qty) } } }
 }
 
 // A new expiry batch for an existing product: one new row straight after that
 // product's last batch, with expiry + qty in the latest count. NO. / name stay
 // blank (the parser carries the product down, like the merged rows).
-export async function addStockBatch(firstRow: number, expiry: string, qty: number): Promise<string> {
+export async function addStockBatch(firstRow: number, expiry: string, qty: number): Promise<Done> {
   const now = await readStock()
   const p = now.products.find(x => x.batches[0].row === firstRow)
   if (!p) throw new Error('That product is no longer in the sheet — reload the page.')
@@ -196,7 +200,50 @@ export async function addStockBatch(firstRow: number, expiry: string, qty: numbe
     valueInputOption: 'USER_ENTERED',
     data: [{ range: `${cellA1(now.cols.exp, at)}:${colL(now.cols.qty)}${at + 1}`, values: [[exp, qty]] }],
   })
-  return `${p.name} · ${exp}`
+  return { message: `${p.name} · ${exp}`, undo: { kind: 'row', row: at, name: '', after: { expiry: exp, qty: String(qty) } } }
+}
+
+// ---- Undo ------------------------------------------------------------------
+// Every save hands back an Undo describing how to reverse it. Undo only acts if
+// the sheet still shows exactly what that save wrote — if anyone has changed
+// the line since, it refuses rather than guess.
+export type Undo =
+  | { kind: 'edit'; row: number; before: { expiry: string; qty: string }; after: { expiry: string; qty: string } }
+  | { kind: 'row'; row: number; name: string; after: { expiry: string; qty: string } }
+export type Done = { message: string; undo?: Undo }
+
+const sameExp = (a: string, b: string) => { try { return toExpiry(a) === toExpiry(b) } catch { return a.trim() === b.trim() } }
+const sameQty = (a: string, b: string) => num(a) === num(b)
+
+export async function undoStock(u: Undo): Promise<string> {
+  const now = await readStock()
+  const row = Number(u?.row)
+  const hit = now.products.flatMap(p => p.batches.map(b => ({ b, p }))).find(x => x.b.row === row)
+  const still = hit && sameExp(hit.b.rawExpiry, u.after.expiry) && sameQty(hit.b.rawQty, u.after.qty)
+  if (!hit || !still) throw new Error('Can’t undo — that line has changed since. Reload and fix it by hand.')
+  if (u.kind === 'edit') {
+    await proxy('POST', `${base()}/values:batchUpdate`, {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        { range: cellA1(now.cols.exp, row), values: [[u.before.expiry]] },
+        { range: cellA1(now.cols.qty, row), values: [[u.before.qty]] },
+      ],
+    })
+    return `Undone: ${hit.p.name} is back to ${u.before.qty || 'blank'}${u.before.expiry ? ` (${u.before.expiry})` : ''}.`
+  }
+  if (u.kind === 'row') {
+    // A new product must still be a one-line product with the same name; a new
+    // batch must not be the product's first line (that row holds the name).
+    if (u.name ? hit.p.name !== u.name || hit.p.batches.length !== 1 : hit.p.batches[0].row === row) {
+      throw new Error('Can’t undo — that row has changed since. Reload and fix it by hand.')
+    }
+    const sheetId = await tabId()
+    await proxy('POST', `${base()}:batchUpdate`, {
+      requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: row, endIndex: row + 1 } } }],
+    })
+    return u.name ? `Undone: ${u.name} removed from the sheet.` : `Undone: ${hit.p.name} · ${hit.b.expiry} removed from the sheet.`
+  }
+  throw new Error('Unknown undo.')
 }
 
 async function tabId(): Promise<number> {
