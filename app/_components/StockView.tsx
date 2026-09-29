@@ -25,15 +25,19 @@ function monthsLeft(exp: string): number | null {
 const toMonthInput = (exp: string) => { const p = parseExp(exp); return p ? `${p.y}-${String(p.m + 1).padStart(2, '0')}` : '' }
 const fmt = (n: number) => n.toLocaleString('en-MY')
 
+// Alert thresholds (owners' choice, 2026-09-29): a product under LOW_STOCK units
+// in total, and a batch expiring in under EXPIRY_MONTHS months.
+const LOW_STOCK = 1000
+const EXPIRY_MONTHS = 8
 type Tone = 'ok' | 'soon' | 'urgent' | 'none'
 function tone(b: StockBatch): Tone {
   const left = monthsLeft(b.expiry)
   if (left === null || !(b.qty && b.qty > 0)) return 'none'
-  return left <= 3 ? 'urgent' : left <= 6 ? 'soon' : 'ok'
+  return left <= 3 ? 'urgent' : left < EXPIRY_MONTHS ? 'soon' : 'ok'
 }
 const TONE: Record<Tone, { bg: string; fg: string; label: string }> = {
   ok: { bg: 'rgba(75,122,90,.12)', fg: 'var(--sage)', label: '' },
-  soon: { bg: 'rgba(182,128,42,.15)', fg: 'var(--honey)', label: 'within 6 months' },
+  soon: { bg: 'rgba(182,128,42,.15)', fg: 'var(--honey)', label: `in under ${EXPIRY_MONTHS} months` },
   urgent: { bg: 'rgba(194,48,42,.12)', fg: 'var(--rust)', label: 'within 3 months' },
   none: { bg: 'var(--paper)', fg: 'var(--ink-soft)', label: '' },
 }
@@ -132,17 +136,21 @@ function AddBatch({ row }: { row: number }) {
 
 function ProductCard({ p }: { p: StockProduct & { row0: number } }) {
   const worst = p.batches.map(tone).find(x => x === 'urgent') ?? p.batches.map(tone).find(x => x === 'soon')
+  const low = p.total < LOW_STOCK
   return (
-    <article className="stk-card">
+    <article className={`stk-card${low ? ' stk-low' : worst ? ' stk-warn' : ''}`}>
       <header>
         <div>
           <span className="stk-no">{p.no || '•'}</span>
           <h3>{p.name}</h3>
         </div>
-        {worst ? <span className="stk-flag" style={{ color: TONE[worst].fg }}>⚠️ expiring</span> : null}
+        <div className="stk-flags">
+          {low ? <span className="stk-flag stk-flag-low">Low stock</span> : null}
+          {worst ? <span className="stk-flag" style={{ background: TONE[worst].bg, color: TONE[worst].fg }}>Expiring soon</span> : null}
+        </div>
       </header>
       <div className="stk-total">
-        <b>{fmt(p.total)}</b> <span>units</span>
+        <b style={low ? { color: 'var(--rust)' } : undefined}>{fmt(p.total)}</b> <span>units{low ? ` · below ${fmt(LOW_STOCK)}` : ''}</span>
       </div>
       <ul>{p.batches.map(b => <BatchRow key={b.row} b={b} />)}</ul>
       <AddBatch row={p.row0} />
@@ -222,15 +230,33 @@ export default function StockView({ data, endpoint = '/api/stock', canAddProduct
   const all = products.flatMap(p => p.batches)
   const units = products.reduce((s, p) => s + p.total, 0)
   const expiring = all.filter(b => tone(b) === 'urgent' || tone(b) === 'soon')
+  const low = products.filter(p => p.total < LOW_STOCK)
+  const expiringLines = products.flatMap(p => p.batches.filter(b => tone(b) === 'urgent' || tone(b) === 'soon').map(b => ({ p, b })))
   return (
     <SavedCtx.Provider value={saved}>
       <style>{CSS}</style>
       <section className="stk-stats">
         <div><span>Total units</span><b>{fmt(units)}</b></div>
         <div><span>Products in stock</span><b>{products.length}</b></div>
-        <div><span>Expiring ≤ 6 months</span><b style={{ color: expiring.length ? 'var(--honey)' : undefined }}>{fmt(expiring.reduce((s, b) => s + (b.qty ?? 0), 0))}</b><small>{expiring.length} batch{expiring.length === 1 ? '' : 'es'}</small></div>
-        <div><span>Expiry batches</span><b>{all.length}</b></div>
+        <div><span>Expiring &lt; {EXPIRY_MONTHS} months</span><b style={{ color: expiring.length ? 'var(--honey)' : undefined }}>{fmt(expiring.reduce((s, b) => s + (b.qty ?? 0), 0))}</b><small>{expiring.length} batch{expiring.length === 1 ? '' : 'es'}</small></div>
+        <div><span>Low stock (&lt; {fmt(LOW_STOCK)})</span><b style={{ color: low.length ? 'var(--rust)' : undefined }}>{low.length}</b><small>product{low.length === 1 ? '' : 's'}</small></div>
       </section>
+      {low.length || expiringLines.length ? (
+        <section className="stk-remind" role="alert">
+          <b>🔔 Needs attention</b>
+          <ul>
+            {low.map(p => <li key={`l${p.row0}`}><span className="stk-dot" style={{ background: 'var(--rust)' }} />{p.name} — only <b>{fmt(p.total)}</b> left (below {fmt(LOW_STOCK)})</li>)}
+            {expiringLines.map(({ p, b }) => <li key={`e${b.row}`}><span className="stk-dot" style={{ background: TONE[tone(b)].fg }} />{p.name} — <b>{fmt(b.qty ?? 0)}</b> expiring {b.expiry}</li>)}
+          </ul>
+        </section>
+      ) : (
+        <p className="cap">✅ All products have {fmt(LOW_STOCK)}+ units and nothing expires within {EXPIRY_MONTHS} months.</p>
+      )}
+      <p className="stk-legend">
+        <span><i style={{ background: 'var(--rust)' }} />Low stock (under {fmt(LOW_STOCK)}) or expiring within 3 months</span>
+        <span><i style={{ background: 'var(--honey)' }} />Expiring in under {EXPIRY_MONTHS} months</span>
+        <span><i style={{ background: 'var(--sage)' }} />OK</span>
+      </p>
       <section className="stk-grid">
         {products.map(p => <ProductCard key={p.row0} p={p} />)}
         {canAddProduct ? <AddProduct /> : null}
@@ -252,7 +278,17 @@ const CSS = `
 .stk-card header > div { display: flex; gap: 10px; align-items: center; }
 .stk-no { flex: none; width: 26px; height: 26px; border-radius: 999px; background: var(--clay-tint); color: var(--clay); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
 .stk-card h3 { margin: 0; font-size: 15px; line-height: 1.3; color: var(--ink); }
-.stk-flag { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.stk-flags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.stk-flag { font-size: 11px; font-weight: 700; white-space: nowrap; padding: 3px 8px; border-radius: 999px; }
+.stk-flag-low { background: rgba(194,48,42,.12); color: var(--rust); }
+.stk-low { border: 2px solid var(--rust); background: linear-gradient(180deg, rgba(194,48,42,.05), var(--card) 40%); }
+.stk-warn { border: 2px solid var(--honey); }
+.stk-remind { background: rgba(194,48,42,.06); border: 1px solid rgba(194,48,42,.25); border-radius: 14px; padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.stk-remind ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.stk-remind li { display: flex; align-items: center; gap: 8px; }
+.stk-dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+.stk-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-soft); margin: 0 0 12px; }
+.stk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .stk-total b { font-size: 30px; font-variant-numeric: tabular-nums; color: var(--ink); }
 .stk-total span { font-size: 13px; color: var(--ink-soft); }
 .stk-card ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
