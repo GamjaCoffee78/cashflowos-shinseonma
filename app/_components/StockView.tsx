@@ -28,6 +28,14 @@ const fmt = (n: number) => n.toLocaleString('en-MY')
 // Alert thresholds (owners' choice, 2026-09-29): a product under LOW_STOCK units
 // in total, and a batch expiring in under EXPIRY_MONTHS months.
 const LOW_STOCK = 1000
+// Per-product low-stock levels (owners' choice, 2026-10-02), matched on the
+// product name; anything not listed uses LOW_STOCK.
+const LOW_LEVELS: [RegExp, number][] = [
+  [/\btray\b/i, 150],
+  [/\bbowl\b/i, 150],
+  [/chil+i\s*(flakes?|powder)/i, 200],
+]
+const lowLevel = (name: string) => LOW_LEVELS.find(([re]) => re.test(name))?.[1] ?? LOW_STOCK
 const EXPIRY_MONTHS = 8
 type Tone = 'ok' | 'soon' | 'urgent' | 'none'
 function tone(b: StockBatch): Tone {
@@ -136,7 +144,8 @@ function AddBatch({ row }: { row: number }) {
 
 function ProductCard({ p }: { p: StockProduct & { row0: number } }) {
   const worst = p.batches.map(tone).find(x => x === 'urgent') ?? p.batches.map(tone).find(x => x === 'soon')
-  const low = p.total < LOW_STOCK
+  const limit = lowLevel(p.name)
+  const low = p.total < limit
   return (
     <article className={`stk-card${low ? ' stk-low' : worst ? ' stk-warn' : ''}`}>
       <header>
@@ -150,7 +159,7 @@ function ProductCard({ p }: { p: StockProduct & { row0: number } }) {
         </div>
       </header>
       <div className="stk-total">
-        <b style={low ? { color: 'var(--rust)' } : undefined}>{fmt(p.total)}</b> <span>units{low ? ` · below ${fmt(LOW_STOCK)}` : ''}</span>
+        <b style={low ? { color: 'var(--rust)' } : undefined}>{fmt(p.total)}</b> <span>units{low ? ` · below ${fmt(limit)}` : ''}</span>
       </div>
       <ul>{p.batches.map(b => <BatchRow key={b.row} b={b} />)}</ul>
       <AddBatch row={p.row0} />
@@ -230,7 +239,7 @@ export default function StockView({ data, endpoint = '/api/stock', canAddProduct
   const all = products.flatMap(p => p.batches)
   const units = products.reduce((s, p) => s + p.total, 0)
   const expiring = all.filter(b => tone(b) === 'urgent' || tone(b) === 'soon')
-  const low = products.filter(p => p.total < LOW_STOCK)
+  const low = products.filter(p => p.total < lowLevel(p.name))
   const expiringLines = products.flatMap(p => p.batches.filter(b => tone(b) === 'urgent' || tone(b) === 'soon').map(b => ({ p, b })))
   return (
     <SavedCtx.Provider value={saved}>
@@ -239,21 +248,21 @@ export default function StockView({ data, endpoint = '/api/stock', canAddProduct
         <div><span>Total units</span><b>{fmt(units)}</b></div>
         <div><span>Products in stock</span><b>{products.length}</b></div>
         <div><span>Expiring &lt; {EXPIRY_MONTHS} months</span><b style={{ color: expiring.length ? 'var(--honey)' : undefined }}>{fmt(expiring.reduce((s, b) => s + (b.qty ?? 0), 0))}</b><small>{expiring.length} batch{expiring.length === 1 ? '' : 'es'}</small></div>
-        <div><span>Low stock (&lt; {fmt(LOW_STOCK)})</span><b style={{ color: low.length ? 'var(--rust)' : undefined }}>{low.length}</b><small>product{low.length === 1 ? '' : 's'}</small></div>
+        <div><span>Low stock</span><b style={{ color: low.length ? 'var(--rust)' : undefined }}>{low.length}</b><small>product{low.length === 1 ? '' : 's'}</small></div>
       </section>
       {low.length || expiringLines.length ? (
         <section className="stk-remind" role="alert">
           <b>🔔 Needs attention</b>
           <ul>
-            {low.map(p => <li key={`l${p.row0}`}><span className="stk-dot" style={{ background: 'var(--rust)' }} />{p.name} — only <b>{fmt(p.total)}</b> left (below {fmt(LOW_STOCK)})</li>)}
+            {low.map(p => <li key={`l${p.row0}`}><span className="stk-dot" style={{ background: 'var(--rust)' }} />{p.name} — only <b>{fmt(p.total)}</b> left (below {fmt(lowLevel(p.name))})</li>)}
             {expiringLines.map(({ p, b }) => <li key={`e${b.row}`}><span className="stk-dot" style={{ background: TONE[tone(b)].fg }} />{p.name} — <b>{fmt(b.qty ?? 0)}</b> expiring {b.expiry}</li>)}
           </ul>
         </section>
       ) : (
-        <p className="cap">✅ All products have {fmt(LOW_STOCK)}+ units and nothing expires within {EXPIRY_MONTHS} months.</p>
+        <p className="cap">✅ Every product is above its low-stock level and nothing expires within {EXPIRY_MONTHS} months.</p>
       )}
       <p className="stk-legend">
-        <span><i style={{ background: 'var(--rust)' }} />Low stock (under {fmt(LOW_STOCK)}) or expiring within 3 months</span>
+        <span><i style={{ background: 'var(--rust)' }} />Low stock (Tray &amp; Bowl under 150 · Chilli Flakes &amp; Powder under 200 · others under {fmt(LOW_STOCK)}) or expiring within 3 months</span>
         <span><i style={{ background: 'var(--honey)' }} />Expiring in under {EXPIRY_MONTHS} months</span>
         <span><i style={{ background: 'var(--sage)' }} />OK</span>
       </p>
