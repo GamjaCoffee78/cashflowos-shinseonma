@@ -11,6 +11,8 @@ import PostCards from '@/app/_components/PostCards'
 import Pager from '@/app/_components/Pager'
 import AccountSplit, { type AccountRow } from '@/app/_components/AccountSplit'
 import { engagementFor } from '@/lib/insights'
+import { adSuggestions } from '@/lib/ad-suggest'
+import AdSuggestions from '@/app/_components/AdSuggestions'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,7 +124,8 @@ export default async function Content({
   const active = PLATFORMS.some(p => p.key === sp.platform) ? (sp.platform as string) : ''
   const topFirst = sp.sort === 'views'
   const savedFirst = sp.sort === 'saved'
-  const flat = topFirst || savedFirst
+  const adsView = sp.sort === 'ads'
+  const flat = topFirst || savedFirst || adsView
 
   const all = await getRecords()
   const content = all.filter(r => r.category === 'content')
@@ -243,7 +246,7 @@ export default async function Content({
             <div className="pgw-head">
               <h2>
                 {rows.length} posts
-                {pages > 1 ? <span className="pgw-page"> · page {page} of {pages}</span> : null}
+                {pages > 1 && !adsView ? <span className="pgw-page"> · page {page} of {pages}</span> : null}
               </h2>
               <div className="sortbar" role="group" aria-label="Order">
                 <Link
@@ -267,10 +270,24 @@ export default async function Content({
                 >
                   Most saved
                 </Link>
+                <Link
+                  href={link('ads')}
+                  className={`sortlink${adsView ? ' on' : ''}`}
+                  aria-current={adsView ? 'true' : undefined}
+                >
+                  Ads suggestion
+                </Link>
               </div>
             </div>
-            <PostCards rows={shown} byMonth={!flat} />
-            <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : savedFirst ? 'saved' : undefined, n)} />
+            {adsView ? (
+              // The top 5 reels to boost, with reasons — replaces the grid.
+              <AdSuggestions items={adSuggestions(rows, today)} />
+            ) : (
+              <>
+                <PostCards rows={shown} byMonth={!flat} />
+                <Pager page={page} pages={pages} href={n => link(topFirst ? 'views' : savedFirst ? 'saved' : undefined, n)} />
+              </>
+            )}
           </section>
 
           <ContentMonths months={byMonth(rows)} />
