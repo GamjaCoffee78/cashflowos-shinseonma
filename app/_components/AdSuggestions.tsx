@@ -27,6 +27,10 @@ export default function AdSuggestions({ items }: { items: Suggestion[] }) {
               <a className="as-thumb" href={url} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {thumb ? <img src={thumb} alt="" loading="lazy" /> : <span className="pg-ph">no cover</span>}
+                {r.meta?.collab ? (
+                  // Same label as the Content grid: posted from the founder's account.
+                  <span className="pg-collab" title={`Posted from @${String(r.meta?.account ?? '')}`}>collab</span>
+                ) : null}
               </a>
               <div className="as-body">
                 <div className="as-head">
@@ -40,7 +44,7 @@ export default function AdSuggestions({ items }: { items: Suggestion[] }) {
                   </span>
                 </div>
                 <div className="as-nums">
-                  {r.due_date ?? '—'}{r.meta?.collab ? ' · collab' : ''} · {n(r.meta?.views)} views · {n(r.meta?.reach)} reached
+                  {r.due_date ?? '—'} · {n(r.meta?.views)} views · {n(r.meta?.reach)} reached
                   {eng ? ` · ${n(eng.saved)} saved · ${n(eng.shares)} shared` : ''}
                 </div>
                 <ul className="as-why">
