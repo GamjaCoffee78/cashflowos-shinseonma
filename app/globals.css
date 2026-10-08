@@ -1300,3 +1300,5 @@ input, select, textarea { font-family: inherit; }
 .cal-items .pt-chip.bar-end   { margin-left: -20px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-width: 0; }
 .cal-items .pt-chip.bar-mid, .cal-items .pt-chip.bar-end, .cal-items .pt-chip.bar-start { max-width: none; box-shadow: none; transform: none !important; }
 .cal-items .pt-chip.bar-gap { background: transparent; border-color: transparent; box-shadow: none; }
+/* A person's solid bar: the bold name must stay white on the strong colour. */
+.pt-chip.person b, .pt-tag.person { color: #fff !important; }

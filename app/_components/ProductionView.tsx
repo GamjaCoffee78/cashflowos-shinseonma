@@ -1,8 +1,12 @@
 import Link from 'next/link'
 import type { Rec } from '@/lib/records'
-import { ItemActions, AddTask, DayAdd } from '@/app/_components/ProductionActions'
+import { ItemActions, AddTask, AddLeave, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
-import { colorStyle, ITEM_COLORS } from '@/lib/item-colors'
+import { colorStyle } from '@/lib/item-colors'
+
+// People's colours (leave…): strong, far-apart hues, shown as solid bars, so
+// no two people can be mistaken for each other.
+const PEOPLE = ['#E53935', '#1E63D6', '#2E9D3A', '#F28C00', '#8E3CCB', '#00A3A3', '#E0399A', '#7A4A1E', '#1F2A44', '#9BB000']
 
 // Months to show: every month with items, plus this month and the next five —
 // so any date can be picked and filled with the ＋ on its day.
@@ -147,11 +151,11 @@ export default function ProductionView({
   // One colour per person, handed out in name order over everyone on the
   // calendar, so two people never share a colour (until there are more than 8).
   const everyone = [...new Set(rows.map(personOf).filter(Boolean))].sort()
-  const personColor = (p: string) => (p ? ITEM_COLORS[everyone.indexOf(p) % ITEM_COLORS.length] : undefined)
-  // Own colour first, then the person's colour.
+  const personColor = (p: string) => (p ? { fg: PEOPLE[everyone.indexOf(p) % PEOPLE.length] } : undefined)
+  // Own colour first, then the person's colour — a solid bar with white text.
   const itemStyle = (r: Rec) => {
     const c = personColor(personOf(r))
-    return colorStyle(r.meta?.color) ?? (c ? ({ '--tone': c.fg, '--tone-bg': c.bg } as React.CSSProperties) : undefined)
+    return colorStyle(r.meta?.color) ?? (c ? ({ '--tone': c.fg, '--tone-bg': c.fg, color: '#fff' } as React.CSSProperties) : undefined)
   }
   const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
 
@@ -219,7 +223,7 @@ export default function ProductionView({
         status={isDone(r) ? '✓ Done' : endOf(r) < today ? 'Not done' : 'Planned'}
         {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, endDate: endOf(r) === r.due_date ? '' : endOf(r), category } : {})}
       >
-        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${itemStyle(r) ? ' colored' : ''} bar-${pos}`} style={itemStyle(r) ?? (social ? channelStyle(tag) : undefined)}>
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${itemStyle(r) ? ' colored' : ''}${who && !r.meta?.color ? ' person' : ''} bar-${pos}`} style={itemStyle(r) ?? (social ? channelStyle(tag) : undefined)}>
           {label ? <>{who ? <b>{who}</b> : tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}</> : '\u00a0'}
         </span>
       </ChipPop>
@@ -231,8 +235,9 @@ export default function ProductionView({
       <h1 className="ph">{title}</h1>
       <p className="cap">{caption}</p>
       {editable ? (
-        <div style={{ margin: '10px 0 16px' }}>
+        <div style={{ margin: '10px 0 16px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
           <AddTask defaultDate={today} category={category} basePath={basePath} label={addLabel} {...(addPlaceholder ? { placeholder: addPlaceholder } : {})} />
+          {category === 'events_other' ? <AddLeave defaultDate={today} basePath={basePath} /> : null}
         </div>
       ) : null}
       {children}
@@ -408,8 +413,8 @@ export default function ProductionView({
                     const done = isDone(r)
                     const moved = Array.isArray(r.meta?.moved_from) ? r.meta.moved_from : []
                     return (
-                      <li key={r.id} className={`${done ? 'done' : ''}${itemStyle(r) ? ' colored' : ''}`} style={itemStyle(r)}>
-                        {personOf(r) ? <span className="pt-tag" style={itemStyle(r)}>🌴 {personOf(r)}</span> : null}
+                      <li key={r.id} className={`${done ? 'done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
+                        {personOf(r) ? <span className="pt-tag person" style={{ background: personColor(personOf(r))?.fg }}>🌴 {personOf(r)}</span> : null}
                         {tag ? (
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>{social ? <ChannelTags tag={tag} /> : tag}</span>
                         ) : null}

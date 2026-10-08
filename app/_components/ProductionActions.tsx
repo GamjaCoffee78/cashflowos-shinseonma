@@ -142,7 +142,6 @@ export function AddTask({
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(defaultDate)
   const [end, setEnd] = useState('')
-  const [person, setPerson] = useState('')
   const [msg, setMsg] = useState('')
   const [channels, setChannels] = useState<string[]>(['IGR'])
   const social = category === 'social_plan'
@@ -159,13 +158,12 @@ export function AddTask({
         e.preventDefault()
         start(async () => {
           if (social && !channels.length) return setMsg('Tick at least one channel.')
-          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, end_date: end, person, category })
+          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, end_date: end, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
           setTitle('')
           setEnd('')
-          setPerson('')
           setOpen(false)
           router.push(`${basePath}?m=${date.slice(0, 7)}`)
           router.refresh()
@@ -182,9 +180,6 @@ export function AddTask({
         autoFocus
         required
       />
-      {category === 'events_other' ? (
-        <input type="text" placeholder="Who? (e.g. Ivy — for leave)" value={person} onChange={e => setPerson(e.target.value)} aria-label="Who" style={{ maxWidth: 200 }} />
-      ) : null}
       <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" required />
       <span className="cap" style={{ margin: 0 }}>to</span>
       <input type="date" value={end} min={date} onChange={e => setEnd(e.target.value)} aria-label="Last day (optional)" title="Last day — leave empty for a single day" />
@@ -195,6 +190,54 @@ export function AddTask({
   )
 }
 
+
+// 🌴 Add leave — Events / Others only. Who, what kind, from → to. Saved as an
+// event with meta.person, so it shows as that person's coloured bar.
+const LEAVE_TYPES = ['Annual leave', 'Medical leave', 'Emergency leave', 'Out of office', 'Other']
+export function AddLeave({ defaultDate, basePath = '/events-others' }: { defaultDate: string; basePath?: string }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [open, setOpen] = useState(false)
+  const [who, setWho] = useState('')
+  const [kind, setKind] = useState(LEAVE_TYPES[0])
+  const [other, setOther] = useState('')
+  const [from, setFrom] = useState(defaultDate)
+  const [to, setTo] = useState(defaultDate)
+  const [msg, setMsg] = useState('')
+
+  if (!open) {
+    return <button type="button" className="btn" onClick={() => setOpen(true)}>🌴 Add leave</button>
+  }
+  return (
+    <form
+      className="pt-add"
+      onSubmit={e => {
+        e.preventDefault()
+        start(async () => {
+          const title = kind === 'Other' ? other.trim() || 'Leave' : kind
+          const r = await post({ action: 'add', title, date: from, end_date: to, person: who, category: 'events_other' })
+          if (!r.ok) return setMsg(r.message)
+          if (r.message.includes('⚠️')) alert(r.message)
+          setMsg(''); setWho(''); setOther(''); setOpen(false)
+          router.push(`${basePath}?m=${from.slice(0, 7)}`)
+          router.refresh()
+        })
+      }}
+    >
+      <input type="text" placeholder="Who? e.g. Ivy" value={who} onChange={e => setWho(e.target.value)} aria-label="Who" autoFocus required style={{ maxWidth: 180 }} />
+      <select value={kind} onChange={e => setKind(e.target.value)} aria-label="Type of leave">
+        {LEAVE_TYPES.map(t => <option key={t}>{t}</option>)}
+      </select>
+      {kind === 'Other' ? <input type="text" placeholder="What kind?" value={other} onChange={e => setOther(e.target.value)} aria-label="What kind" style={{ maxWidth: 180 }} /> : null}
+      <input type="date" value={from} onChange={e => { setFrom(e.target.value); if (to < e.target.value) setTo(e.target.value) }} aria-label="First day" required />
+      <span className="cap" style={{ margin: 0 }}>to</span>
+      <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} aria-label="Last day" required />
+      <button type="submit" className="btn sync" disabled={pending}>{pending ? 'Saving…' : 'Add leave'}</button>
+      <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
+      {msg ? <span className="cap" role="alert">⚠️ {msg}</span> : null}
+    </form>
+  )
+}
 
 // The Social Calendar's channels. Ticked ones become the post's tag,
 // "[IGR/IGST] Seaweed Soup", which the sheet uses to pick the channel rows.
