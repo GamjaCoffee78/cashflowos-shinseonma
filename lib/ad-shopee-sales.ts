@@ -112,8 +112,8 @@ export function adShopeeSales(ads: AdRow[], my: Rec[], sg: Rec[]): Map<string, A
     out.set(ad.ad_id, {
       kind: 'sales',
       qty,
-      // S$ rather than the Shopee tab's bare '$' — this table sits next to RM.
-      revenue: currency === 'SGD' ? money(total, currency).replace(/^\$/, 'S$') : money(total, currency),
+      // Same symbols as the Shopee tabs: RM for MY, a plain $ for SG.
+      revenue: money(total, currency),
       product: product.name,
       region,
       from: run.from,
