@@ -142,6 +142,7 @@ export function AddTask({
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(defaultDate)
   const [end, setEnd] = useState('')
+  const [person, setPerson] = useState('')
   const [msg, setMsg] = useState('')
   const [channels, setChannels] = useState<string[]>(['IGR'])
   const social = category === 'social_plan'
@@ -158,12 +159,13 @@ export function AddTask({
         e.preventDefault()
         start(async () => {
           if (social && !channels.length) return setMsg('Tick at least one channel.')
-          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, end_date: end, category })
+          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, end_date: end, person, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
           setTitle('')
           setEnd('')
+          setPerson('')
           setOpen(false)
           router.push(`${basePath}?m=${date.slice(0, 7)}`)
           router.refresh()
@@ -180,6 +182,9 @@ export function AddTask({
         autoFocus
         required
       />
+      {category === 'events_other' ? (
+        <input type="text" placeholder="Who? (e.g. Ivy — for leave)" value={person} onChange={e => setPerson(e.target.value)} aria-label="Who" style={{ maxWidth: 200 }} />
+      ) : null}
       <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" required />
       <span className="cap" style={{ margin: 0 }}>to</span>
       <input type="date" value={end} min={date} onChange={e => setEnd(e.target.value)} aria-label="Last day (optional)" title="Last day — leave empty for a single day" />

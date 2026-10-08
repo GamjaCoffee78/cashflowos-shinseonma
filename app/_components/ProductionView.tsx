@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Rec } from '@/lib/records'
 import { ItemActions, AddTask, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
-import { colorStyle } from '@/lib/item-colors'
+import { colorStyle, ITEM_COLORS } from '@/lib/item-colors'
 
 // Months to show: every month with items, plus this month and the next five —
 // so any date can be picked and filled with the ＋ on its day.
@@ -95,6 +95,8 @@ const endOf = (r: Rec) => {
 const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 const monthEnd = (k: string) => { const [y, m] = k.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) }
 const inMonth = (r: Rec, k: string) => (r.due_date as string) <= monthEnd(k) && endOf(r) >= `${k}-01`
+const multi = (r: Rec) => endOf(r) !== r.due_date
+const personOf = (r: Rec) => (typeof r.meta?.person === 'string' ? r.meta.person.trim() : '')
 const span = (r: Rec) => endOf(r) === r.due_date ? fullDay(r.due_date as string) : `${fullDay(r.due_date as string)} – ${fullDay(endOf(r))}`
 
 function whenLabel(iso: string, today: string): string {
@@ -141,6 +143,16 @@ export default function ProductionView({
     if (tag) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
   }
   const social = category === 'social_plan'
+  const people = [...new Set(mine.map(personOf).filter(Boolean))].sort()
+  // One colour per person, handed out in name order over everyone on the
+  // calendar, so two people never share a colour (until there are more than 8).
+  const everyone = [...new Set(rows.map(personOf).filter(Boolean))].sort()
+  const personColor = (p: string) => (p ? ITEM_COLORS[everyone.indexOf(p) % ITEM_COLORS.length] : undefined)
+  // Own colour first, then the person's colour.
+  const itemStyle = (r: Rec) => {
+    const c = personColor(personOf(r))
+    return colorStyle(r.meta?.color) ?? (c ? ({ '--tone': c.fg, '--tone-bg': c.bg } as React.CSSProperties) : undefined)
+  }
   const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
 
   // ── 1. What needs me now? ───────────────────────────────────────
@@ -176,18 +188,39 @@ export default function ProductionView({
   const weeks: (number | null)[][] = []
   for (let n = 0; n < cells.length; n += 7) weeks.push(cells.slice(n, n + 7))
 
-  const Chip = ({ r }: { r: Rec }) => {
+  // pos: where this day sits in a multi-day bar. Middle/end pieces carry no text
+  // (only the first day of each week repeats it), so the bar reads as one link.
+  // Multi-day items get a fixed row ("lane") per week, so a bar stays at the
+  // same height from its first day to its last and reads as one connected line.
+  const lanesOf = (week: (number | null)[]) => {
+    const days = week.filter((d): d is number => d !== null).map(iso)
+    if (!days.length) return [] as Rec[][]
+    const lo = days[0], hi = days[days.length - 1]
+    const spans = mine.filter(r => multi(r) && (r.due_date as string) <= hi && endOf(r) >= lo)
+      .sort((a, b) => ((a.due_date as string) < (b.due_date as string) ? -1 : (a.due_date as string) > (b.due_date as string) ? 1 : a.id - b.id))
+    const lanes: Rec[][] = []
+    for (const r of spans) {
+      const free = lanes.find(l => l.every(o => endOf(o) < (r.due_date as string) || (o.due_date as string) > endOf(r)))
+      if (free) free.push(r)
+      else lanes.push([r])
+    }
+    return lanes
+  }
+
+  const Chip = ({ r, pos = 'one', label = true }: { r: Rec; pos?: 'one' | 'start' | 'mid' | 'end'; label?: boolean }) => {
     const { tag, rest } = splitTag(r.title)
+    const who = personOf(r)
     return (
       <ChipPop
         title={rest}
-        tag={social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
+        person={who}
+        tag={who ? `🌴 ${who}` : social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
         when={span(r)}
         status={isDone(r) ? '✓ Done' : endOf(r) < today ? 'Not done' : 'Planned'}
         {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, endDate: endOf(r) === r.due_date ? '' : endOf(r), category } : {})}
       >
-        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>
-          {tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${itemStyle(r) ? ' colored' : ''} bar-${pos}`} style={itemStyle(r) ?? (social ? channelStyle(tag) : undefined)}>
+          {label ? <>{who ? <b>{who}</b> : tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}</> : '\u00a0'}
         </span>
       </ChipPop>
     )
@@ -285,6 +318,18 @@ export default function ProductionView({
         )
       ) : null}
 
+      {people.length ? (
+        <div className="pt-legend">
+          {people.map(p => (
+            <span key={p}>
+              <i className="pt-sw" style={{ background: personColor(p)?.fg }} aria-hidden="true" />
+              🌴 {p}
+              <b>{mine.filter(r => personOf(r) === p).length}</b>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       {mine.length === 0 ? (
         <div className="empty">Nothing scheduled in {monthLabel(current)}{editable ? ' — tap ＋ on any day to add something.' : '.'}</div>
       ) : null}
@@ -296,7 +341,7 @@ export default function ProductionView({
                 <div key={d} role="columnheader" className="cal-dow">{d}</div>
               ))}
             </div>
-            {weeks.map((week, wi) => (
+            {weeks.map((week, wi) => { const lanes = lanesOf(week); return (
               <div className="cal-grid" role="row" key={`w${wi}`}>
                 {week.map((d, n) => {
                   if (d === null) {
@@ -304,6 +349,10 @@ export default function ProductionView({
                   }
                   const key = iso(d)
                   const items = byDay.get(key) ?? []
+                  const singles = items.filter(r => !multi(r))
+                  // The week's first visible day (or the month's 1st) repeats the label.
+                  const rowStart = n === 0 || week[n - 1] === null
+                  const rowEnd = n === 6 || week[n + 1] === null
                   const weekend = n >= 5
                   return (
                     <div
@@ -319,7 +368,15 @@ export default function ProductionView({
                       <span className="cal-num">{d}</span>
                       {editable ? <DayAdd date={key} category={category} label={fullDay(key)} /> : null}
                       <div className="cal-items">
-                        {items.map(r => <Chip key={r.id} r={r} />)}
+                        {lanes.map((lane, li) => {
+                          const r = lane.find(o => (o.due_date as string) <= key && endOf(o) >= key)
+                          if (!r) return <span key={`l${li}`} className="pt-chip bar-gap" aria-hidden="true">{'\u00a0'}</span>
+                          const first = key === r.due_date, last = key === endOf(r)
+                          const open = first || rowStart, close = last || rowEnd
+                          const pos = open && close ? 'one' : open ? 'start' : close ? 'end' : 'mid'
+                          return <Chip key={`l${li}`} r={r} pos={pos} label={open} />
+                        })}
+                        {singles.map(r => <Chip key={r.id} r={r} />)}
                       </div>
                       {items.length > 0 ? (
                         <span className="cal-count" aria-hidden="true">{items.length}</span>
@@ -328,7 +385,7 @@ export default function ProductionView({
                   )
                 })}
               </div>
-            ))}
+            ) })}
           </div>
 
           {/* The full list, day by day. The calendar shows shape; this is where
@@ -351,7 +408,8 @@ export default function ProductionView({
                     const done = isDone(r)
                     const moved = Array.isArray(r.meta?.moved_from) ? r.meta.moved_from : []
                     return (
-                      <li key={r.id} className={`${done ? 'done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
+                      <li key={r.id} className={`${done ? 'done' : ''}${itemStyle(r) ? ' colored' : ''}`} style={itemStyle(r)}>
+                        {personOf(r) ? <span className="pt-tag" style={itemStyle(r)}>🌴 {personOf(r)}</span> : null}
                         {tag ? (
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>{social ? <ChannelTags tag={tag} /> : tag}</span>
                         ) : null}

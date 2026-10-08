@@ -60,7 +60,9 @@ export async function POST(req: Request) {
     // Optional last day: the item then shows on every day from date to end_date.
     const end = String(body?.end_date || '')
     if (end && (!ISO.test(end) || end < date)) return bad('The end date must be on or after the start date.')
-    const meta = { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString(), ...(end && end > date ? { end_date: end } : {}) }
+    // Optional person (leave, out of office…) — gives the item that person's colour.
+    const person = String(body?.person || '').trim().slice(0, 60)
+    const meta = { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString(), ...(end && end > date ? { end_date: end } : {}), ...(person ? { person } : {}) }
     const { data: made, error } = await supabase.from('records').insert({
       title,
       status: 'planned',
@@ -122,12 +124,17 @@ export async function POST(req: Request) {
     // Ideas also carry notes; only touched when the form sends them.
     const notes = typeof body?.notes === 'string' ? body.notes.trim().slice(0, 1000) : undefined
     const notesChanged = notes !== undefined && notes !== ((row as any).notes ?? '')
-    if (title === (row as any).title && !notesChanged) return NextResponse.json({ ok: true, message: 'No change.' })
+    // Who it's about; only touched when the form sends it ('' clears).
+    const person = typeof body?.person === 'string' ? body.person.trim().slice(0, 60) : undefined
+    const personChanged = person !== undefined && person !== (meta.person ?? '')
+    if (title === (row as any).title && !notesChanged && !personChanged) return NextResponse.json({ ok: true, message: 'No change.' })
     const edits = Array.isArray(meta.edits) ? meta.edits : []
+    const { person: _p, ...noPerson } = meta
+    const base = personChanged ? (person ? { ...meta, person } : noPerson) : meta
     patch = {
       title,
       ...(notesChanged ? { notes: notes || null } : {}),
-      meta: { ...meta, edits: [...edits, { from: (row as any).title, at: now }] },
+      meta: title === (row as any).title ? base : { ...base, edits: [...edits, { from: (row as any).title, at: now }] },
     }
   } else if (action === 'color') {
     // A colour for the item on the calendar; '' clears it. App-only — the sheet is untouched.
@@ -175,7 +182,7 @@ export async function POST(req: Request) {
   let grid = ''
   if (action === 'idea_schedule') grid = await gridNote({ action: 'add', category: 'social_plan', title, date: String(patch.due_date) }, id, newMeta)
   else if (action === 'move' && patch.due_date) grid = await gridNote({ action: 'move', category: row.category, title, date: String(patch.due_date), from: row.due_date }, id, newMeta)
-  else if (action === 'edit' && row.category !== 'content_idea') grid = await gridNote({ action: 'edit', category: row.category, title: String(patch.title), date: row.due_date, oldTitle: title }, id, newMeta)
+  else if (action === 'edit' && row.category !== 'content_idea' && patch.title !== title) grid = await gridNote({ action: 'edit', category: row.category, title: String(patch.title), date: row.due_date, oldTitle: title }, id, newMeta)
   else if (action === 'done' || action === 'undo') grid = await gridNote({ action, category: row.category, title, date: row.due_date }, null, newMeta)
   refresh()
   return NextResponse.json({ ok: true, message: action === 'color' ? 'Colour saved.' : `Saved.${grid}${await sheetNote()}` })
