@@ -8,6 +8,8 @@ import { leaderboardParams } from '@/lib/ads-leaderboard'
 import AdsTab from '@/app/_components/AdsTab'
 import SyncNow from '@/app/_components/SyncNow'
 import MetaAudience from '@/app/_components/MetaAudience'
+import { fetchShopeeOrders } from '@/lib/shopee'
+import { adShopeeSales } from '@/lib/ad-shopee-sales'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -16,6 +18,11 @@ export default async function MetaAds({ searchParams }: { searchParams: Promise<
   const all = await getRecords()
   const days = metaDays(all)
   const lb = leaderboardParams(await searchParams)
+  // Shopee orders over the same stretch the ads cover (the 30 days before the
+  // last 30), for the per-ad "Sales" column. MY and SG kept apart.
+  const ads = metaAdRows(all)
+  const [my, sg] = await Promise.all([fetchShopeeOrders('MY', 75), fetchShopeeOrders('SG', 75)])
+  const sales = adShopeeSales(ads, my, sg)
   return (
     <AdsTab
       title="Meta Ads 📘"
@@ -33,7 +40,7 @@ export default async function MetaAds({ searchParams }: { searchParams: Promise<
         )
       }
     >
-      <AdsLeaderboard rows={metaAdRows(all)} basePath="/meta-ads" {...lb} groupOrder="live-first" />
+      <AdsLeaderboard rows={ads} sales={sales} basePath="/meta-ads" {...lb} groupOrder="live-first" />
       {metaConfigured && <MetaAudience />}
     </AdsTab>
   )
