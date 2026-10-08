@@ -21,7 +21,7 @@ async function post(body: object): Promise<{ ok: boolean; message: string }> {
 }
 
 // ✓ Done / Undo, and 📅 Move to another date — one row's controls.
-export function ItemActions({ id, done, date, title, color = '', category = '' }: { id: number; done: boolean; date: string; title: string; color?: string; category?: string }) {
+export function ItemActions({ id, done, date, endDate = '', title, color = '', category = '' }: { id: number; done: boolean; date: string; endDate?: string; title: string; color?: string; category?: string }) {
   // Social posts edit their channels with tick boxes; the text box holds the words only.
   const social = category === 'social_plan'
   const tagged = /^\s*\[([^\]]*)\]\s*(.*)$/.exec(title)
@@ -35,6 +35,7 @@ export function ItemActions({ id, done, date, title, color = '', category = '' }
   const [pending, start] = useTransition()
   const [moving, setMoving] = useState(false)
   const [newDate, setNewDate] = useState(date)
+  const [newEnd, setNewEnd] = useState(endDate)
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(startText)
@@ -90,13 +91,15 @@ export function ItemActions({ id, done, date, title, color = '', category = '' }
       </button>
       {!moving ? (
         <button type="button" className="pt-btn" disabled={pending} onClick={() => setMoving(true)}>
-          📅 Move
+          📅 Dates
         </button>
       ) : null}
       {moving ? (
         <span className="pt-move">
           <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} aria-label="New date" />
-          <button type="button" className="pt-btn on" disabled={pending || !newDate} onClick={() => run({ action: 'move', id, date: newDate })}>
+          <span className="cap" style={{ margin: 0 }}>to</span>
+          <input type="date" value={newEnd} min={newDate} onChange={e => setNewEnd(e.target.value)} aria-label="Last day (optional)" title="Last day — leave empty for a single day" />
+          <button type="button" className="pt-btn on" disabled={pending || !newDate} onClick={() => run({ action: 'move', id, date: newDate, end_date: newEnd })}>
             Save
           </button>
           <button type="button" className="pt-btn" onClick={() => setMoving(false)}>Cancel</button>
@@ -138,6 +141,7 @@ export function AddTask({
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(defaultDate)
+  const [end, setEnd] = useState('')
   const [msg, setMsg] = useState('')
   const [channels, setChannels] = useState<string[]>(['IGR'])
   const social = category === 'social_plan'
@@ -154,11 +158,12 @@ export function AddTask({
         e.preventDefault()
         start(async () => {
           if (social && !channels.length) return setMsg('Tick at least one channel.')
-          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, category })
+          const r = await post({ action: 'add', title: withChannels(category, channels, title), date, end_date: end, category })
           if (!r.ok) return setMsg(r.message)
           if (r.message.includes('⚠️')) alert(r.message)
           setMsg('')
           setTitle('')
+          setEnd('')
           setOpen(false)
           router.push(`${basePath}?m=${date.slice(0, 7)}`)
           router.refresh()
@@ -176,6 +181,8 @@ export function AddTask({
         required
       />
       <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" required />
+      <span className="cap" style={{ margin: 0 }}>to</span>
+      <input type="date" value={end} min={date} onChange={e => setEnd(e.target.value)} aria-label="Last day (optional)" title="Last day — leave empty for a single day" />
       <button type="submit" className="btn sync" disabled={pending}>{pending ? 'Saving…' : 'Add'}</button>
       <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
       {msg ? <span className="cap" role="alert">⚠️ {msg}</span> : null}

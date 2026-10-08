@@ -87,6 +87,16 @@ const fullDay = (iso: string) => fmt(iso, { weekday: 'short', day: 'numeric', mo
 const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000)
 
+// A multi-day item runs due_date → meta.end_date (inclusive). One-day items end where they start.
+const endOf = (r: Rec) => {
+  const e = r.meta?.end_date
+  return typeof e === 'string' && e > (r.due_date as string) ? e : (r.due_date as string)
+}
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
+const monthEnd = (k: string) => { const [y, m] = k.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) }
+const inMonth = (r: Rec, k: string) => (r.due_date as string) <= monthEnd(k) && endOf(r) >= `${k}-01`
+const span = (r: Rec) => endOf(r) === r.due_date ? fullDay(r.due_date as string) : `${fullDay(r.due_date as string)} – ${fullDay(endOf(r))}`
+
 function whenLabel(iso: string, today: string): string {
   const d = daysBetween(iso, today)
   if (d === 0) return 'today'
@@ -121,7 +131,7 @@ export default function ProductionView({
   today: string
 }) {
   const mine = rows
-    .filter(r => (r.due_date ?? '').slice(0, 7) === current)
+    .filter(r => inMonth(r, current))
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
 
   // Tags present this month, most used first — that order drives the colours.
@@ -135,17 +145,21 @@ export default function ProductionView({
 
   // ── 1. What needs me now? ───────────────────────────────────────
   const isDone = (r: Rec) => (r.status || '').toLowerCase() === 'done'
+  // Still running counts as ahead: a span that started earlier but ends today or later.
   const ahead = rows
-    .filter(r => (r.due_date ?? '') >= today && !isDone(r))
+    .filter(r => endOf(r) >= today && !isDone(r))
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
-  const dueToday = rows.filter(r => r.due_date === today && !isDone(r))
+  const dueToday = rows.filter(r => (r.due_date as string) <= today && endOf(r) >= today && !isDone(r))
   const next7 = ahead.filter(r => daysBetween(r.due_date as string, today) <= 7)
-  const passed = mine.filter(r => (r.due_date ?? '') < today && !isDone(r)).length
+  const passed = mine.filter(r => endOf(r) < today && !isDone(r)).length
 
   const byDay = new Map<string, Rec[]>()
+  // A multi-day item sits on every day of its span that falls in this month.
   for (const r of mine) {
-    const k = r.due_date as string
-    byDay.set(k, [...(byDay.get(k) ?? []), r])
+    for (let k = r.due_date as string; k <= endOf(r); k = addDays(k, 1)) {
+      if (k.slice(0, 7) !== current) continue
+      byDay.set(k, [...(byDay.get(k) ?? []), r])
+    }
   }
 
   // ── The month grid, Monday-first ────────────────────────────────
@@ -168,9 +182,9 @@ export default function ProductionView({
       <ChipPop
         title={rest}
         tag={social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
-        when={fullDay(r.due_date as string)}
-        status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
-        {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, category } : {})}
+        when={span(r)}
+        status={isDone(r) ? '✓ Done' : endOf(r) < today ? 'Not done' : 'Planned'}
+        {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, endDate: endOf(r) === r.due_date ? '' : endOf(r), category } : {})}
       >
         <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>
           {tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}
@@ -209,8 +223,8 @@ export default function ProductionView({
           <ul className="pt-next">
             {ahead.slice(0, 4).map(r => (
               <li key={`n${r.id}`}>
-                <span className="pt-when">{whenLabel(r.due_date as string, today)}</span>
-                <span className="pt-date">{fullDay(r.due_date as string)}</span>
+                <span className="pt-when">{(r.due_date as string) < today ? 'ongoing' : whenLabel(r.due_date as string, today)}</span>
+                <span className="pt-date">{span(r)}</span>
                 <Chip r={r} />
               </li>
             ))}
@@ -222,7 +236,7 @@ export default function ProductionView({
              you can see the shape of the year and jump straight to one. */}
       <nav className="pt-months" aria-label="Month">
         {months.map(k => {
-          const n = rows.filter(r => (r.due_date ?? '').slice(0, 7) === k).length
+          const n = rows.filter(r => inMonth(r, k)).length
           const isNow = k === today.slice(0, 7)
           return (
             <Link
@@ -320,7 +334,10 @@ export default function ProductionView({
           {/* The full list, day by day. The calendar shows shape; this is where
               you read the whole title. Days with nothing are simply absent. */}
           <div className="pt-days">
-            {[...byDay.entries()].map(([day, items]) => (
+            {[...byDay.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
+              .map(([day, items]) => [day, items.filter(r => day === ((r.due_date as string) < `${current}-01` ? `${current}-01` : r.due_date))] as const)
+              .filter(([, items]) => items.length > 0)
+              .map(([day, items]) => (
               <div className={`pt-day${day === today ? ' today' : ''}${day < today ? ' past' : ''}`} key={day}>
                 <div className="pt-day-head">
                   <span className="pt-day-num">{dayNum(day)}</span>
@@ -339,11 +356,12 @@ export default function ProductionView({
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>{social ? <ChannelTags tag={tag} /> : tag}</span>
                         ) : null}
                         <span className="pt-title">{rest}</span>
-                        {editable && !done && day < today ? <span className="pill overdue">not done</span> : null}
+                        {endOf(r) !== r.due_date ? <span className="pt-day-note">{span(r)}</span> : null}
+                        {editable && !done && endOf(r) < today ? <span className="pill overdue">not done</span> : null}
                         {moved.length ? (
                           <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
                         ) : null}
-                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} color={r.meta?.color ?? ''} category={category} /> : null}
+                        {editable ? <ItemActions id={r.id} done={done} date={r.due_date as string} endDate={endOf(r) === r.due_date ? '' : endOf(r)} title={r.title} color={r.meta?.color ?? ''} category={category} /> : null}
                       </li>
                     )
                   })}

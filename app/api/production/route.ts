@@ -57,7 +57,10 @@ export async function POST(req: Request) {
     const category = CALENDARS.includes(String(body?.category)) ? String(body.category) : 'production'
     if (!title) return bad('Give the task a name.')
     if (!ISO.test(date)) return bad('Pick a date.')
-    const meta = { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString() }
+    // Optional last day: the item then shows on every day from date to end_date.
+    const end = String(body?.end_date || '')
+    if (end && (!ISO.test(end) || end < date)) return bad('The end date must be on or after the start date.')
+    const meta = { source: 'app', month: date.slice(0, 7), created_at: new Date().toISOString(), ...(end && end > date ? { end_date: end } : {}) }
     const { data: made, error } = await supabase.from('records').insert({
       title,
       status: 'planned',
@@ -140,11 +143,24 @@ export async function POST(req: Request) {
   } else if (action === 'move') {
     const date = String(body?.date || '')
     if (!ISO.test(date)) return bad('Pick a new date.')
-    if (date === row.due_date) return NextResponse.json({ ok: true, message: 'Same date — nothing changed.' })
-    const history = Array.isArray(meta.moved_from) ? meta.moved_from : []
-    patch = {
-      due_date: date,
-      meta: { ...meta, month: date.slice(0, 7), moved_from: [...history, { date: row.due_date, at: now }] },
+    // end_date sent → the new last day ('' = a single day). Not sent → keep the span's length.
+    const oldEnd = typeof meta.end_date === 'string' ? meta.end_date : ''
+    let end: string
+    if (typeof body?.end_date === 'string') end = body.end_date
+    else if (oldEnd && row.due_date) end = new Date(Date.parse(`${oldEnd}T00:00:00Z`) + Date.parse(`${date}T00:00:00Z`) - Date.parse(`${row.due_date}T00:00:00Z`)).toISOString().slice(0, 10)
+    else end = ''
+    if (end && (!ISO.test(end) || end < date)) return bad('The end date must be on or after the start date.')
+    if (end === date) end = ''
+    if (date === row.due_date && end === oldEnd) return NextResponse.json({ ok: true, message: 'Same dates — nothing changed.' })
+    const { end_date: _e, ...base } = meta
+    if (date === row.due_date) {
+      patch = { meta: end ? { ...base, end_date: end } : base }
+    } else {
+      const history = Array.isArray(meta.moved_from) ? meta.moved_from : []
+      patch = {
+        due_date: date,
+        meta: { ...base, ...(end ? { end_date: end } : {}), month: date.slice(0, 7), moved_from: [...history, { date: row.due_date, at: now }] },
+      }
     }
   } else {
     return bad('Unknown action.')
@@ -158,7 +174,7 @@ export async function POST(req: Request) {
   const newMeta = (patch.meta as Record<string, unknown>) ?? meta
   let grid = ''
   if (action === 'idea_schedule') grid = await gridNote({ action: 'add', category: 'social_plan', title, date: String(patch.due_date) }, id, newMeta)
-  else if (action === 'move') grid = await gridNote({ action: 'move', category: row.category, title, date: String(patch.due_date), from: row.due_date }, id, newMeta)
+  else if (action === 'move' && patch.due_date) grid = await gridNote({ action: 'move', category: row.category, title, date: String(patch.due_date), from: row.due_date }, id, newMeta)
   else if (action === 'edit' && row.category !== 'content_idea') grid = await gridNote({ action: 'edit', category: row.category, title: String(patch.title), date: row.due_date, oldTitle: title }, id, newMeta)
   else if (action === 'done' || action === 'undo') grid = await gridNote({ action, category: row.category, title, date: row.due_date }, null, newMeta)
   refresh()
