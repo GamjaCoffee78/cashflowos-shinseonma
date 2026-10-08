@@ -12,7 +12,7 @@ export default function AdSuggestions({ items }: { items: Suggestion[] }) {
     <>
       <p className="cap">
         Reels from the last 6 months, ranked on how the video performed on its own — hook, saves &amp; shares, likes &amp; comments and reach,
-        each compared with your typical reel from the same 6 months. Ended giveaways are left out.
+        each compared with your typical reel from the same 6 months. Ended giveaways and past collabs are left out.
       </p>
       <ol className="as-list">
         {items.map((s, i) => {
