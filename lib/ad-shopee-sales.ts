@@ -19,7 +19,7 @@ import type { AdRow } from './ads-leaderboard'
 // Ad-name codes → the words a Shopee listing uses for that product. Add a row
 // here for a new product; codes are matched as whole words, any case.
 export const PRODUCTS: { name: string; codes: string[]; listing: RegExp }[] = [
-  { name: 'Seaweed Soup', codes: ['MYG'], listing: /seaweed\s*soup/i },
+  { name: 'Seaweed Soup', codes: ['MYG', 'Miyeok-guk', 'Miyeokguk', 'Miyeok guk'], listing: /seaweed\s*soup|miyeok/i },
   { name: 'Bulgogi Sauce', codes: ['BGG', 'Bulgogi'], listing: /bulgogi[\s\S]*sauce/i },
   { name: 'Tteokbokki Sauce', codes: ['TBK', 'Tteokbokki'], listing: /tteokbokki[\s\S]*sauce/i },
   { name: 'Soft Tofu Stew Paste', codes: ['SDB', 'Sundubu'], listing: /soft\s*tofu|sundubu/i },
