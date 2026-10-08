@@ -6,7 +6,6 @@ import { getRecords, m, type Rec } from '@/lib/records'
 import Empty from '@/app/_components/Empty'
 import Stat from '@/app/_components/Stat'
 import PlatformTabs from '@/app/_components/PlatformTabs'
-import ContentMonths, { type ContentMonth } from '@/app/_components/ContentMonths'
 import PostCards from '@/app/_components/PostCards'
 import Pager from '@/app/_components/Pager'
 import AccountSplit, { type AccountRow } from '@/app/_components/AccountSplit'
@@ -42,8 +41,6 @@ const viewsOf = (r: Rec) => Number(r.meta?.views ?? 0) || 0
 const isCollab = (r: Rec) => r.meta?.collab === true
 const savesOf = (r: Rec) => engagementFor(r.meta)?.saved ?? 0
 const sharesOf = (r: Rec) => engagementFor(r.meta)?.shares ?? 0
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // Big numbers are hard to read in full, and the exact digit rarely matters at a
 // glance — 6.6M lands, 6,648,045 doesn't. The full number is always in the table.
@@ -90,25 +87,6 @@ function delta(now: number, before: number) {
   const pct = Math.round(((now - before) / before) * 100)
   if (pct === 0) return 'level with the quarter before'
   return `${pct > 0 ? '+' : ''}${pct}% vs the quarter before`
-}
-
-// Views summed per calendar month, oldest first, with no gaps invented — a month
-// with nothing posted simply isn't a row.
-function byMonth(rows: Rec[]): ContentMonth[] {
-  const acc = new Map<string, ContentMonth>()
-  for (const r of rows) {
-    if (!r.due_date) continue
-    const key = r.due_date.slice(0, 7)
-    const cur = acc.get(key)
-    if (cur) {
-      cur.views += viewsOf(r)
-      cur.posts += 1
-    } else {
-      const [y, mo] = key.split('-')
-      acc.set(key, { key, label: `${MONTHS[Number(mo) - 1]} ${y.slice(2)}`, views: viewsOf(r), posts: 1 })
-    }
-  }
-  return [...acc.values()].sort((a, b) => (a.key < b.key ? -1 : 1))
 }
 
 // The marketing calendar. category==='content'. Posts, reels, carousels AND ads
@@ -290,7 +268,6 @@ export default async function Content({
             )}
           </section>
 
-          <ContentMonths months={byMonth(rows)} />
         </>
       )}
     </>
