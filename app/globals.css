@@ -659,24 +659,6 @@ code {
 .tab .n { font-size: 11px; font-weight: 700; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .tab.on .n { color: var(--clay-deep); }
 
-/* ---- Views by month (app/_components/ContentMonths.tsx) ---------------- */
-/* Same table-with-bars shape as Sales by month, so the two read as one family. */
-.cm { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
-.cm h2 { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 0 0 10px; }
-.cm-table { width: 100%; border-collapse: collapse; }
-.cm-table th, .cm-table td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.cm-table tr:last-child th, .cm-table tr:last-child td { border-bottom: none; }
-.cm-table thead th { font-size: 11px; font-weight: 600; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
-.cm-month { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; width: 1%; }
-.cm-cell { min-width: 140px; }
-.cm-val { display: block; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
-.cm-track { display: block; height: 6px; margin-top: 5px; background: var(--line); border-radius: var(--r-pill); overflow: hidden; }
-.cm-bar { display: block; height: 100%; border-radius: var(--r-pill); background: var(--money-in); }
-/* The biggest month is worth finding at a glance; it is still labelled, so the
-   tint is a second signal and never the only one. */
-.cm-bar.peak { background: var(--clay); }
-.cm-posts { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; width: 1%; }
-
 /* ---- Post cards (app/_components/PostCards.tsx) ------------------------ */
 .pgw { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-13); padding: 18px; margin-bottom: 24px; }
 .pgw-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
