@@ -6,13 +6,13 @@ import type { Suggestion } from '@/lib/ad-suggest'
 // on Meta, best first, each with the numbers that earned its place.
 export default function AdSuggestions({ items }: { items: Suggestion[] }) {
   if (!items.length) {
-    return <div className="empty">No reel has enough numbers yet (views, reach, saves) to judge for ads.</div>
+    return <div className="empty">No reel from the last 6 months has enough numbers yet (views, reach, saves) to judge for ads.</div>
   }
   return (
     <>
       <p className="cap">
-        Reels ranked on how the video performed on its own — hook, saves &amp; shares, likes &amp; comments and reach,
-        each compared with your typical reel. Ended giveaways are left out.
+        Reels from the last 6 months, ranked on how the video performed on its own — hook, saves &amp; shares, likes &amp; comments and reach,
+        each compared with your typical reel from the same 6 months. Ended giveaways are left out.
       </p>
       <ol className="as-list">
         {items.map((s, i) => {

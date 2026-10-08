@@ -83,8 +83,21 @@ function weakness(s: Signal, v: number, med: number): string {
 
 const ORDER: Signal[] = ['hook', 'kept', 'react', 'reach']
 
+// Only reels posted in the last 6 months — older videos may show packaging,
+// prices or offers that have since changed. The "typical reel" each one is
+// compared with is drawn from the same 6 months.
+const MAX_AGE_MONTHS = 6
+function cutoff(today: string) {
+  const d = new Date(`${today.slice(0, 10)}T00:00:00Z`)
+  d.setUTCMonth(d.getUTCMonth() - MAX_AGE_MONTHS)
+  return d.toISOString().slice(0, 10)
+}
+
 export function adSuggestions(rows: Rec[], today: string, limit = 5): Suggestion[] {
-  const reels = rows.filter(r => r.category === 'content' && isReel(r) && num(r.meta?.views) > 0 && !endedGiveaway(r, today))
+  const from = cutoff(today)
+  const reels = rows.filter(r =>
+    r.category === 'content' && isReel(r) && num(r.meta?.views) > 0 &&
+    !!r.due_date && r.due_date >= from && !endedGiveaway(r, today))
   const sig = new Map(reels.map(r => [r.id, signals(r)]))
   const pool: Record<Signal, number[]> = { hook: [], kept: [], react: [], reach: [] }
   for (const s of sig.values()) for (const key of ORDER) if (s[key] != null) pool[key].push(s[key]!)
