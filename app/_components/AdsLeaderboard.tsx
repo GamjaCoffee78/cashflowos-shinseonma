@@ -45,7 +45,7 @@ function Sales({ s }: { s?: AdSales }) {
     (s.partialFrom ? ` \u2014 Shopee orders only synced from ${s.partialFrom}, so this undercounts` : '')
   return (
     <span className="lb-sales" title={title}>
-      <b>{s.qty.toLocaleString('en-MY')} pcs</b>{s.partialFrom ? '*' : ''}
+      <b>{s.qty.toLocaleString('en-MY')} {s.qty === 1 ? 'pc' : 'pcs'}{s.partialFrom ? '*' : ''}</b>
       <span className="lb-sales-rm">{s.revenue}</span>
     </span>
   )
