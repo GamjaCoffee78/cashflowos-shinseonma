@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { type AdRow, type Window, type AdMetrics, type GroupOrder, ranked, callouts, ctrOf, cpcOf, cur, prev, emptyMetrics, orderGroups, groupIsLive, adIsLive, periodOf } from '@/lib/ads-leaderboard'
 import { compact } from '@/lib/ads-daily'
+import type { AdSales } from '@/lib/ad-shopee-sales'
 
 // The per-ad section of an ad-platform tab: 🏆 Top 3, plain-English callouts,
 // then every ad grouped by campaign in a sortable leaderboard. Server-rendered;
@@ -36,6 +37,20 @@ function Delta({ now, before, up = true }: { now: number; before: number; up?: b
   )
 }
 
+// Shopee units + revenue for the advertised product over the ad's own run.
+function Sales({ s }: { s?: AdSales }) {
+  if (!s) return null
+  if (s.kind === 'none') return <span className="dlt flat" title={s.reason}>{'\u2014'}</span>
+  const title = `${s.product} on Shopee ${s.region}, ${s.from} to ${s.to}` +
+    (s.partialFrom ? ` \u2014 Shopee orders only synced from ${s.partialFrom}, so this undercounts` : '')
+  return (
+    <span className="lb-sales" title={title}>
+      <b>{s.qty.toLocaleString('en-MY')} pcs</b>{s.partialFrom ? '*' : ''}
+      <span className="lb-sales-rm">{s.revenue}</span>
+    </span>
+  )
+}
+
 function Thumb({ ad, big }: { ad: AdRow; big?: boolean }) {
   const cls = `lb-thumb${big ? ' big' : ''}`
   // eslint-disable-next-line @next/next/no-img-element
@@ -49,8 +64,11 @@ export default function AdsLeaderboard({
   s,
   d,
   groupOrder = 'spend',
+  sales,
 }: {
   rows: AdRow[]
+  // Meta Ads only: Shopee sales of each ad's product during its run, by ad_id.
+  sales?: Map<string, AdSales>
   basePath: string          // "/tiktok-ads"
   w: Window
   s: SortKey
@@ -112,6 +130,7 @@ export default function AdsLeaderboard({
             <th key={c.key}><Link href={href({ s: c.key, d: flip(c.key) })}>{c.label}{arrow(c.key)}</Link></th>
           ))}
           <th>CTR vs prev</th>
+          {sales ? <th title="Shopee units sold of this ad's product while it ran (MY ads → Shopee MY, SG → Shopee SG)">Sales</th> : null}
         </tr>
       </thead>
       <tbody>
@@ -141,6 +160,7 @@ export default function AdsLeaderboard({
               <td data-label="CPC">{c.clicks ? rm2(cpcOf(c)) : '\u2014'}</td>
               <td data-label="Video views">{c.video_views.toLocaleString('en-MY')}</td>
               <td data-label="CTR vs prev">{idle ? '\u2014' : <Delta now={ctrOf(c)} before={ctrOf(p)} />}</td>
+              {sales ? <td data-label="Sales"><Sales s={sales.get(ad.ad_id)} /></td> : null}
             </tr>
           )
         })}
