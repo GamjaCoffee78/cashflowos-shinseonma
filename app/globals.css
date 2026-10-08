@@ -1302,3 +1302,9 @@ input, select, textarea { font-family: inherit; }
 .cal-items .pt-chip.bar-gap { background: transparent; border-color: transparent; box-shadow: none; }
 /* A person's solid bar: the bold name must stay white on the strong colour. */
 .pt-chip.person b, .pt-tag.person { color: #fff !important; }
+
+/* Month row: a year label starts each year; empty months are faded. */
+.pt-m-wrap { display: flex; align-items: flex-end; gap: 6px; flex: 0 0 auto; }
+.pt-m-year { align-self: center; font-size: 12px; font-weight: 800; color: var(--clay); padding: 0 4px 0 10px; border-left: 2px solid var(--line-2); writing-mode: vertical-rl; transform: rotate(180deg); }
+.pt-m-wrap:first-child .pt-m-year { border-left: none; padding-left: 0; }
+.pt-m-count.none { color: var(--ink-soft); opacity: .5; font-weight: 600; }

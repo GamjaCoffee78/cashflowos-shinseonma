@@ -18,7 +18,15 @@ export function calendarMonths(rows: { due_date: string | null }[], today: strin
     set.add(d.toISOString().slice(0, 7))
   }
   if (asked && /^\d{4}-\d{2}$/.test(asked)) set.add(asked)
-  const months = [...set].sort()
+  // Every month from the first to the last, empty ones included, so the row
+  // reads as a calendar instead of skipping.
+  const have = [...set].sort()
+  const months: string[] = []
+  for (let k = have[0]; k <= have[have.length - 1]; ) {
+    months.push(k)
+    const [yy, mm] = k.split('-').map(Number)
+    k = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7)
+  }
   const current = asked && months.includes(asked) ? asked : today.slice(0, 7)
   return { months, current }
 }
@@ -273,19 +281,21 @@ export default function ProductionView({
       {/* 2 ─ How busy is each month? Every month at once, with its count, so
              you can see the shape of the year and jump straight to one. */}
       <nav className="pt-months" aria-label="Month">
-        {months.map(k => {
+        {months.map((k, i) => {
           const n = rows.filter(r => inMonth(r, k)).length
           const isNow = k === today.slice(0, 7)
           return (
+            <span key={k} className="pt-m-wrap">
+            {i === 0 || k.endsWith('-01') ? <span className="pt-m-year">{k.slice(0, 4)}</span> : null}
             <Link
-              key={k}
               href={`${basePath}?m=${k}`}
               className={`pt-month${k === current ? ' active' : ''}`}
               aria-current={k === current ? 'page' : undefined}
             >
               <span className="pt-m-name">{monthShort(k)}{isNow ? ' •' : ''}</span>
-              <span className="pt-m-count">{n}</span>
+              <span className={`pt-m-count${n ? '' : ' none'}`} title={`${n} item${n === 1 ? '' : 's'}`}>{n || '–'}</span>
             </Link>
+            </span>
           )
         })}
       </nav>
