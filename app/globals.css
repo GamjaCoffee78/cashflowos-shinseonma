@@ -1292,3 +1292,19 @@ input, select, textarea { font-family: inherit; }
 .pt-pop-edit { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
 .pt-pop-edit textarea, .pt-pop-edit input[type=date] { font: inherit; font-size: 14px; border: 1px solid var(--line-2); border-radius: 10px; padding: 7px 9px; background: var(--paper); color: var(--ink); resize: vertical; }
 .pt-pop-edit .pt-channels label { font-size: 12px; padding: 3px 8px; }
+
+/* Multi-day items (leave, out of office…): one connected bar across the days.
+   The pieces bleed past the cell padding; the cell clips them at its edge. */
+.cal-items .pt-chip.bar-start { margin-right: -20px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cal-items .pt-chip.bar-mid   { margin-left: -20px; margin-right: -20px; border-radius: 0; border-left-width: 0; }
+.cal-items .pt-chip.bar-end   { margin-left: -20px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-width: 0; }
+.cal-items .pt-chip.bar-mid, .cal-items .pt-chip.bar-end, .cal-items .pt-chip.bar-start { max-width: none; box-shadow: none; transform: none !important; }
+.cal-items .pt-chip.bar-gap { background: transparent; border-color: transparent; box-shadow: none; }
+/* A person's solid bar: the bold name must stay white on the strong colour. */
+.pt-chip.person b, .pt-tag.person { color: #fff !important; }
+
+/* Month row: a year label starts each year; empty months are faded. */
+.pt-m-wrap { display: flex; align-items: flex-end; gap: 6px; flex: 0 0 auto; }
+.pt-m-year { align-self: center; font-size: 12px; font-weight: 800; color: var(--clay); padding: 0 4px 0 10px; border-left: 2px solid var(--line-2); writing-mode: vertical-rl; transform: rotate(180deg); }
+.pt-m-wrap:first-child .pt-m-year { border-left: none; padding-left: 0; }
+.pt-m-count.none { color: var(--ink-soft); opacity: .5; font-weight: 600; }

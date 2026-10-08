@@ -11,8 +11,10 @@ import { CHANNELS, ChannelPicker, withChannels } from './ProductionActions'
 // Tap / click pins the card open with ✓ Done and 🗑 Delete, so an item can be
 // handled straight from the calendar (same /api/production actions as the list).
 export default function ChipPop({
-  children, title, tag, when, status, id, done, rawTitle, date, category = '',
+  children, title, tag, when, status, id, done, rawTitle, date, endDate = '', person = '', category = '',
 }: {
+  person?: string       // who it's about (leave…) — Events only
+  endDate?: string      // YYYY-MM-DD — last day of a multi-day item ('' = one day)
   rawTitle?: string     // the stored title (with its [tag]) — what Edit changes
   date?: string         // YYYY-MM-DD — what Edit's date moves
   category?: string
@@ -39,6 +41,8 @@ export default function ChipPop({
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(startText)
   const [newDate, setNewDate] = useState(date ?? '')
+  const [newEnd, setNewEnd] = useState(endDate)
+  const [who, setWho] = useState(person)
   const [channels, setChannels] = useState<string[]>(startChannels)
   const show = (e: { currentTarget: HTMLElement }) => setBox(e.currentTarget.getBoundingClientRect())
   const hide = () => { if (!pinned) setBox(null) }
@@ -47,8 +51,8 @@ export default function ChipPop({
     if (social && !channels.length) return setErr('Tick at least one channel.')
     const next = social ? withChannels(category, channels, text) : text.trim()
     const steps: object[] = []
-    if (next && next !== rawTitle) steps.push({ action: 'edit', id, title: next })
-    if (newDate && newDate !== date) steps.push({ action: 'move', id, date: newDate })
+    if (next && (next !== rawTitle || who.trim() !== person)) steps.push({ action: 'edit', id, title: next, ...(who.trim() !== person ? { person: who } : {}) })
+    if (newDate && (newDate !== date || newEnd !== endDate)) steps.push({ action: 'move', id, date: newDate, end_date: newEnd })
     for (const body of steps) {
       const res = await fetch('/api/production', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const r = await res.json().catch(() => ({ ok: false, message: `HTTP ${res.status}` }))
@@ -122,7 +126,9 @@ export default function ChipPop({
             <span className="pt-pop-edit">
               {social ? <ChannelPicker value={channels} onChange={setChannels} /> : null}
               <textarea rows={2} value={text} onChange={e => setText(e.target.value)} aria-label="Text" autoFocus />
+              {category === 'events_other' ? <input type="text" value={who} onChange={e => setWho(e.target.value)} placeholder="Who? (for leave)" aria-label="Who" /> : null}
               <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} aria-label="Date" />
+              <label className="cap" style={{ margin: 0 }}>to <input type="date" value={newEnd} min={newDate} onChange={e => setNewEnd(e.target.value)} aria-label="Last day (optional)" /></label>
               <span className="pt-pop-acts">
                 <button type="button" className="pt-btn on" disabled={pending || !text.trim() || !newDate} onClick={saveEdit}>{pending ? 'Saving…' : 'Save'}</button>
                 <button type="button" className="pt-btn" onClick={() => { setEditing(false); setErr('') }}>Cancel</button>
@@ -130,7 +136,7 @@ export default function ChipPop({
             </span>
           ) : id && pinned ? (
             <span className="pt-pop-acts">
-              <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(startText()); setNewDate(date ?? ''); setChannels(startChannels()); setErr(''); setEditing(true) }}>✏️ Edit</button>
+              <button type="button" className="pt-btn" disabled={pending} onClick={() => { setText(startText()); setNewDate(date ?? ''); setNewEnd(endDate); setWho(person); setChannels(startChannels()); setErr(''); setEditing(true) }}>✏️ Edit</button>
               <button type="button" className="pt-btn" disabled={pending} onClick={() => act({ action: done ? 'undo' : 'done' })}>{done ? '↺ Not done' : '✓ Done'}</button>
               <button type="button" className="pt-btn pt-del" disabled={pending} onClick={() => confirm(`Delete "${title}"?\n\nIt is also removed from the Google Sheet calendar.`) && act({ action: 'delete' })}>🗑 Delete</button>
               <button type="button" className="pt-btn" onClick={close}>Close</button>

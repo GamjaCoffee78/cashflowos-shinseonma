@@ -1,8 +1,12 @@
 import Link from 'next/link'
 import type { Rec } from '@/lib/records'
-import { ItemActions, AddTask, DayAdd } from '@/app/_components/ProductionActions'
+import { ItemActions, AddTask, AddLeave, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
 import { colorStyle } from '@/lib/item-colors'
+
+// People's colours (leave…): strong, far-apart hues, shown as solid bars, so
+// no two people can be mistaken for each other.
+const PEOPLE = ['#E53935', '#1E63D6', '#2E9D3A', '#F28C00', '#8E3CCB', '#00A3A3', '#E0399A', '#7A4A1E', '#1F2A44', '#9BB000']
 
 // Months to show: every month with items, plus this month and the next five —
 // so any date can be picked and filled with the ＋ on its day.
@@ -14,7 +18,15 @@ export function calendarMonths(rows: { due_date: string | null }[], today: strin
     set.add(d.toISOString().slice(0, 7))
   }
   if (asked && /^\d{4}-\d{2}$/.test(asked)) set.add(asked)
-  const months = [...set].sort()
+  // Every month from the first to the last, empty ones included, so the row
+  // reads as a calendar instead of skipping.
+  const have = [...set].sort()
+  const months: string[] = []
+  for (let k = have[0]; k <= have[have.length - 1]; ) {
+    months.push(k)
+    const [yy, mm] = k.split('-').map(Number)
+    k = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7)
+  }
   const current = asked && months.includes(asked) ? asked : today.slice(0, 7)
   return { months, current }
 }
@@ -87,6 +99,18 @@ const fullDay = (iso: string) => fmt(iso, { weekday: 'short', day: 'numeric', mo
 const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000)
 
+// A multi-day item runs due_date → meta.end_date (inclusive). One-day items end where they start.
+const endOf = (r: Rec) => {
+  const e = r.meta?.end_date
+  return typeof e === 'string' && e > (r.due_date as string) ? e : (r.due_date as string)
+}
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
+const monthEnd = (k: string) => { const [y, m] = k.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) }
+const inMonth = (r: Rec, k: string) => (r.due_date as string) <= monthEnd(k) && endOf(r) >= `${k}-01`
+const multi = (r: Rec) => endOf(r) !== r.due_date
+const personOf = (r: Rec) => (typeof r.meta?.person === 'string' ? r.meta.person.trim() : '')
+const span = (r: Rec) => endOf(r) === r.due_date ? fullDay(r.due_date as string) : `${fullDay(r.due_date as string)} – ${fullDay(endOf(r))}`
+
 function whenLabel(iso: string, today: string): string {
   const d = daysBetween(iso, today)
   if (d === 0) return 'today'
@@ -121,7 +145,7 @@ export default function ProductionView({
   today: string
 }) {
   const mine = rows
-    .filter(r => (r.due_date ?? '').slice(0, 7) === current)
+    .filter(r => inMonth(r, current))
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
 
   // Tags present this month, most used first — that order drives the colours.
@@ -131,21 +155,35 @@ export default function ProductionView({
     if (tag) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
   }
   const social = category === 'social_plan'
+  const people = [...new Set(mine.map(personOf).filter(Boolean))].sort()
+  // One colour per person, handed out in name order over everyone on the
+  // calendar, so two people never share a colour (until there are more than 8).
+  const everyone = [...new Set(rows.map(personOf).filter(Boolean))].sort()
+  const personColor = (p: string) => (p ? { fg: PEOPLE[everyone.indexOf(p) % PEOPLE.length] } : undefined)
+  // Own colour first, then the person's colour — a solid bar with white text.
+  const itemStyle = (r: Rec) => {
+    const c = personColor(personOf(r))
+    return colorStyle(r.meta?.color) ?? (c ? ({ '--tone': c.fg, '--tone-bg': c.fg, color: '#fff' } as React.CSSProperties) : undefined)
+  }
   const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
 
   // ── 1. What needs me now? ───────────────────────────────────────
   const isDone = (r: Rec) => (r.status || '').toLowerCase() === 'done'
+  // Still running counts as ahead: a span that started earlier but ends today or later.
   const ahead = rows
-    .filter(r => (r.due_date ?? '') >= today && !isDone(r))
+    .filter(r => endOf(r) >= today && !isDone(r))
     .sort((a, b) => ((a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1))
-  const dueToday = rows.filter(r => r.due_date === today && !isDone(r))
+  const dueToday = rows.filter(r => (r.due_date as string) <= today && endOf(r) >= today && !isDone(r))
   const next7 = ahead.filter(r => daysBetween(r.due_date as string, today) <= 7)
-  const passed = mine.filter(r => (r.due_date ?? '') < today && !isDone(r)).length
+  const passed = mine.filter(r => endOf(r) < today && !isDone(r)).length
 
   const byDay = new Map<string, Rec[]>()
+  // A multi-day item sits on every day of its span that falls in this month.
   for (const r of mine) {
-    const k = r.due_date as string
-    byDay.set(k, [...(byDay.get(k) ?? []), r])
+    for (let k = r.due_date as string; k <= endOf(r); k = addDays(k, 1)) {
+      if (k.slice(0, 7) !== current) continue
+      byDay.set(k, [...(byDay.get(k) ?? []), r])
+    }
   }
 
   // ── The month grid, Monday-first ────────────────────────────────
@@ -162,18 +200,39 @@ export default function ProductionView({
   const weeks: (number | null)[][] = []
   for (let n = 0; n < cells.length; n += 7) weeks.push(cells.slice(n, n + 7))
 
-  const Chip = ({ r }: { r: Rec }) => {
+  // pos: where this day sits in a multi-day bar. Middle/end pieces carry no text
+  // (only the first day of each week repeats it), so the bar reads as one link.
+  // Multi-day items get a fixed row ("lane") per week, so a bar stays at the
+  // same height from its first day to its last and reads as one connected line.
+  const lanesOf = (week: (number | null)[]) => {
+    const days = week.filter((d): d is number => d !== null).map(iso)
+    if (!days.length) return [] as Rec[][]
+    const lo = days[0], hi = days[days.length - 1]
+    const spans = mine.filter(r => multi(r) && (r.due_date as string) <= hi && endOf(r) >= lo)
+      .sort((a, b) => ((a.due_date as string) < (b.due_date as string) ? -1 : (a.due_date as string) > (b.due_date as string) ? 1 : a.id - b.id))
+    const lanes: Rec[][] = []
+    for (const r of spans) {
+      const free = lanes.find(l => l.every(o => endOf(o) < (r.due_date as string) || (o.due_date as string) > endOf(r)))
+      if (free) free.push(r)
+      else lanes.push([r])
+    }
+    return lanes
+  }
+
+  const Chip = ({ r, pos = 'one', label = true }: { r: Rec; pos?: 'one' | 'start' | 'mid' | 'end'; label?: boolean }) => {
     const { tag, rest } = splitTag(r.title)
+    const who = personOf(r)
     return (
       <ChipPop
         title={rest}
-        tag={social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
-        when={fullDay(r.due_date as string)}
-        status={isDone(r) ? '✓ Done' : (r.due_date as string) < today ? 'Not done' : 'Planned'}
-        {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, category } : {})}
+        person={who}
+        tag={who ? `🌴 ${who}` : social ? (channelsOf(tag).map(c => (c.key === 'TIKTOK' ? 'TikTok' : c.key)).join(' · ') || tag) : (/^\s*\[([^\]]+)\]/.exec(r.title)?.[1]?.trim() ?? null)}
+        when={span(r)}
+        status={isDone(r) ? '✓ Done' : endOf(r) < today ? 'Not done' : 'Planned'}
+        {...(editable ? { id: r.id, done: isDone(r), rawTitle: r.title, date: r.due_date as string, endDate: endOf(r) === r.due_date ? '' : endOf(r), category } : {})}
       >
-        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>
-          {tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}
+        <span className={`pt-chip tone-${toneFor(tag, tags)}${isDone(r) ? ' done' : ''}${itemStyle(r) ? ' colored' : ''}${who && !r.meta?.color ? ' person' : ''} bar-${pos}`} style={itemStyle(r) ?? (social ? channelStyle(tag) : undefined)}>
+          {label ? <>{who ? <b>{who}</b> : tag ? <b>{social ? <ChannelTags tag={tag} /> : tag}</b> : null}{rest}</> : '\u00a0'}
         </span>
       </ChipPop>
     )
@@ -184,8 +243,9 @@ export default function ProductionView({
       <h1 className="ph">{title}</h1>
       <p className="cap">{caption}</p>
       {editable ? (
-        <div style={{ margin: '10px 0 16px' }}>
+        <div style={{ margin: '10px 0 16px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
           <AddTask defaultDate={today} category={category} basePath={basePath} label={addLabel} {...(addPlaceholder ? { placeholder: addPlaceholder } : {})} />
+          {category === 'events_other' ? <AddLeave defaultDate={today} basePath={basePath} /> : null}
         </div>
       ) : null}
       {children}
@@ -209,8 +269,8 @@ export default function ProductionView({
           <ul className="pt-next">
             {ahead.slice(0, 4).map(r => (
               <li key={`n${r.id}`}>
-                <span className="pt-when">{whenLabel(r.due_date as string, today)}</span>
-                <span className="pt-date">{fullDay(r.due_date as string)}</span>
+                <span className="pt-when">{(r.due_date as string) < today ? 'ongoing' : whenLabel(r.due_date as string, today)}</span>
+                <span className="pt-date">{span(r)}</span>
                 <Chip r={r} />
               </li>
             ))}
@@ -221,19 +281,21 @@ export default function ProductionView({
       {/* 2 ─ How busy is each month? Every month at once, with its count, so
              you can see the shape of the year and jump straight to one. */}
       <nav className="pt-months" aria-label="Month">
-        {months.map(k => {
-          const n = rows.filter(r => (r.due_date ?? '').slice(0, 7) === k).length
+        {months.map((k, i) => {
+          const n = rows.filter(r => inMonth(r, k)).length
           const isNow = k === today.slice(0, 7)
           return (
+            <span key={k} className="pt-m-wrap">
+            {i === 0 || k.endsWith('-01') ? <span className="pt-m-year">{k.slice(0, 4)}</span> : null}
             <Link
-              key={k}
               href={`${basePath}?m=${k}`}
               className={`pt-month${k === current ? ' active' : ''}`}
               aria-current={k === current ? 'page' : undefined}
             >
               <span className="pt-m-name">{monthShort(k)}{isNow ? ' •' : ''}</span>
-              <span className="pt-m-count">{n}</span>
+              <span className={`pt-m-count${n ? '' : ' none'}`} title={`${n} item${n === 1 ? '' : 's'}`}>{n || '–'}</span>
             </Link>
+            </span>
           )
         })}
       </nav>
@@ -271,6 +333,18 @@ export default function ProductionView({
         )
       ) : null}
 
+      {people.length ? (
+        <div className="pt-legend">
+          {people.map(p => (
+            <span key={p}>
+              <i className="pt-sw" style={{ background: personColor(p)?.fg }} aria-hidden="true" />
+              🌴 {p}
+              <b>{mine.filter(r => personOf(r) === p).length}</b>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       {mine.length === 0 ? (
         <div className="empty">Nothing scheduled in {monthLabel(current)}{editable ? ' — tap ＋ on any day to add something.' : '.'}</div>
       ) : null}
@@ -282,7 +356,7 @@ export default function ProductionView({
                 <div key={d} role="columnheader" className="cal-dow">{d}</div>
               ))}
             </div>
-            {weeks.map((week, wi) => (
+            {weeks.map((week, wi) => { const lanes = lanesOf(week); return (
               <div className="cal-grid" role="row" key={`w${wi}`}>
                 {week.map((d, n) => {
                   if (d === null) {
@@ -290,6 +364,10 @@ export default function ProductionView({
                   }
                   const key = iso(d)
                   const items = byDay.get(key) ?? []
+                  const singles = items.filter(r => !multi(r))
+                  // The week's first visible day (or the month's 1st) repeats the label.
+                  const rowStart = n === 0 || week[n - 1] === null
+                  const rowEnd = n === 6 || week[n + 1] === null
                   const weekend = n >= 5
                   return (
                     <div
@@ -305,7 +383,15 @@ export default function ProductionView({
                       <span className="cal-num">{d}</span>
                       {editable ? <DayAdd date={key} category={category} label={fullDay(key)} /> : null}
                       <div className="cal-items">
-                        {items.map(r => <Chip key={r.id} r={r} />)}
+                        {lanes.map((lane, li) => {
+                          const r = lane.find(o => (o.due_date as string) <= key && endOf(o) >= key)
+                          if (!r) return <span key={`l${li}`} className="pt-chip bar-gap" aria-hidden="true">{'\u00a0'}</span>
+                          const first = key === r.due_date, last = key === endOf(r)
+                          const open = first || rowStart, close = last || rowEnd
+                          const pos = open && close ? 'one' : open ? 'start' : close ? 'end' : 'mid'
+                          return <Chip key={`l${li}`} r={r} pos={pos} label={open} />
+                        })}
+                        {singles.map(r => <Chip key={r.id} r={r} />)}
                       </div>
                       {items.length > 0 ? (
                         <span className="cal-count" aria-hidden="true">{items.length}</span>
@@ -314,13 +400,16 @@ export default function ProductionView({
                   )
                 })}
               </div>
-            ))}
+            ) })}
           </div>
 
           {/* The full list, day by day. The calendar shows shape; this is where
               you read the whole title. Days with nothing are simply absent. */}
           <div className="pt-days">
-            {[...byDay.entries()].map(([day, items]) => (
+            {[...byDay.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
+              .map(([day, items]) => [day, items.filter(r => day === ((r.due_date as string) < `${current}-01` ? `${current}-01` : r.due_date))] as const)
+              .filter(([, items]) => items.length > 0)
+              .map(([day, items]) => (
               <div className={`pt-day${day === today ? ' today' : ''}${day < today ? ' past' : ''}`} key={day}>
                 <div className="pt-day-head">
                   <span className="pt-day-num">{dayNum(day)}</span>
@@ -335,15 +424,17 @@ export default function ProductionView({
                     const moved = Array.isArray(r.meta?.moved_from) ? r.meta.moved_from : []
                     return (
                       <li key={r.id} className={`${done ? 'done' : ''}${r.meta?.color ? ' colored' : ''}`} style={colorStyle(r.meta?.color)}>
+                        {personOf(r) ? <span className="pt-tag person" style={{ background: personColor(personOf(r))?.fg }}>🌴 {personOf(r)}</span> : null}
                         {tag ? (
                           <span className={`pt-tag tone-${toneFor(tag, tags)}`} style={colorStyle(r.meta?.color) ?? (social ? channelStyle(tag) : undefined)}>{social ? <ChannelTags tag={tag} /> : tag}</span>
                         ) : null}
                         <span className="pt-title">{rest}</span>
-                        {editable && !done && day < today ? <span className="pill overdue">not done</span> : null}
+                        {endOf(r) !== r.due_date ? <span className="pt-day-note">{span(r)}</span> : null}
+                        {editable && !done && endOf(r) < today ? <span className="pill overdue">not done</span> : null}
                         {moved.length ? (
                           <span className="pt-day-note">moved from {fullDay(moved[moved.length - 1].date)}</span>
                         ) : null}
-                        {editable ? <ItemActions id={r.id} done={done} date={day} title={r.title} color={r.meta?.color ?? ''} category={category} /> : null}
+                        {editable ? <ItemActions id={r.id} done={done} date={r.due_date as string} endDate={endOf(r) === r.due_date ? '' : endOf(r)} title={r.title} color={r.meta?.color ?? ''} category={category} /> : null}
                       </li>
                     )
                   })}
