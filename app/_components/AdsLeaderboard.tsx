@@ -37,6 +37,12 @@ function Delta({ now, before, up = true }: { now: number; before: number; up?: b
   )
 }
 
+// "2026-10-07" → "7 Oct", for the dates the Sales figure covers.
+const shortDay = (iso: string) => {
+  const [, m, d] = iso.split('-').map(Number)
+  return `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}`
+}
+
 // Shopee units + revenue for the advertised product over the ad's own run.
 function Sales({ s }: { s?: AdSales }) {
   if (!s) return null
@@ -47,6 +53,7 @@ function Sales({ s }: { s?: AdSales }) {
     <span className="lb-sales" title={title}>
       <b>{s.qty.toLocaleString('en-MY')} {s.qty === 1 ? 'pc' : 'pcs'}{s.partialFrom ? '*' : ''}</b>
       <span className="lb-sales-rm">{s.revenue}</span>
+      <span className="lb-sales-rm">{shortDay(s.from)} – {shortDay(s.to)}</span>
     </span>
   )
 }
@@ -145,7 +152,11 @@ export default function AdsLeaderboard({
                   <Thumb ad={ad} />
                   <div>
                     <span className="lb-ad-name">{ad.name}</span>
-                    {live ? null : (
+                    {live ? (
+                      <span className="lb-status active" title="the ad set's schedule from Meta">
+                        {'\u25b8 '}{periodOf(ad).label}{ad.ends ? '' : ' (no end date)'}
+                      </span>
+                    ) : (
                       <span className={`lb-status ${idle ? 'other' : ad.status}`} title={ad.status_note || ad.status}>
                         {ad.status === 'completed' ? `\u2713 completed${ad.ends ? ` ${ad.ends.slice(0, 10)}` : ''}` : idle ? '\u25cb not running this period' : ad.status === 'paused' ? '\u25cb paused' : '\u25cb not delivering'}
                       </span>
