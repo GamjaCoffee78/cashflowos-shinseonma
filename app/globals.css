@@ -1307,3 +1307,28 @@ input, select, textarea { font-family: inherit; }
 .pt-m-year { align-self: center; font-size: 12px; font-weight: 800; color: var(--clay); padding: 0 4px 0 10px; border-left: 2px solid var(--line-2); writing-mode: vertical-rl; transform: rotate(180deg); }
 .pt-m-wrap:first-child .pt-m-year { border-left: none; padding-left: 0; }
 .pt-m-count.none { color: var(--ink-soft); opacity: .5; font-weight: 600; }
+
+/* Campaign day & payday card (ShopeePeakDays) */
+.pk-head { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.pk-head > div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.pk-head b { font-size: 24px; line-height: 1.2; }
+.pk-head .k { font-size: 12px; color: var(--ink-faint); }
+.pk-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.pk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.pk-month { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pk-month:last-child { border-bottom: none; }
+.pk-mhead { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; margin-bottom: 6px; }
+.pk-mhead .muted { font-size: 12px; color: var(--ink-faint); }
+.pk-row { display: grid; grid-template-columns: 42px 1fr auto 40px; align-items: center; gap: 10px; font-size: 13px; padding: 3px 0; }
+.pk-tag { color: var(--ink-soft); font-weight: 600; }
+.pk-bars { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pk-bars span { display: block; height: 6px; border-radius: 3px; }
+.pk-num { white-space: nowrap; font-weight: 700; text-align: right; }
+.pk-lift { font-size: 12px; font-weight: 700; text-align: right; color: var(--ink-soft); }
+.pk-lift.up { color: #2f7a4a; }
+.pk-lift.down { color: #b0412e; }
+.pk-lift.muted { color: var(--ink-faint); font-weight: 400; }
+.pk .b-norm { background: #c9bfaf; }
+.pk .b-eve { background: #6e96c4; }
+.pk .b-camp { background: #EE4D2D; }
+.pk .b-pay { background: #b6802a; }

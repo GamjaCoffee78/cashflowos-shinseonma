@@ -500,6 +500,35 @@ export async function fetchShopeeMonths(region: string, sinceISO: string) {
     .map(([month, t]) => ({ month, ...t }))
 }
 
+// Day totals for a shop — the same two columns as the month tally, kept per
+// date so the campaign-day (10.10, 11.11 …) and payday (25th) spikes show.
+export async function fetchShopeeDays(region: string, sinceISO: string) {
+  if (!supabaseConfigured) return [] as { date: string; orders: number; revenue: number }[]
+  const PAGE = 1000
+  const tally = new Map<string, { orders: number; revenue: number }>()
+  for (let start = 0; ; start += PAGE) {
+    const { data, error } = await supabase
+      .from('records')
+      .select('due_date, amount')
+      .eq('category', CATEGORY)
+      .filter('meta->>shop_region', 'eq', region.toUpperCase())
+      .gte('due_date', sinceISO)
+      .order('due_date', { ascending: false })
+      .range(start, start + PAGE - 1)
+    if (error) { console.warn('[CFO] could not read Shopee days:', error.message); break }
+    for (const r of data ?? []) {
+      const date = String(r.due_date || '').slice(0, 10)
+      if (!date) continue
+      const t = tally.get(date) ?? { orders: 0, revenue: 0 }
+      t.orders++
+      t.revenue += num(r.amount)
+      tally.set(date, t)
+    }
+    if (!data || data.length < PAGE) break
+  }
+  return [...tally.entries()].map(([date, t]) => ({ date, ...t }))
+}
+
 // ---- 6) Read helpers for the Shopee MY tab. ----
 export type ShopeeRow = { id: number; order_sn: string; date: string; buyer: string; items: string; amount: number; net?: number; status: string; currency: string; state: string }
 

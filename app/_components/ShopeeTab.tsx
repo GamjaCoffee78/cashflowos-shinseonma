@@ -4,12 +4,14 @@
 // The look lives in ShopOrdersView, shared with the TikTok Shop tab; this file
 // only fetches and maps.
 import { todayISO } from '@/lib/records'
+import { daysAgoISO } from '@/lib/ads-daily'
 import {
   shopeeOrders, shopeeConfigured, money, currencyOf, linkedRegions,
-  fetchShopeeOrders, fetchShopeeMonths,
+  fetchShopeeOrders, fetchShopeeMonths, fetchShopeeDays,
 } from '@/lib/shopee'
 import ShopOrdersView, { type ShopRow } from '@/app/_components/ShopOrdersView'
 import SyncNow from '@/app/_components/SyncNow'
+import ShopeePeakDays from '@/app/_components/ShopeePeakDays'
 
 // Shopee's shouty enum, in plain words, with the pill colour that matches the
 // rest of the app: green = money landed, blue = on its way, amber = waiting.
@@ -52,6 +54,8 @@ export default async function ShopeeTab({
   const orders = shopeeOrders(await fetchShopeeOrders(region, 60), region)
   const cur = currencyOf(orders, fallbackCurrency)
   const months = await fetchShopeeMonths(region, '2020-01-01')
+  // A year and a bit, so last year's 1.1 eve (31 Dec) is in range.
+  const daily = await fetchShopeeDays(region, daysAgoISO(400))
   const linked = shopeeConfigured ? await linkedRegions().catch(() => []) : []
   const thisShopLinked = linked.includes(region)
 
@@ -61,6 +65,7 @@ export default async function ShopeeTab({
   }))
 
   return (
+    <>
     <ShopOrdersView
       title={title}
       caption={`Live from your Shopee ${region} shop · all figures in ${cur} · synced every morning`}
@@ -89,5 +94,7 @@ export default async function ShopeeTab({
         )
       }
     />
+    <ShopeePeakDays days={daily} today={todayISO()} currency={cur} money={money} />
+    </>
   )
 }
