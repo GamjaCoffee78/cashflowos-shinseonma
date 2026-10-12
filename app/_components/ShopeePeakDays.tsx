@@ -52,7 +52,7 @@ function PeakList({ title, note, list, color, m }: {
                   <span><i className={color} />{p.dayLabel}: <b>{m(p.day)}</b></span>
                 </div>
               </div>
-              <span className="pk-num">{p.ym === best.ym && done.length > 1 ? '🏆 ' : ''}{m(p.total)}<small>total</small></span>
+              <span className="pk-num">{p.ym === best.ym && done.length > 1 ? '🏆 ' : ''}{m(p.total)}<small>total sales</small></span>
               <Change now={p.total} before={prev?.total} />
             </summary>
             <table className="pk-why">
@@ -112,7 +112,7 @@ export default function ShopeePeakDays({
     <section className="sp-card pk">
       <p className="nav-label" style={{ margin: '0 0 4px' }}>Peak periods · month over month</p>
       <p className="cap" style={{ margin: '0 0 10px' }}>
-        Each peak = the day before + the day itself. Tap a month to see why it moved — the eve, the day, orders and basket size vs the month before.
+        <b>Sales = what buyers paid, before Shopee&apos;s commission and fees</b> (not what you receive). Each peak = the day before + the day itself. Tap a month to see why it moved — the eve, the day, orders and basket size vs the month before.
       </p>
       <div className="pk-legend">
         <span><i className="b-eve" />Day before</span>
