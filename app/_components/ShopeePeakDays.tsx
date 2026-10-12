@@ -16,7 +16,7 @@ function prevDay(iso: string) {
 
 type Peak = {
   ym: string; label: string; month: string; ok: boolean
-  eve: number; day: number; total: number; orders: number; aov: number
+  eveLabel: string; dayLabel: string; eve: number; day: number; total: number; orders: number; aov: number
 }
 
 function Change({ now, before }: { now: number; before?: number }) {
@@ -42,11 +42,17 @@ function PeakList({ title, note, list, color, m }: {
           <details className="pk-item" key={p.ym}>
             <summary className="pk-row">
               <span className="pk-tag">{p.label}<small>{p.month}</small></span>
-              <div className="pk-bar">
-                <span className="b-eve" style={{ width: `${(p.eve / max) * 100}%` }} />
-                <span className={color} style={{ width: `${(p.day / max) * 100}%` }} />
+              <div className="pk-mid">
+                <div className="pk-bar">
+                  <span className="b-eve" style={{ width: `${(p.eve / max) * 100}%` }} />
+                  <span className={color} style={{ width: `${(p.day / max) * 100}%` }} />
+                </div>
+                <div className="pk-split">
+                  <span><i className="b-eve" />{p.eveLabel}: <b>{m(p.eve)}</b></span>
+                  <span><i className={color} />{p.dayLabel}: <b>{m(p.day)}</b></span>
+                </div>
               </div>
-              <span className="pk-num">{p.ym === best.ym && done.length > 1 ? '🏆 ' : ''}{m(p.total)}</span>
+              <span className="pk-num">{p.ym === best.ym && done.length > 1 ? '🏆 ' : ''}{m(p.total)}<small>total</small></span>
               <Change now={p.total} before={prev?.total} />
             </summary>
             <table className="pk-why">
@@ -95,7 +101,8 @@ export default function ShopeePeakDays({
       const e = get(eve), d = get(day)
       const orders = e.orders + d.orders
       const total = e.revenue + d.revenue
-      return { ym, label, month, ok: known(day) && known(eve), eve: e.revenue, day: d.revenue, total, orders, aov: orders ? total / orders : 0 }
+      const dm = (iso: string) => `${Number(iso.slice(8))} ${MON[Number(iso.slice(5, 7)) - 1]}`
+      return { ym, label, month, eveLabel: dm(eve), dayLabel: dm(day), ok: known(day) && known(eve), eve: e.revenue, day: d.revenue, total, orders, aov: orders ? total / orders : 0 }
     }
     camp.push(peak(`${ym}-${pad(mo)}`, `${mo}.${mo}`))
     pay.push(peak(`${ym}-25`, '25th'))
