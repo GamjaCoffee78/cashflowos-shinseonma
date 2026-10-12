@@ -9,6 +9,13 @@ export async function GET(req: NextRequest) {
   const google = googleConfig()
   if (!google) return NextResponse.redirect(new URL('/login', req.url))
 
+  // The state cookie must live on the same host Google sends the visitor back
+  // to. If they opened the app on another address (www, a *.vercel.app link),
+  // hop to the callback's host first — otherwise the cookie is missing on the
+  // way back and the first try always fails with "took too long".
+  const home = new URL(callbackUrl(req)).origin
+  if (home !== req.nextUrl.origin) return NextResponse.redirect(new URL(req.nextUrl.pathname, home))
+
   const state = randomToken()
   const verifier = randomToken()
 
