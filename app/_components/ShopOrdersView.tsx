@@ -98,14 +98,14 @@ function SalesPie({ slices, total }: { slices: { name: string; qty: number }[]; 
 }
 
 // Arrows in the same style as the Shopee peak periods (.pk-chg).
-// Share of all units sold, now vs the 30 days before, in percentage points.
+// Share of all units sold, now vs the 30 days before: 30% → 36% reads ▲ 6%.
 function ShareChg({ now, before }: { now: number; before: number | null }) {
   if (before == null) return <span className="pk-chg muted" title="the 30 days before weren't synced">—</span>
   if (before === 0) return <span className="pk-chg muted" title="nothing sold in the 30 days before">new</span>
   const pts = Math.round(now - before)
-  const tip = `${Math.round(before)}% of units the 30 days before`
+  const tip = `was ${Math.round(before)}% of units sold in the 30 days before`
   if (pts === 0) return <span className="pk-chg muted" title={tip}>same</span>
-  return <span className={`pk-chg ${pts > 0 ? 'up' : 'down'}`} title={tip}>{pts > 0 ? '▲' : '▼'} {Math.abs(pts)} {Math.abs(pts) === 1 ? 'pt' : 'pts'}</span>
+  return <span className={`pk-chg ${pts > 0 ? 'up' : 'down'}`} title={tip}>{pts > 0 ? '▲' : '▼'} {Math.abs(pts)}%</span>
 }
 
 // Revenue vs the month before, as a % change.
