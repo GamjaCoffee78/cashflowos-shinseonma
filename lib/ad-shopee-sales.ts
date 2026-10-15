@@ -1,8 +1,9 @@
 import type { Rec } from './records'
 import { todayISO } from './records'
-import { addDays, num } from './ads-daily'
+import { addDays } from './ads-daily'
 import { CATEGORY as SHOPEE_ORDER, money } from './shopee'
 import type { AdRow } from './ads-leaderboard'
+import { itemLines, unitsOf } from './product-units'
 
 // The "Sales" column on the Meta Ads tab: how much of the advertised product
 // Shopee sold while the ad ran. Read-only — it only totals shopee_order rows.
@@ -12,9 +13,11 @@ import type { AdRow } from './ads-leaderboard'
 //      MYG → Seaweed Soup, via PRODUCTS below
 //      run → the ad set's own start/end from Meta (never the dates in the name)
 //
-// Units are Shopee's quantity as sold (no bundles today). A line that names
-// more than one product is a combo set and is left out until we know what's
-// inside each one.
+// Units come from lib/product-units.ts, the same rule the shop tabs use: a
+// Tteokbokki Bundle Set (from either listing) is 1 sauce + 1 rice cake, so a
+// TBK ad counts Sauce Only plus the sauce in every bundle. A bundle's revenue
+// is split by the shop's own Sauce Only vs Rice Cake Only prices. Any other
+// line naming two products is a combo set and is still left out.
 
 // Ad-name codes → the words a Shopee listing uses for that product. Add a row
 // here for a new product; codes are matched as whole words, any case.
@@ -62,21 +65,43 @@ export function adRun(ad: AdRow): { from: string; to: string } | null {
   return to >= from ? { from, to } : null
 }
 
-type Line = { date: string; text: string; qty: number; price: number; currency: string }
+// `partners` = every product in the same bundle (empty for a single item).
+// `text` is what PRODUCTS' listing words are matched against: the product
+// name for a split Tteokbokki line, else the listing name + variant as before.
+type Line = { date: string; product: string; text: string; qty: number; price: number; bundle: boolean; partners: string[]; currency: string }
 
-// One entry per item line, from the summary lib/shopee.ts writes:
-// "2× Seaweed Soup (Family) @ RM18.9; 1× Bulgogi Sauce @ RM12".
+// One entry per product unit, from the item summary lib/shopee.ts writes:
+// "2× Seaweed Soup (Family) @ RM18.9; 1× Tteokbokki Sauce (Bundle Set) @ RM25.9".
+// `price` is the line's unit price — for a bundle, the whole bundle's price.
 function lines(orders: Rec[]): Line[] {
   const out: Line[] = []
   for (const o of orders) {
     if (o.category !== SHOPEE_ORDER) continue
-    for (const part of String(o.meta?.items || '').split(';')) {
-      const m = part.trim().match(/^(\d+)×\s*(.+?)\s*@\s*[^\d.]*([\d.]+)\s*$/)
-      if (!m) continue
-      out.push({ date: o.due_date || '', text: m[2], qty: Number(m[1]), price: num(m[3]), currency: String(o.meta?.currency || '') })
+    for (const l of itemLines(String(o.meta?.items || ''))) {
+      const units = unitsOf(l)
+      const partners = units.filter(u => u.bundle).map(u => u.product)
+      for (const u of units) {
+        out.push({ date: o.due_date || '', product: u.product, text: u.product === l.name ? `${l.name} ${l.variation}`.trim() : u.product, qty: u.qty, price: l.price, bundle: u.bundle, partners: u.bundle ? partners : [], currency: String(o.meta?.currency || '') })
+      }
     }
   }
   return out
+}
+
+const median = (ns: number[]) => {
+  const s = [...ns].sort((a, b) => a - b)
+  return s.length ? s[Math.floor(s.length / 2)] : 0
+}
+
+// The share of a bundle's price that belongs to `product`: its usual single
+// price over the sum of the single prices of everything in the bundle (here,
+// Sauce Only vs Rice Cake Only in the same shop). Half each when a single
+// price isn't known yet.
+function bundleShare(all: Line[], product: string, partners: string[]): number {
+  const single = (p: string) => median(all.filter(l => l.product === p && !l.bundle && l.price > 0).map(l => l.price))
+  const prices = partners.map(single)
+  if (prices.some(p => !p)) return 1 / partners.length
+  return single(product) / prices.reduce((a, b) => a + b, 0)
 }
 
 export type AdSales =
@@ -99,14 +124,22 @@ export function adShopeeSales(ads: AdRow[], my: Rec[], sg: Rec[]): Map<string, A
     if (!product) { out.set(ad.ad_id, { kind: 'none', reason: 'not linked to a product' }); continue }
     if (!run) { out.set(ad.ad_id, { kind: 'none', reason: 'no run dates from Meta yet' }); continue }
 
+    const all = shop[region]
+    const shares = new Map<string, number>()
     let qty = 0, total = 0, currency = region === 'SG' ? 'SGD' : 'MYR'
-    for (const l of shop[region]) {
+    for (const l of all) {
       if (l.date < run.from || l.date > run.to) continue
       if (!product.listing.test(l.text)) continue
       // A combo set names two products — skipped for now (see the top).
       if (PRODUCTS.some(p => p !== product && p.listing.test(l.text))) continue
+      let share = 1
+      if (l.bundle) {
+        const key = l.partners.join('+')
+        if (!shares.has(key)) shares.set(key, bundleShare(all, l.product, l.partners))
+        share = shares.get(key)!
+      }
       qty += l.qty
-      total += l.qty * l.price
+      total += l.qty * l.price * share
       if (l.currency) currency = l.currency
     }
     out.set(ad.ad_id, {

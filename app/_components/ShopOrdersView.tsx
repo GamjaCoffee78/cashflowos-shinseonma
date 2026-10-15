@@ -8,6 +8,7 @@
 //
 // Presentation only: it is handed rows and totals, and never fetches anything.
 import { daysAgoISO } from '@/lib/ads-daily'
+import { tallyUnits } from '@/lib/product-units'
 
 export type ShopRow = {
   id: number
@@ -54,18 +55,10 @@ function totals(rows: ShopRow[], back: number, until = 0) {
   return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0, net, netExact: known.length === w.length }
 }
 
-// What sold, from the summary the sync wrote ("2× Bulgogi Sauce @ RM8.61; …").
+// What sold, in product units (lib/product-units.ts): a Tteokbokki Bundle Set
+// counts as 1 sauce + 1 rice cake, whichever listing it was bought from.
 function topProducts(rows: ShopRow[], limit = 5) {
-  const tally = new Map<string, number>()
-  for (const o of rows) {
-    for (const part of o.items.split(';')) {
-      const m = part.trim().match(/^(\d+)×\s*(.+?)\s*@/)
-      if (!m) continue
-      const name = m[2].replace(/\s*\([^)]*\)\s*$/, '').trim()
-      if (name) tally.set(name, (tally.get(name) ?? 0) + Number(m[1]))
-    }
-  }
-  return [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([name, qty]) => ({ name, qty }))
+  return tallyUnits(rows.map(o => o.items), limit)
 }
 
 // Pie slice colours: the five best sellers, then a neutral for "everything else".
