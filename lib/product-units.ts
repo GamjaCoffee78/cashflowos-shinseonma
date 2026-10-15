@@ -39,11 +39,15 @@ export function parseItem(part: string): ItemLine | null {
 export const itemLines = (items: string) =>
   String(items || '').split(';').map(parseItem).filter((l): l is ItemLine => !!l)
 
-const TBK = /tteok\s*-?\s*bo?k+i|topokki|ddeokbokki/i
+const TBK = /tteok|topokki|ddeokbokki/i
 
 export function unitsOf(line: Pick<ItemLine, 'name' | 'variation' | 'qty'>): Unit[] {
   const { name, variation, qty } = line
-  if (TBK.test(name)) {
+  // Names are cut to ~40 characters when orders are saved, so the Rice Cake
+  // listing arrives as "Premium Rice Cake (Tteok) 300g by" — "Tteok" alone
+  // has to be enough, and it may sit in what looks like the variant bracket.
+  const full = `${name} ${variation}`
+  if (TBK.test(full)) {
     // The variant decides first; a line from before the variants existed has
     // none, so the listing name decides.
     if (/bundle/i.test(variation)) {
@@ -51,8 +55,8 @@ export function unitsOf(line: Pick<ItemLine, 'name' | 'variation' | 'qty'>): Uni
     }
     if (/rice\s*cake\s*only/i.test(variation)) return [{ product: TBK_RICE_CAKE, qty, bundle: false }]
     if (/sauce\s*only/i.test(variation)) return [{ product: TBK_SAUCE, qty, bundle: false }]
-    if (/rice\s*cake/i.test(name) && !/sauce/i.test(name)) return [{ product: TBK_RICE_CAKE, qty, bundle: false }]
-    if (/sauce/i.test(name)) return [{ product: TBK_SAUCE, qty, bundle: false }]
+    if (/rice\s*cake/i.test(full) && !/sauce/i.test(full)) return [{ product: TBK_RICE_CAKE, qty, bundle: false }]
+    if (/sauce/i.test(full)) return [{ product: TBK_SAUCE, qty, bundle: false }]
   }
   return [{ product: name, qty, bundle: false }]
 }

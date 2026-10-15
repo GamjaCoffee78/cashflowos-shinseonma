@@ -51,7 +51,7 @@ export default async function ShopeeTab({
   fallbackCurrency: string   // shown before the first order arrives
 }) {
   // 60 days: enough for the 30-day figures and their comparison period.
-  const orders = shopeeOrders(await fetchShopeeOrders(region, 60), region)
+  const orders = shopeeOrders(await fetchShopeeOrders(region, 62), region)
   const cur = currencyOf(orders, fallbackCurrency)
   const months = await fetchShopeeMonths(region, '2020-01-01')
   // A year and a bit, so last year's 1.1 eve (31 Dec) is in range.

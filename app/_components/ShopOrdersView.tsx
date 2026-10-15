@@ -97,6 +97,25 @@ function SalesPie({ slices, total }: { slices: { name: string; qty: number }[]; 
   )
 }
 
+// Arrows in the same style as the Shopee peak periods (.pk-chg).
+// Share of all units sold, now vs the 30 days before: 30% → 36% reads ▲ 6%.
+function ShareChg({ now, before }: { now: number; before: number | null }) {
+  if (before == null) return <span className="pk-chg muted" title="the 30 days before weren't synced">—</span>
+  if (before === 0) return <span className="pk-chg muted" title="nothing sold in the 30 days before">new</span>
+  const pts = Math.round(now - before)
+  const tip = `was ${Math.round(before)}% of units sold in the 30 days before`
+  if (pts === 0) return <span className="pk-chg muted" title={tip}>same</span>
+  return <span className={`pk-chg ${pts > 0 ? 'up' : 'down'}`} title={tip}>{pts > 0 ? '▲' : '▼'} {Math.abs(pts)}%</span>
+}
+
+// Revenue vs the month before, as a % change.
+function MonthChg({ now, before, note }: { now: number; before: number | null; note: string }) {
+  if (before == null || before <= 0) return <span className="pk-chg muted">—</span>
+  const pct = Math.round(((now - before) / before) * 100)
+  if (pct === 0) return <span className="pk-chg muted" title={note}>same</span>
+  return <span className={`pk-chg ${pct > 0 ? 'up' : 'down'}`} title={note}>{pct > 0 ? '▲' : '▼'} {Math.abs(pct)}%</span>
+}
+
 // Change against the period before, coloured only where the direction has a
 // clear meaning. "new" when there is nothing to compare with.
 function Delta({ now, before }: { now: number; before: number }) {
@@ -209,6 +228,42 @@ export default function ShopOrdersView({
   // Every product, best first — nothing folded into "everything else".
   const slices = allSold
   const soldTotal = allSold.reduce((s, p) => s + p.qty, 0)
+  // Each product's share of units in the 30 days before, for the ▲/▼ pts —
+  // only when that whole stretch is synced.
+  const prevHeld = !!since && since <= daysAgoISO(59)
+  const prevSold = topProducts(rows.filter(o => o.date >= daysAgoISO(59) && o.date <= daysAgoISO(30)), Infinity)
+  const prevTotal = prevSold.reduce((s, p) => s + p.qty, 0)
+  const prevShare = (name: string): number | null => {
+    if (!prevHeld || !prevTotal) return null
+    return ((prevSold.find(p => p.name === name)?.qty ?? 0) / prevTotal) * 100
+  }
+
+  // By month: each month vs the calendar month before it. The month still
+  // running compares against the SAME days of last month (Oct 1–15 vs Sep
+  // 1–15), so it doesn't read ▼ just for being unfinished.
+  const thisMonth = today.slice(0, 7)
+  const prevMonthOf = (ym: string) => {
+    const [y, mo] = ym.split('-').map(Number)
+    return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, '0')}`
+  }
+  const revenueBetween = (from: string, to: string) =>
+    rows.filter(o => o.date >= from && o.date <= to).reduce((s, o) => s + o.amount, 0)
+  const monthChange = (x: MonthRow): { now: number; before: number | null; note: string } => {
+    const pm = prevMonthOf(x.month)
+    if (x.month !== thisMonth) {
+      const before = months.find(p => p.month === pm)?.revenue ?? null
+      return { now: x.revenue, before, note: `vs ${monthName(pm)}` }
+    }
+    const day = today.slice(8, 10)
+    const lastDay = new Date(Date.UTC(Number(pm.slice(0, 4)), Number(pm.slice(5, 7)), 0)).getUTCDate()
+    const sameDay = `${pm}-${String(Math.min(Number(day), lastDay)).padStart(2, '0')}`
+    const held = !!since && since <= `${pm}-01`
+    return {
+      now: x.revenue,
+      before: held ? revenueBetween(`${pm}-01`, sameDay) : null,
+      note: `vs ${monthName(pm)} 1–${Number(sameDay.slice(8))}, the same days last month`,
+    }
+  }
   const monthMax = Math.max(1, ...months.map(x => x.revenue))
 
   // Where the last 30 days' orders shipped to. Orders with no state (older rows
@@ -290,6 +345,7 @@ export default function ShopOrdersView({
                       <span className="n" style={{ background: pieColour(i), color: i < PIE.length ? '#fff' : 'var(--ink)' }}>{i + 1}</span>
                       <span className="t" title={p.name}>{p.name}</span>
                       <span className="q">{p.qty} sold · {sharePct(p.qty, soldTotal)}</span>
+                      <ShareChg now={(p.qty / soldTotal) * 100} before={prevShare(p.name)} />
                     </li>
                   ))}
                 </ol>
@@ -326,6 +382,7 @@ export default function ShopOrdersView({
                       <td className="mb"><span style={{ width: `${Math.max(2, (x.revenue / monthMax) * 100)}%` }} /></td>
                       <td className="mo">{x.orders.toLocaleString('en-MY')}</td>
                       <td className="mr">{m(x.revenue)}</td>
+                      <td className="mc"><MonthChg {...monthChange(x)} /></td>
                     </tr>
                   ))}
                 </tbody>
