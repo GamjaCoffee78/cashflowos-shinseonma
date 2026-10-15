@@ -25,7 +25,7 @@ const STATUS: Record<string, { label: string; pill: string }> = {
 const statusOf = (s: string) => STATUS[s] ?? { label: s ? s.replace(/_/g, ' ').toLowerCase() : '—', pill: '' }
 
 export default async function TikTokShop() {
-  const recs = await fetchTikTokOrders(60)
+  const recs = await fetchTikTokOrders(62)
   const rows: ShopRow[] = recs.map(r => ({
     id: r.id,
     ref: String(r.meta?.tiktok_order_id ?? ''),
