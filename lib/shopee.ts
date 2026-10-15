@@ -3,6 +3,7 @@ import { supabase, supabaseConfigured } from './supabase'
 import { todayISO, type Rec } from './records'
 import { ABANG } from '@/abang/config'
 import { daysAgoISO, addDays, num } from './ads-daily'
+import { tallyUnits } from './product-units'
 
 // Shopee Open API v2 → the ONE `records` table.
 //
@@ -577,21 +578,9 @@ export function shopeeTotals(orders: ShopeeRow[], back: number, until = 0) {
   return { orders: w.length, revenue, avg: w.length ? revenue / w.length : 0, net, netExact: known.length === w.length }
 }
 
-// What sold, from the summary we wrote ("2× Bulgogi Sauce @ $8.61; …").
+// What sold, in product units — same rule as the tabs (lib/product-units.ts).
 export function topProducts(orders: ShopeeRow[], limit = 5) {
-  const tally = new Map<string, number>()
-  for (const o of orders) {
-    for (const part of o.items.split(';')) {
-      const m = part.trim().match(/^(\d+)×\s*(.+?)\s*@/)
-      if (!m) continue
-      const name = m[2].replace(/\s*\([^)]*\)\s*$/, '').trim()
-      if (name) tally.set(name, (tally.get(name) ?? 0) + Number(m[1]))
-    }
-  }
-  return [...tally.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, qty]) => ({ name, qty }))
+  return tallyUnits(orders.map(o => o.items), limit)
 }
 
 // Money, in the shop's own currency. Falls back to the plain code for anything
