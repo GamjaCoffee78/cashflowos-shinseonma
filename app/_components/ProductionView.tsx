@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Rec } from '@/lib/records'
 import { ItemActions, AddTask, AddLeave, DayAdd } from '@/app/_components/ProductionActions'
 import ChipPop from '@/app/_components/ChipPop'
+import StripScroll from '@/app/_components/StripScroll'
 import { colorStyle } from '@/lib/item-colors'
 
 // People's colours (leave…): strong, far-apart hues, shown as solid bars, so
@@ -287,6 +288,7 @@ export default function ProductionView({
 
       {/* 2 ─ How busy is each month? Every month at once, with its count, so
              you can see the shape of the year and jump straight to one. */}
+      <StripScroll>
       <nav className="pt-months" aria-label="Month">
         {months.map((k, i) => {
           const n = rows.filter(r => inMonth(r, k)).length
@@ -305,6 +307,7 @@ export default function ProductionView({
           )
         })}
       </nav>
+      </StripScroll>
 
       {/* 3 ─ What exactly, and when. */}
       <div className="pt-headline">
