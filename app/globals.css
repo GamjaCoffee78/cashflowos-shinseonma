@@ -786,6 +786,11 @@ a.pg-card:hover { border-color: var(--line-2); }
 .pt-m-count { font-size: 15px; font-weight: 700; color: var(--ink); }
 .pt-month.active .pt-m-name, .pt-month.active .pt-m-count { color: #fff; }
 
+.pt-step { display: inline-flex; gap: 6px; align-self: center; }
+.pt-step > * { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: var(--r-8); background: var(--card); color: var(--ink); font-size: 20px; font-weight: 700; text-decoration: none; }
+.pt-step > a:hover { border-color: var(--line-2); }
+.pt-step > span { opacity: .35; }
+.pt-months { scrollbar-width: thin; }
 .pt-headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
 .pt-headline h2 { font-size: 18px; font-weight: 700; margin: 0; color: var(--ink); }
 

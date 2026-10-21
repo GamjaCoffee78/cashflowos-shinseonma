@@ -302,6 +302,19 @@ export default function ProductionView({
 
       {/* 3 ─ What exactly, and when. */}
       <div className="pt-headline">
+        {/* ‹ › step a month — the strip above scrolls sideways, but a mouse
+               wheel can't do that and Macs hide the scrollbar. */}
+        {(() => {
+          const i = months.indexOf(current)
+          const prev = i > 0 ? months[i - 1] : null
+          const next = i >= 0 && i < months.length - 1 ? months[i + 1] : null
+          return (
+            <span className="pt-step">
+              {prev ? <Link href={`${basePath}?m=${prev}`} aria-label={`Previous month (${monthLabel(prev)})`}>‹</Link> : <span aria-hidden="true">‹</span>}
+              {next ? <Link href={`${basePath}?m=${next}`} aria-label={`Next month (${monthLabel(next)})`}>›</Link> : <span aria-hidden="true">›</span>}
+            </span>
+          )
+        })()}
         <h2>{monthLabel(current)}</h2>
         <span className="cap" style={{ margin: 0 }}>
           {mine.length} item{mine.length === 1 ? '' : 's'}
