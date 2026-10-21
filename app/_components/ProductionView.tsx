@@ -10,6 +10,8 @@ const PEOPLE = ['#E53935', '#1E63D6', '#2E9D3A', '#F28C00', '#8E3CCB', '#00A3A3'
 
 // Months to show: every month with items, plus this month and the next five —
 // so any date can be picked and filled with the ＋ on its day.
+const MONTHS_FROM = '2026-09'
+
 export function calendarMonths(rows: { due_date: string | null }[], today: string, asked?: string) {
   const set = new Set(rows.map(r => (r.due_date as string).slice(0, 7)))
   const [y, mo] = today.slice(0, 7).split('-').map(Number)
@@ -17,6 +19,11 @@ export function calendarMonths(rows: { due_date: string | null }[], today: strin
     const d = new Date(Date.UTC(y, mo - 1 + k, 1))
     set.add(d.toISOString().slice(0, 7))
   }
+  set.add(`${y + 1}-12`) // always run to the end of next year
+  // Older months are left off the row (owner, 2026-10-21); one is still
+  // reachable by link (?m=…).
+  for (const k of [...set]) if (k < MONTHS_FROM) set.delete(k)
+  set.add(MONTHS_FROM)
   if (asked && /^\d{4}-\d{2}$/.test(asked)) set.add(asked)
   // Every month from the first to the last, empty ones included, so the row
   // reads as a calendar instead of skipping.
@@ -292,8 +299,7 @@ export default function ProductionView({
               className={`pt-month${k === current ? ' active' : ''}`}
               aria-current={k === current ? 'page' : undefined}
             >
-              <span className="pt-m-name">{monthShort(k)}{isNow ? ' •' : ''}</span>
-              <span className={`pt-m-count${n ? '' : ' none'}`} title={`${n} item${n === 1 ? '' : 's'}`}>{n || '–'}</span>
+              <span className="pt-m-name" title={`${n} item${n === 1 ? '' : 's'}`}>{monthShort(k)}{isNow ? ' •' : ''}</span>
             </Link>
             </span>
           )
