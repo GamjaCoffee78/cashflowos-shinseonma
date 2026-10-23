@@ -1,4 +1,5 @@
 import './globals.css'
+import './cute.css' // 🍡 cute mode — remove this line to go back to the plain look
 import type { Metadata, Viewport } from 'next'
 import Nav from './_components/Nav'
 import BottomNav from './_components/BottomNav'
@@ -26,6 +27,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const pending = await getPendingCount()
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" />
+      </head>
       <body>
         <div className="app">
           {/* Desktop sidebar — hidden on phones (BottomNav takes over ≤768px). */}
@@ -50,9 +56,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {children}
           </main>
         </div>
+        {/* 🐱 Abang, the mascot — decorative, says a little hello by time of day. */}
+        <div className="mascot" aria-hidden="true">
+          <span className="bubble">{greeting()}</span>
+          <span className="cat">🐱</span>
+        </div>
         {/* Phone bottom bar — hidden on desktop. */}
         <BottomNav />
       </body>
     </html>
   )
+}
+
+// Malaysia time, so "Selamat pagi" at 8am KL, not at 8am UTC.
+function greeting(): string {
+  const h = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()))
+  if (h < 12) return 'Selamat pagi! 안녕~ Let’s sell lots today ✨'
+  if (h < 17) return 'Makan dah? 🍜 Keep going, you’re doing great!'
+  if (h < 21) return 'Good evening! 🌙 Check what sold today~'
+  return 'Rest well ya 💤 Abang will watch the shop!'
 }
