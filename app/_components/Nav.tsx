@@ -41,6 +41,7 @@ export const NAV_GROUPS: { label: string; tabs: { href: string; label: string }[
     { href: '/stock', label: 'Stock' },
     { href: '/social-calendar', label: 'Social Calendar' },
     { href: '/events-others', label: 'Events / Others' },
+    { href: '/halal-status', label: 'Halal status' },
   ] },
   { label: 'Marketing', tabs: [
     { href: '/tiktok-ads', label: 'TikTok Ads' },

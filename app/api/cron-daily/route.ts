@@ -9,6 +9,7 @@ import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/
 import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar, calendarEvents, timeLabel } from '@/lib/calendar'
 import { ensureNextMonthTab, syncProductionFromSheet } from '@/lib/production-sheet'
+import { halalDigestSection } from '@/lib/halal'
 import { syncShopee, fetchShopeeOrders, shopeeOrders, shopeeTotals, money as shopeeMoney, currencyOf } from '@/lib/shopee'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -249,6 +250,7 @@ async function sendTodayDigest(rows: Rec[], today: string): Promise<{ sent: numb
 
 // The personal "what's on today" digest — Calendar, Production Timeline,
 // Social Calendar and Events/Others, each filtered to today only. No money.
+// On Mondays it also lists halal certificates due for renewal.
 function buildTodayDigest(rows: Rec[], today: string): string {
   const events = calendarEvents(rows).filter((e) => e.date === today)
   const production = rows.filter((r) => r.category === 'production' && r.due_date === today)
@@ -275,7 +277,8 @@ function buildTodayDigest(rows: Rec[], today: string): string {
     section('📅 Calendar', calLines) +
     section('🏭 Production Timeline', prodLines) +
     section('📱 Social Calendar', socialLines) +
-    section('🎪 Events / Others', otherLines)
+    section('🎪 Events / Others', otherLines) +
+    halalDigestSection(rows, today) // Mondays only, and only when a certificate needs renewing (lib/halal.ts)
   ).trim()
 }
 

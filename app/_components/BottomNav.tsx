@@ -34,6 +34,7 @@ const MORE: MoreTab[] = [
   { href: '/stock', label: 'Stock', ico: '📦' },
   { href: '/social-calendar', label: 'Social Calendar', ico: '📱' },
   { href: '/events-others', label: 'Events / Others', ico: '🎪' },
+  { href: '/halal-status', label: 'Halal status', ico: '🕌' },
   { href: '/tiktok-ads', label: 'TikTok Ads', ico: '🎯' },
   { href: '/meta-ads', label: 'Meta Ads', ico: '📘' },
   { href: '/employees', label: 'AI Employees', ico: '🤖' },
