@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { supabase, supabaseConfigured } from '@/lib/supabase'
+import { supabaseConfigured } from '@/lib/supabase'
 import { HALAL_PRODUCTS } from '@/lib/halal'
+import { readHalalRow, writeHalalRow } from '@/lib/halal-check'
 
 // The Halal status tab's buttons. POST { action, key, … } → plain JSON.
 //   expiry   { date }    — a renewed certificate's new expiry (also clears "renewal in progress")
@@ -22,41 +23,35 @@ export async function POST(req: Request) {
   const product = HALAL_PRODUCTS.find(p => p.key === String(body?.key || ''))
   if (!product) return bad('Which product?')
 
-  const { data: row, error: readErr } = await supabase
-    .from('records')
-    .select('id, due_date, meta')
-    .eq('category', 'halal')
-    .eq('meta->>key', product.key)
-    .order('id', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  if (readErr) return bad(`Couldn't read the product: ${readErr.message}`)
+  try {
+    const row = await readHalalRow(product.key)
+    const now = new Date().toISOString()
+    const meta: Record<string, any> = row?.meta ?? { key: product.key, renewing: !!product.renewing, source: 'app' }
+    const expiry = row?.due_date ?? product.expiry
+    let patch: { due_date: string; meta: Record<string, any> }
+    let message: string
 
-  const now = new Date().toISOString()
-  const meta: Record<string, any> = row?.meta ?? { key: product.key, renewing: !!product.renewing, source: 'app' }
-  const expiry = row?.due_date ?? product.expiry
-  let patch: { due_date: string; meta: Record<string, any> }
-  let message: string
+    if (action === 'expiry') {
+      const date = String(body?.date || '')
+      if (!ISO.test(date)) return bad('Pick the new expiry date.')
+      if (date === expiry) return NextResponse.json({ ok: true, message: 'Same date — nothing changed.' })
+      const history = Array.isArray(meta.expiry_history) ? meta.expiry_history : []
+      // A hand-entered date clears an "earlier than saved" flag; the next check re-raises it if still true.
+      const { flag: _flag, ...rest } = meta
+      patch = { due_date: date, meta: { ...rest, renewing: false, expiry_history: [...history, { from: expiry, at: now }] } }
+      message = 'New expiry saved.'
+    } else if (action === 'renewing') {
+      const on = !!body?.on
+      patch = { due_date: expiry, meta: { ...meta, renewing: on, ...(on ? { renewing_since: now } : {}) } }
+      message = on ? 'Marked renewal in progress.' : 'Renewal mark cleared.'
+    } else {
+      return bad('Unknown action.')
+    }
 
-  if (action === 'expiry') {
-    const date = String(body?.date || '')
-    if (!ISO.test(date)) return bad('Pick the new expiry date.')
-    if (date === expiry) return NextResponse.json({ ok: true, message: 'Same date — nothing changed.' })
-    const history = Array.isArray(meta.expiry_history) ? meta.expiry_history : []
-    patch = { due_date: date, meta: { ...meta, renewing: false, expiry_history: [...history, { from: expiry, at: now }] } }
-    message = 'New expiry saved.'
-  } else if (action === 'renewing') {
-    const on = !!body?.on
-    patch = { due_date: expiry, meta: { ...meta, renewing: on, ...(on ? { renewing_since: now } : {}) } }
-    message = on ? 'Marked renewal in progress.' : 'Renewal mark cleared.'
-  } else {
-    return bad('Unknown action.')
+    await writeHalalRow(product, row, patch)
+    revalidatePath('/halal-status')
+    return NextResponse.json({ ok: true, message })
+  } catch (e) {
+    return bad(String((e as Error)?.message || e))
   }
-
-  const { error } = row
-    ? await supabase.from('records').update(patch).eq('id', row.id).eq('category', 'halal')
-    : await supabase.from('records').insert({ title: product.name, status: 'active', amount: 0, category: 'halal', notes: product.directoryName, ...patch })
-  if (error) return bad(`Couldn't save: ${error.message}`)
-  revalidatePath('/halal-status')
-  return NextResponse.json({ ok: true, message })
 }

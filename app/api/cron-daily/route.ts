@@ -10,6 +10,7 @@ import { syncMetaAds } from '@/lib/meta-ads'
 import { syncCalendar, calendarEvents, timeLabel } from '@/lib/calendar'
 import { ensureNextMonthTab, syncProductionFromSheet } from '@/lib/production-sheet'
 import { halalDigestSection } from '@/lib/halal'
+import { syncHalal, halalCheckSection } from '@/lib/halal-check'
 import { syncShopee, fetchShopeeOrders, shopeeOrders, shopeeTotals, money as shopeeMoney, currencyOf } from '@/lib/shopee'
 
 // 🔒 Don't edit — this keeps your robot safe.
@@ -76,8 +77,9 @@ export async function GET(req: Request) {
       safe('production tab', () => ensureNextMonthTab(today)),
       safe('work sheet', () => syncProductionFromSheet()),
     ])
+    const halal = await syncHalal().catch((e) => ({ error: String((e as Error)?.message || e) }))
     const rows = await getRecords()
-    const { sent, recipients } = await sendTodayDigest(rows, today)
+    const { sent, recipients } = await sendTodayDigest(rows, today, halalCheckSection(halal))
     return Response.json({ ok: true, scope: 'digest', sent, recipients })
   }
 
@@ -93,7 +95,7 @@ export async function GET(req: Request) {
       console.error(`[CFO] ${label} sync failed:`, e)
       return { error: String((e as Error)?.message || e).slice(0, 200) }
     })
-  const [tiktok, meta, calendar, shopee, productionTab, workSheet] = await Promise.all([
+  const [tiktok, meta, calendar, shopee, productionTab, workSheet, halal] = await Promise.all([
     capped('tiktok', () => syncTikTokAds()),
     capped('meta', () => syncMetaAds()),     // tab only — no line in the brief
     capped('calendar', () => syncCalendar()),
@@ -105,6 +107,8 @@ export async function GET(req: Request) {
     // Sheet → app every morning too, so Production / Social / Events are fresh
     // even if nobody pressed Sync now.
     capped('work sheet', () => syncProductionFromSheet()),
+    // The public MYeHALAL directory → the Halal status tab (lib/halal-check.ts).
+    capped('halal', () => syncHalal()),
   ])
 
   const rows = await getRecords()
@@ -113,7 +117,7 @@ export async function GET(req: Request) {
   // ①b THE PERSONAL "TODAY" DIGEST — Calendar + Production Timeline + Social
   //    Calendar + Events/Others, no money. Rides this SAME cron run, so it
   //    spends none of Hobby's 2 cron slots (see abang/config.ts → todayBriefRecipients).
-  const { sent: todayDigestSent, recipients: todayDigestRecipients } = await sendTodayDigest(rows, today)
+  const { sent: todayDigestSent, recipients: todayDigestRecipients } = await sendTodayDigest(rows, today, halalCheckSection(halal as any))
 
   // ① THE MONEY ROW (mirrors the Dashboard — same window, same helper, so the
   //    brief and the app can never quote different totals).
@@ -226,6 +230,7 @@ export async function GET(req: Request) {
     shopee,
     productionTab,
     workSheet,
+    halal,
     whatsapp,
   })
 }
@@ -236,22 +241,23 @@ export async function GET(req: Request) {
 // otherwise it falls back to Abang's bot (still a separate DM, just not a
 // separate bot identity) — so this works with ZERO extra Vercel/owner action
 // until someone chooses to add their own bot token later.
-async function sendTodayDigest(rows: Rec[], today: string): Promise<{ sent: number; recipients: number }> {
+async function sendTodayDigest(rows: Rec[], today: string, halalNews = ''): Promise<{ sent: number; recipients: number }> {
   const recipients = ABANG.todayBriefRecipients
     .map((s) => String(s).trim())
     .filter((s) => /^-?\d+$/.test(s))
   if (!recipients.length) return { sent: 0, recipients: 0 }
 
   const botToken = process.env.TELEGRAM_HUIYEE_BOT_TOKEN?.trim() || undefined
-  const digest = buildTodayDigest(rows, today)
+  const digest = buildTodayDigest(rows, today, halalNews)
   const sends = await Promise.allSettled(recipients.map((id) => sendMessage(id, digest, botToken)))
   return { sent: sends.filter((r) => r.status === 'fulfilled').length, recipients: recipients.length }
 }
 
 // The personal "what's on today" digest — Calendar, Production Timeline,
 // Social Calendar and Events/Others, each filtered to today only. No money.
-// On Mondays it also lists halal certificates due for renewal.
-function buildTodayDigest(rows: Rec[], today: string): string {
+// On Mondays it also lists halal certificates due for renewal, and on any day
+// the MYeHALAL check finds a renewal or a problem, it says so.
+function buildTodayDigest(rows: Rec[], today: string, halalNews = ''): string {
   const events = calendarEvents(rows).filter((e) => e.date === today)
   const production = rows.filter((r) => r.category === 'production' && r.due_date === today)
   const social = rows.filter((r) => r.category === 'social_plan' && r.due_date === today)
@@ -278,6 +284,7 @@ function buildTodayDigest(rows: Rec[], today: string): string {
     section('🏭 Production Timeline', prodLines) +
     section('📱 Social Calendar', socialLines) +
     section('🎪 Events / Others', otherLines) +
+    halalNews + // what this morning's MYeHALAL check found — only on a day it finds something new
     halalDigestSection(rows, today) // Mondays only, and only when a certificate needs renewing (lib/halal.ts)
   ).trim()
 }

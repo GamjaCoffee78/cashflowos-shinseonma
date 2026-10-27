@@ -46,6 +46,8 @@ export type HalalItem = HalalProduct & {
   daysLeft: number
   status: HalalStatus
   remind: boolean        // goes in the Monday reminder
+  flag: string | null    // what the daily MYeHALAL check found wrong (lib/halal-check.ts)
+  checkedAt: string | null
 }
 
 // Same day N months earlier, clamped to the month's last day (31 Jan − 3 → 31 Oct, 31 May − 3 → 28/29 Feb).
@@ -80,6 +82,8 @@ export function halalItems(rows: Rec[], today: string): HalalItem[] {
       daysLeft: daysBetween(today, expiry),
       status,
       remind: inWindow && (!renewing || today >= safetyNet),
+      flag: row?.meta.flag ?? null,
+      checkedAt: row?.meta.checked_at ?? null,
     }
   }).sort((a, b) => (a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0))
 }

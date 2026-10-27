@@ -69,6 +69,13 @@ say so in your reply so the owner can decide — don't just do it.
    `lib/bot-actions.ts`.
 3. **The demo/seed rows are already gone.** The database was wiped and reloaded on
    2026-09-19. `supabase/schema.sql` must not re-seed demo rows.
+4. **Halal status tab (Hui Yee, 2026-10-27).** `/halal-status` tracks the latest
+   JAKIM certificate expiry of 7 products (list in `lib/halal.ts`, rows are
+   `category='halal'`). It adds two things to the 08:15 cron run, without
+   changing its schedule or using the second cron slot: the MYeHALAL directory
+   check (`lib/halal-check.ts`, also on 🔄 Sync now), and a 🕌 section in
+   Hui Yee's private Today digest (Mondays: renewals due within 3 months; any
+   day: what the check found). Nothing goes to the OMY group brief.
 
 ## Rules for touching the database
 
