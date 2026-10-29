@@ -1,6 +1,6 @@
 import 'server-only'
 import { supabase, supabaseConfigured } from './supabase'
-import { HALAL_PRODUCTS, type HalalProduct } from './halal'
+import { HALAL_PRODUCTS, HALAL_IGNORED, discoveredProduct, type HalalProduct } from './halal'
 
 // 🕌 The daily MYeHALAL check — reads the public halal directory (search
 //    "Okmaya", Produk Makanan / Minuman) and compares each product's LATEST
@@ -111,6 +111,12 @@ export async function fetchDirectory(): Promise<{ rows: DirectoryRow[]; source: 
   throw new Error(`MYeHALAL check failed — ${errors.join('; ')}`)
 }
 
+// "SOS KIMCHI BEREMPAH / KIMCHI STEW SAUCE" → "Kimchi Stew Sauce" (the English half, if there is one).
+function shortName(directoryName: string) {
+  const en = directoryName.split('/').at(-1)!.trim() || directoryName
+  return en.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // The latest expiry the directory lists for a product (several certificates → the latest).
 export function latestFor(product: HalalProduct, rows: DirectoryRow[]): string | null {
   const want = norm(product.directoryName)
@@ -118,13 +124,13 @@ export function latestFor(product: HalalProduct, rows: DirectoryRow[]): string |
   return hits.length ? hits.map(r => r.expiry).sort().at(-1)! : null
 }
 
-type HalalRow = { id: number; due_date: string | null; meta: Record<string, any> }
+type HalalRow = { id: number; title?: string | null; notes?: string | null; due_date: string | null; meta: Record<string, any> }
 
 // Read a product's one row (category='halal', meta.key), or null before its first change.
 export async function readHalalRow(key: string): Promise<HalalRow | null> {
   const { data, error } = await supabase
     .from('records')
-    .select('id, due_date, meta')
+    .select('id, title, notes, due_date, meta')
     .eq('category', 'halal')
     .eq('meta->>key', key)
     .order('id', { ascending: true })
@@ -148,7 +154,22 @@ export async function syncHalal(): Promise<HalalCheckResult | { skipped: string 
   const now = new Date().toISOString()
   const result: HalalCheckResult = { checked: 0, inserted: 0, updated: 0, flagged: 0, news: [], source }
 
-  for (const p of HALAL_PRODUCTS) {
+  // 🆕 Okmaya products in MYeHALAL that the tab doesn't track yet → added as
+  // their own row (meta.discovered), so a new certificate shows up by itself.
+  const { data: found, error } = await supabase.from('records').select('title, notes, due_date, meta').eq('category', 'halal').eq('meta->>discovered', 'true')
+  if (error) throw new Error(`Couldn't read the halal rows: ${error.message}`)
+  const discovered = (found ?? []).map(discoveredProduct).filter((p): p is HalalProduct => !!p)
+  const products = [...HALAL_PRODUCTS, ...discovered]
+  const tracked = new Set([...products.map(p => norm(p.directoryName)), ...HALAL_IGNORED.map(norm)])
+  for (const name of new Set(rows.map(r => norm(r.name)))) {
+    if (tracked.has(name)) continue
+    const p: HalalProduct = { key: `myehalal-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`, name: shortName(name), directoryName: name, expiry: latestFor({ directoryName: name } as HalalProduct, rows)! }
+    await writeHalalRow(p, null, { due_date: p.expiry, meta: { key: p.key, discovered: true, renewing: false, source: 'myehalal', discovered_at: now } })
+    result.inserted++
+    result.news.push(`🆕 New in MYeHALAL: ${p.name} — expiry ${fmt(p.expiry)} (added to the Halal status tab)`)
+  }
+
+  for (const p of products) {
     const row = await readHalalRow(p.key)
     const meta: Record<string, any> = row?.meta ?? { key: p.key, renewing: !!p.renewing, source: 'myehalal' }
     const current = row?.due_date ?? p.expiry

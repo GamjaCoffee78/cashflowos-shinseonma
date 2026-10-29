@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { supabaseConfigured } from '@/lib/supabase'
-import { HALAL_PRODUCTS } from '@/lib/halal'
+import { HALAL_PRODUCTS, discoveredProduct } from '@/lib/halal'
 import { readHalalRow, writeHalalRow } from '@/lib/halal-check'
 
 // The Halal status tab's buttons. POST { action, key, … } → plain JSON.
@@ -20,11 +20,12 @@ export async function POST(req: Request) {
   if (!supabaseConfigured) return bad('The database is not connected.')
   const body = await req.json().catch(() => ({}))
   const action = String(body?.action || '')
-  const product = HALAL_PRODUCTS.find(p => p.key === String(body?.key || ''))
-  if (!product) return bad('Which product?')
+  const key = String(body?.key || '')
 
   try {
-    const row = await readHalalRow(product.key)
+    const row = key ? await readHalalRow(key) : null
+    const product = HALAL_PRODUCTS.find(p => p.key === key) ?? (row ? discoveredProduct(row) : null)
+    if (!product) return bad('Which product?')
     const now = new Date().toISOString()
     const meta: Record<string, any> = row?.meta ?? { key: product.key, renewing: !!product.renewing, source: 'app' }
     const expiry = row?.due_date ?? product.expiry

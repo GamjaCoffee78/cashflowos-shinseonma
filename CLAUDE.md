@@ -76,6 +76,9 @@ say so in your reply so the owner can decide — don't just do it.
    check (`lib/halal-check.ts`, also on 🔄 Sync now), and a 🕌 section in
    Hui Yee's private Today digest (Mondays: renewals due within 3 months; any
    day: what the check found). Nothing goes to the OMY group brief.
+   Since 2026-10-29 the check also ADDS any Okmaya product it finds that isn't
+   tracked (row `meta.discovered`, named from the English half of the directory
+   name); `HALAL_IGNORED` in `lib/halal.ts` lists products the owner doesn't want.
 
 ## Rules for touching the database
 

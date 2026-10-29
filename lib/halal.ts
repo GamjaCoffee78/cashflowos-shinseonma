@@ -40,6 +40,18 @@ export const HALAL_PRODUCTS: HalalProduct[] = [
   { key: 'glass-noodles', name: 'Glass Noodles', directoryName: 'MEE KACA UBI KELEDEK KOREA / KOREAN SWEET POTATO GLASS NOODLES', expiry: '2028-11-30' },
 ]
 
+// MYeHALAL products the daily check must NOT add to the tab (owner's call, 2026-10-29).
+export const HALAL_IGNORED = ['PES CILI KOREA']
+
+// A product the daily check found in MYeHALAL by itself (not in the list
+// above) lives only as its records row: meta.discovered, title = name,
+// notes = directory name. Rename it by editing the row's title.
+export function discoveredProduct(row: { title?: string | null; notes?: string | null; due_date?: string | null; meta?: Record<string, any> | null }): HalalProduct | null {
+  const m = row.meta
+  if (!m?.discovered || !m.key || !row.notes || !row.due_date) return null
+  return { key: String(m.key), name: row.title || row.notes, directoryName: row.notes, expiry: row.due_date }
+}
+
 export const REMIND_MONTHS = 3     // start reminding this many months before expiry
 export const SAFETY_NET_MONTHS = 1 // "renewal in progress" stops pausing this close to expiry
 
@@ -71,7 +83,9 @@ const daysBetween = (from: string, to: string) =>
 // Every tracked product with its current expiry (saved row, else the seed), soonest first.
 export function halalItems(rows: Rec[], today: string): HalalItem[] {
   const saved = new Map(rows.filter(r => r.category === 'halal' && r.meta?.key).map(r => [String(r.meta.key), r]))
-  return HALAL_PRODUCTS.map(p => {
+  const known = new Set(HALAL_PRODUCTS.map(p => p.key))
+  const found = [...saved.values()].map(discoveredProduct).filter((p): p is HalalProduct => !!p && !known.has(p.key))
+  return [...HALAL_PRODUCTS, ...found].map(p => {
     const row = saved.get(p.key)
     const expiry = row?.due_date || p.expiry
     const renewing = row ? !!row.meta.renewing : !!p.renewing
