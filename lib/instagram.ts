@@ -14,9 +14,34 @@ const GRAPH = 'https://graph.instagram.com/v21.0'
 const FIELDS = 'id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count'
 const METRICS = 'views,reach,saved,shares'
 
-type Account = (typeof ABANG.instagram.accounts)[number]
-const live = () => ABANG.instagram.accounts.filter(a => a.composioAccount.trim())
-export const instagramConfigured = !!process.env.COMPOSIO_API_KEY?.trim() && live().length > 0
+type Account = { username: string; composioAccount: string }
+export const instagramConfigured = !!process.env.COMPOSIO_API_KEY?.trim()
+
+// The configured connection id, or — when it's left empty — the Instagram
+// connection in this Composio project whose /me is that username. Saves the
+// owner digging a ca_… id out of the dashboard.
+async function resolveAccounts(): Promise<Account[]> {
+  const key = process.env.COMPOSIO_API_KEY!.trim()
+  const out: Account[] = []
+  let candidates: string[] | null = null
+  for (const a of ABANG.instagram.accounts) {
+    if (a.composioAccount.trim()) { out.push(a); continue }
+    if (!candidates) {
+      const res = await fetch(`${COMPOSIO_URL}/api/v3/connected_accounts?toolkit_slugs=instagram&statuses=ACTIVE&limit=50`, {
+        headers: { 'x-api-key': key },
+        signal: AbortSignal.timeout(15_000),
+      })
+      const body: any = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(`Composio wouldn't list the Instagram connections: ${String(body?.error?.message || res.status).slice(0, 160)}`)
+      candidates = (body.items ?? []).map((c: any) => String(c.id)).filter(Boolean)
+    }
+    for (const id of candidates ?? []) {
+      const me = await igGet({ username: a.username, composioAccount: id }, '/me', { fields: 'username' }).catch(() => null)
+      if (String(me?.username ?? '').toLowerCase() === a.username.toLowerCase()) { out.push({ ...a, composioAccount: id }); break }
+    }
+  }
+  return out
+}
 
 async function igGet(account: Account, path: string, q: Record<string, string>): Promise<any> {
   const key = process.env.COMPOSIO_API_KEY?.trim()
@@ -83,14 +108,15 @@ const titleOf = (caption: string | undefined) => {
 
 export async function syncInstagram() {
   if (!process.env.COMPOSIO_API_KEY?.trim()) return { skipped: 'COMPOSIO_API_KEY not set' as const }
-  if (!live().length) return { skipped: 'no Instagram connection id in abang/config.ts → instagram' as const }
   if (!supabaseConfigured) return { skipped: 'the database is not connected' as const }
 
   const since = new Date(Date.now() - ABANG.instagram.syncDays * 86_400_000).toISOString()
   const result = { from: since.slice(0, 10), to: new Date().toISOString().slice(0, 10), inserted: 0, updated: 0 }
   const now = new Date().toISOString()
 
-  for (const account of live()) {
+  const accounts = await resolveAccounts()
+  if (!accounts.length) throw new Error(`no Instagram connection for @${ABANG.instagram.accounts.map(a => a.username).join(', @')} in the app's Composio project — connect it there first`)
+  for (const account of accounts) {
     const media = await recentMedia(account, since)
     // A few at a time — one insights call per post.
     for (let i = 0; i < media.length; i += 5) {

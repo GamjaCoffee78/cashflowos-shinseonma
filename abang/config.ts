@@ -206,7 +206,8 @@ export const ABANG = {
    *
    * composioAccount: the Instagram connection's id in the SAME Composio project
    * as the calendar (ca_…, from the Composio dashboard → Connected accounts).
-   * Empty = that account is skipped. Only okmaya.official is synced (owner's
+   * Empty = found automatically (the project's Instagram connection whose
+   * username matches). Only okmaya.official is synced (owner's
    * call, 2026-10-29); the founder's collab posts keep their imported figures.
    */
   instagram: {
