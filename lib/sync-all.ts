@@ -7,6 +7,7 @@ import { syncCalendar, calendarConfigured } from './calendar'
 import { syncOwnerSheet, ownerSheetConfigured } from './owner-sheet'
 import { syncProductionFromSheet, productionSheetConfigured } from './production-sheet'
 import { syncHalal } from './halal-check'
+import { syncInstagram, instagramConfigured } from './instagram'
 
 // ONE-CLICK SYNC — what the 🔄 button in the header runs.
 //
@@ -21,7 +22,8 @@ import { syncHalal } from './halal-check'
 //   ② The OWNER SHEET — the Google Sheet the Dashboard's money comes from. It
 //      is reconciled, not re-imported: a changed cell updates its row, a new
 //      cell adds one, and nothing is ever added twice. See lib/owner-sheet.ts.
-//   ③ PUSHED sources — Shopee, production, Instagram. Those
+//   ③ PUSHED sources — Shopee, production. (Instagram is pulled since
+//      2026-10-29 — lib/instagram.ts.) Those
 //      arrive through `scripts/import*.mjs` from a file on a laptop; there is
 //      no API to ask, so the button can't re-pull them. What it CAN do is make
 //      every tab re-read the database, which is what surfaces a row a script
@@ -49,6 +51,7 @@ const STEPS: Source[] = [
   { key: 'shopee', label: 'Shopee orders', configured: shopeeConfigured, missing: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY', run: () => syncShopee({ netBudgetMs: 8_000 }) },
   { key: 'tiktok_shop', label: 'TikTok Shop orders', configured: tiktokShopConfigured, missing: 'TIKTOK_APP_KEY / TIKTOK_APP_SECRET', run: () => syncTikTokShop() },
   { key: 'production_sheet', label: 'Work sheet (production · social · events)', configured: productionSheetConfigured(), missing: 'productionSheet.composioAccount (abang/config.ts)', run: () => syncProductionFromSheet() },
+  { key: 'instagram', label: 'Instagram posts', configured: instagramConfigured, missing: 'instagram.accounts[].composioAccount (abang/config.ts)', run: () => syncInstagram() },
   { key: 'halal', label: 'MYeHALAL halal check', configured: true, missing: '', run: () => syncHalal() },
   { key: 'owner_sheet', label: 'Owner sheet', configured: ownerSheetConfigured, missing: 'COMPOSIO_API_KEY', run: () => syncOwnerSheet() },
 ]

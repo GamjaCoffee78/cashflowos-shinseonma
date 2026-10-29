@@ -7,6 +7,7 @@ import { SCHEDULED, type ProposalDraft } from '@/agents/registry'
 import { ABANG } from '@/abang/config'
 import { syncTikTokAds, tiktokDays, tiktokTotals, compact, daysAgoISO } from '@/lib/tiktok-ads'
 import { syncMetaAds } from '@/lib/meta-ads'
+import { syncInstagram } from '@/lib/instagram'
 import { syncCalendar, calendarEvents, timeLabel } from '@/lib/calendar'
 import { ensureNextMonthTab, syncProductionFromSheet } from '@/lib/production-sheet'
 import { halalDigestSection } from '@/lib/halal'
@@ -109,6 +110,7 @@ export async function GET(req: Request) {
     capped('work sheet', () => syncProductionFromSheet()),
     // The public MYeHALAL directory → the Halal status tab (lib/halal-check.ts).
     capped('halal', () => syncHalal()),
+    capped('instagram', () => syncInstagram()),   // Content tab only — no line in the brief
   ])
 
   const rows = await getRecords()

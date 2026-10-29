@@ -197,6 +197,25 @@ export const ABANG = {
    * the Google account is linked. Read-only: the app never writes to Google.
    * Reuses COMPOSIO_API_KEY; the ids below are not secrets.
    */
+  // ── 👉 INSTAGRAM ──────────────────────────────────────────────────────────
+  /**
+   * The Content tab's Instagram posts (lib/instagram.ts). The daily cron and
+   * 🔄 Sync now pull the last `syncDays` of posts + their insights through
+   * Composio and upsert `content` rows keyed on meta.ig_id — so the 138
+   * imported posts are refreshed, never duplicated. Reuses COMPOSIO_API_KEY.
+   *
+   * composioAccount: the Instagram connection's id in the SAME Composio project
+   * as the calendar (ca_…, from the Composio dashboard → Connected accounts).
+   * Empty = that account is skipped. Only okmaya.official is synced (owner's
+   * call, 2026-10-29); the founder's collab posts keep their imported figures.
+   */
+  instagram: {
+    accounts: [
+      { username: 'okmaya.official', composioAccount: '' },
+    ],
+    syncDays: 45,
+  },
+
   calendar: {
     calendarId: 'huiyee.lee@okmayaofficial.com',   // the account Composio is linked to
     // Everyone whose calendar shows on the Calendar tab. Each person shares their
