@@ -32,6 +32,9 @@ export const HALAL_PRODUCTS: HalalProduct[] = [
   { key: 'tteokbokki-rice-cake', name: 'Tteokbokki Rice Cake', directoryName: 'KEK BERAS TTEOKBOKKI / TTEOKBOKKI RICE CAKE', expiry: '2027-12-15' },
   { key: 'chili-flakes', name: 'Chili Flakes', directoryName: 'EMPING CILI KOREA', expiry: '2028-10-31' },
   { key: 'chili-powder', name: 'Chili Powder', directoryName: 'SERBUK CILI KOREA', expiry: '2028-10-31' },
+  { key: 'kimchi-jjigae-paste', name: 'Kimchi Jjigae Paste', directoryName: 'PES SUP KIMCHI BEREMPAH / KIMCHI STEW PASTE', expiry: '2028-11-30' },
+  { key: 'japchae-sauce', name: 'Japchae Sauce', directoryName: 'SOS JAPCHAE KOREA / KOREAN JAPCHAE SAUCE', expiry: '2028-11-30' },
+  { key: 'glass-noodles', name: 'Glass Noodles', directoryName: 'MEE KACA UBI KELEDEK KOREA / KOREAN SWEET POTATO GLASS NOODLES', expiry: '2028-11-30' },
 ]
 
 export const REMIND_MONTHS = 3     // start reminding this many months before expiry
