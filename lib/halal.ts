@@ -22,10 +22,13 @@ export type HalalProduct = {
   directoryName: string // exactly as the MYeHALAL directory lists it
   expiry: string        // seed: latest expiry on the directory (YYYY-MM-DD)
   renewing?: boolean    // seed: renewal already submitted
+  pinned?: boolean      // tracks one specific certificate (not the latest) — see lib/halal-check.ts
 }
 
 export const HALAL_PRODUCTS: HalalProduct[] = [
   { key: 'soft-tofu-stew-paste', name: 'Soft Tofu Stew Paste', directoryName: 'PES SUP TOFU BEREMPAH', expiry: '2028-10-31' },
+  // FamilyMart's own certificate of the same paste (directory row with the 15/02/2028 expiry).
+  { key: 'soft-tofu-stew-paste-familymart', name: 'Soft Tofu Stew Paste (FamilyMart)', directoryName: 'PES SUP TOFU BEREMPAH', expiry: '2028-02-15', pinned: true },
   { key: 'bulgogi-sauce', name: 'Bulgogi Sauce', directoryName: 'SOS KOREA BULGOGI', expiry: '2027-01-31', renewing: true },
   { key: 'tteokbokki-sauce', name: 'Tteokbokki Sauce', directoryName: 'KOREAN TTEOKBOKKI SAUCE (SOS TTEOKBOKKI KOREA)', expiry: '2027-06-30' },
   { key: 'seaweed-soup', name: 'Seaweed Soup', directoryName: 'SUP RUMPAI LAUT KOREA (KOREAN SEAWEED SOUP)', expiry: '2028-02-29' },

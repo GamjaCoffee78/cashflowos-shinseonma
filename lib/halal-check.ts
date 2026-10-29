@@ -152,13 +152,18 @@ export async function syncHalal(): Promise<HalalCheckResult | { skipped: string 
     const row = await readHalalRow(p.key)
     const meta: Record<string, any> = row?.meta ?? { key: p.key, renewing: !!p.renewing, source: 'myehalal' }
     const current = row?.due_date ?? p.expiry
-    const latest = latestFor(p, rows)
+    // A pinned product shares its directory name with another product, so "the
+    // latest" would be the other one's certificate. It only checks that its own
+    // date is still listed; a renewal is entered by hand with 📅 New expiry.
+    const latest = p.pinned
+      ? (rows.some(r => norm(r.name) === norm(p.directoryName) && r.expiry === current) ? current : null)
+      : latestFor(p, rows)
 
     let due = current
     let flag: string | null = null
     let renewing = !!meta.renewing
     const history = Array.isArray(meta.expiry_history) ? meta.expiry_history : []
-    if (!latest) flag = 'Not found in MYeHALAL'
+    if (!latest) flag = p.pinned ? `MYeHALAL no longer lists the ${fmt(current)} certificate — renewed? enter the new expiry` : 'Not found in MYeHALAL'
     else if (latest > current) {
       due = latest
       renewing = false
